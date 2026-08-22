@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
@@ -411,4 +413,106 @@ func plural(n int, one, many string) string {
 		return fmt.Sprintf("%d %s", n, one)
 	}
 	return fmt.Sprintf("%d %s", n, many)
+}
+
+// editorArgv resolves the user's editor. Fields are split so "code --wait"
+// works, not just a bare command name.
+func editorArgv() []string {
+	for _, k := range []string{"VISUAL", "EDITOR"} {
+		if v := strings.TrimSpace(os.Getenv(k)); v != "" {
+			return strings.Fields(v)
+		}
+	}
+	return []string{"vi"}
+}
+
+func openEditor(path string) error {
+	argv := editorArgv()
+	cmd := exec.Command(argv[0], append(argv[1:], path)...)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%s: %w", argv[0], err)
+	}
+	return nil
+}
+
+// chooseTarget asks which file to open. Reaching EOF without a line means
+// nobody is there to answer -- /dev/null is a character device, so testing for
+// a terminal would wrongly accept it -- and guessing between two files that
+// behave this differently is worse than refusing.
+func chooseTarget() (bluefile bool, err error) {
+	fmt.Println("  1  Bluefile       the spec you edit")
+	fmt.Println("  2  Containerfile  generated, replaced by the next build")
+	fmt.Print("  choose [1]: ")
+	line, readErr := bufio.NewReader(os.Stdin).ReadString('\n')
+	if readErr != nil && strings.TrimSpace(line) == "" {
+		fmt.Println()
+		return false, fmt.Errorf("no answer; pass -b for the Bluefile or -c for the Containerfile")
+	}
+	switch strings.TrimSpace(line) {
+	case "", "1", "b", "bluefile":
+		return true, nil
+	case "2", "c", "containerfile":
+		return false, nil
+	default:
+		return false, fmt.Errorf("choose 1 or 2")
+	}
+}
+
+func editCmd() *cobra.Command {
+	var wantBlue, wantContainer bool
+	c := &cobra.Command{
+		Use: "edit <name>", Short: "edit the Bluefile or Containerfile", GroupID: groupSandbox,
+		Long: "Opens a sandbox's file in $VISUAL, $EDITOR, or vi.\n\n" +
+			"The Containerfile is generated from the Bluefile, so edits to it are\n" +
+			"replaced by the next build. Change the Bluefile to make them stick.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			name := args[0]
+			if !sandbox.Exists(name) {
+				return fmt.Errorf("no sandbox %q", name)
+			}
+			if wantBlue && wantContainer {
+				return fmt.Errorf("pass -b or -c, not both")
+			}
+
+			editBluefile := wantBlue
+			if !wantBlue && !wantContainer {
+				chosen, err := chooseTarget()
+				if err != nil {
+					return err
+				}
+				editBluefile = chosen
+			}
+
+			if editBluefile {
+				path, err := sandbox.BluefilePath(name)
+				if err != nil {
+					return err
+				}
+				if err := openEditor(path); err != nil {
+					return err
+				}
+				// Catch a broken edit now rather than at the next build.
+				if _, err := bluefile.Parse(path); err != nil {
+					return fmt.Errorf("saved, but it no longer parses:\n%w", err)
+				}
+				fmt.Printf("ok — run: bluebox build %s\n", name)
+				return nil
+			}
+
+			path, err := sandbox.ContainerfilePath(name)
+			if err != nil {
+				return err
+			}
+			if _, err := os.Stat(path); err != nil {
+				return fmt.Errorf("no Containerfile yet; it is written by: bluebox build %s", name)
+			}
+			fmt.Println("note: generated file — the next build overwrites it")
+			return openEditor(path)
+		},
+	}
+	c.Flags().BoolVarP(&wantBlue, "bluefile", "b", false, "edit the Bluefile")
+	c.Flags().BoolVarP(&wantContainer, "containerfile", "c", false, "edit the generated Containerfile")
+	return c
 }

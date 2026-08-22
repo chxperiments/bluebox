@@ -57,7 +57,7 @@ func newRoot() *cobra.Command {
 	installHelp(root)
 
 	root.AddCommand(
-		newCmd(), buildCmd(), lsCmd(),
+		newCmd(), editCmd(), buildCmd(), lsCmd(),
 		runCmd(), shellCmd(),
 		resetCmd(), snapshotCmd(),
 		envCmd(), logsCmd(), verifyCmd(),

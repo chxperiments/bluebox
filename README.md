@@ -167,6 +167,7 @@ and the sudo group is `sudo` or `wheel` as that distro expects.
 | Command | What it does |
 |---|---|
 | `bluebox new <name>` | scaffold a Bluefile |
+| `bluebox edit <name> [-b\|-c]` | open the Bluefile or Containerfile in `$EDITOR` |
 | `bluebox build <name>` | generate the Containerfile, build, verify isolation |
 | `bluebox run <name> -- <cmd>` | run one command in a fresh microVM |
 | `bluebox shell <name>` | interactive session in one microVM |
@@ -179,6 +180,12 @@ and the sudo group is `sudo` or `wheel` as that distro expects.
 | `bluebox rename <old> <new>` | rename, keeping data, logs and the built image |
 | `bluebox destroy <name> [--data]` | remove a sandbox; `--data` also deletes `/data` |
 | `bluebox nuke [--no-data]` | remove every sandbox; `--no-data` keeps data |
+
+`bluebox edit` opens `$VISUAL`, `$EDITOR`, or `vi`. With no flag it asks which
+file; `-b` and `-c` skip the prompt. Editing the Bluefile re-parses it on save,
+so a mistake surfaces immediately rather than at the next build. The
+Containerfile is generated, so edits to it are replaced by the next build —
+bluebox says so before opening it.
 
 `bluebox env` is shell-consumable: `eval $(bluebox env devbox)`.
 

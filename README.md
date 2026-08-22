@@ -1,40 +1,12 @@
 # bluebox
 
-Isolated, persistent sandboxes.
-
-Describe a sandbox in one **Bluefile** — base image, CPUs, RAM, network, and
-the tools you want — and bluebox runs it as a real KVM microVM that boots in
-about a second. Your work in `/data` persists. Everything else resets on every
-run, so a sandbox you break is fixed by running it again.
-
-Built on podman and the `krun` runtime (libkrun). You never write a
-Containerfile; bluebox generates one from the Bluefile.
+Isolated, persistent sandboxes built on podman and the `krun` runtime (libkrun). 
 
 ## Why
 
 A container shares your host kernel. bluebox gives each sandbox its **own**
 kernel, so `mount`, `sysctl`, `modprobe` and `rm -rf /` act on a machine that
-is rebuilt on the next run — while the files you care about survive in one
-directory you can read from the host.
-
-## What the boundary is, and is not
-
-A separate kernel is a real boundary, and a much stronger one than a container.
-It is not absolute. Crossing from the sandbox to the host means going through
-libkrun, KVM, or the virtiofs share, so treat it as isolation worth having
-rather than a guarantee.
-
-Three things are worth knowing:
-
-- **`/data` is the one surface in constant use.** The guest root filesystem is
-  virtiofs, served by the VMM process, so guest file I/O becomes work the host
-  side performs on every call. Operations the guest kernel answers alone — a
-  `uname`, say — never involve the host at all.
-- **Inside the guest the workload is root with every capability**, and can
-  mount. That is fine: those syscalls hit a disposable kernel. It does mean the
-  place to add limits is the VMM boundary, not inside the guest.
-- **Run bluebox rootless.** Podman rootless means the VMM is your user, so a
-  sandbox stays scoped to your account rather than root.
+is rebuilt on the next run.
 
 ## Install
 

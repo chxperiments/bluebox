@@ -20,22 +20,21 @@ directory you can read from the host.
 ## What the boundary is, and is not
 
 A separate kernel is a real boundary, and a much stronger one than a container.
-It is not an absence of attack surface. Reaching the host means getting through
-libkrun, KVM, or the virtiofs share, so treat it as defence worth having rather
-than a guarantee.
+It is not absolute. Crossing from the sandbox to the host means going through
+libkrun, KVM, or the virtiofs share, so treat it as isolation worth having
+rather than a guarantee.
 
-Three things are worth knowing before you trust it with something hostile:
+Three things are worth knowing:
 
 - **`/data` is the one surface in constant use.** The guest root filesystem is
   virtiofs, served by the VMM process, so guest file I/O becomes work the host
   side performs on every call. Operations the guest kernel answers alone — a
   `uname`, say — never involve the host at all.
 - **Inside the guest the workload is root with every capability**, and can
-  mount. That is fine: those syscalls hit a disposable kernel. It does mean
-  anything that escapes arrives with full privilege, so confinement belongs at
-  the VMM boundary, not inside the guest.
-- **Run bluebox rootless.** Podman rootless means the VMM is your user, so the
-  blast radius of an escape is your account rather than root.
+  mount. That is fine: those syscalls hit a disposable kernel. It does mean the
+  place to add limits is the VMM boundary, not inside the guest.
+- **Run bluebox rootless.** Podman rootless means the VMM is your user, so a
+  sandbox stays scoped to your account rather than root.
 
 ## Install
 

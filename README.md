@@ -1,11 +1,26 @@
 # bluebox
 
-Disposable microVM sandboxes for AI harnesses. Define a sandbox with a
-Containerfile, then run commands inside a real KVM microVM that boots in about
-a second. Only `/data` survives between runs.
+Disposable microVM sandboxes for AI harnesses. Describe a sandbox in one
+**Bluefile** — base image, RAM, CPUs, network, and the tools to install — then
+run commands inside a real KVM microVM that boots in about a second. Only
+`/data` survives between runs.
 
 Built on podman + the `krun` runtime (libkrun). bluebox is a thin wrapper: podman
-does the image building, caching, volumes and networking.
+does the image building, caching, volumes and networking. You never write a
+Containerfile — bluebox generates it from the Bluefile.
+
+## Project layout
+
+```
+cmd/bluebox/main.go        entrypoint (just calls internal/cli)
+internal/bluefile/         Bluefile parser + Containerfile generator (unit-tested)
+internal/sandbox/          on-disk layout (~/.bluebox paths)
+internal/runtime/          the podman + krun driver -- the ONLY backend-aware code
+internal/cli/              subcommand wiring
+```
+
+Swapping podman for another backend (Firecracker, Cloud Hypervisor) means
+touching `internal/runtime` alone.
 
 ## Why every command gets a fresh VM
 
@@ -42,15 +57,16 @@ sudo ln -sf $(command -v crun) /usr/local/bin/krun
 Build it:
 
 ```sh
-go build -o bluebox .
+go build -o bluebox ./cmd/bluebox
+go test ./...          # unit tests for the Bluefile parser/generator
 ```
 
 ## Use
 
 ```sh
-bluebox new kali-ctf                     # scaffold
-$EDITOR ~/.bluebox/sandboxes/kali-ctf/Containerfile
-bluebox build kali-ctf                   # build + verify isolation
+bluebox new kali-ctf                     # scaffold a Bluefile
+$EDITOR ~/.bluebox/sandboxes/kali-ctf/Bluefile
+bluebox build kali-ctf                   # generate Containerfile, build, verify
 bluebox run kali-ctf -- nmap -sV target  # one command, fresh VM
 bluebox shell kali-ctf                   # interactive session
 bluebox verify kali-ctf                  # prove it has its own kernel
@@ -60,39 +76,52 @@ bluebox ls
 Point your AI harness at `bluebox run <name> -- <cmd>`. It behaves like any
 subprocess: stdout, stderr and exit code pass straight through.
 
+## The Bluefile
+
+One file defines the whole sandbox. Line-oriented `KEY value`; `#` comments and
+blank lines ignored; `PACKAGE`, `RUN` and `ENV` may repeat.
+
+```
+BASE     docker.io/kalilinux/kali-rolling
+CPUS     4
+RAM      4096          # MiB
+NETWORK  bridge        # bridge = internet access, none = airgapped
+READONLY true          # read-only guest rootfs (/tmp and /data stay writable)
+TIMEOUT  300           # seconds per run, 0 = unlimited
+SECCOMP  /home/me/.bluebox/seccomp/tight.json   # optional, filters the VMM
+PACKAGE  nmap python3 python3-pip gdb
+PACKAGE  binutils file
+RUN      pip3 install --break-system-packages pwntools
+ENV      LANG=C.UTF-8
+```
+
+`bluebox build` turns that into a Containerfile and builds it. The package
+manager is picked from `BASE`: Alpine → `apk`, Debian/Ubuntu/Kali → `apt`.
+`CPUS` maxes at 16 (krun's limit); `RAM` is MiB. See the runtime-restrictions
+section for what `READONLY`, `TIMEOUT` and `SECCOMP` actually enforce.
+
 ## Layout
 
 ```
 ~/.bluebox/
-  sandboxes/<name>/Containerfile   what is installed (rebuilt, never persists)
-  sandboxes/<name>/config.json     cpus, memory_mib, network
+  sandboxes/<name>/Bluefile        the spec you edit
+  sandboxes/<name>/Containerfile   generated from the Bluefile on build
   data/<name>/                     mounted at /data -- the ONLY persistent part
 ```
 
 Override the root with `BLUEBOX_HOME`.
 
-`config.json`:
+## Restriction directives
 
-```json
-{
-  "cpus": 4,
-  "memory_mib": 4096,
-  "network": "bridge",
-  "readonly_rootfs": true,
-  "timeout_seconds": 300,
-  "seccomp": ""
-}
-```
+`NETWORK bridge` gives outbound access (needed for `apt`, `pip`, CTF targets);
+`NETWORK none` cuts it off entirely — use it when detonating untrusted binaries
+that should not phone home.
 
-`network: "bridge"` gives outbound access (needed for `apt`, `pip`, CTF targets).
-`network: "none"` cuts it off entirely — use it when detonating untrusted
-binaries that should not phone home. `cpus` maxes out at 16, which is krun's limit.
-
-`readonly_rootfs` makes the guest root filesystem read-only; podman still
-provides a writable `/tmp`, and `/data` stays writable. `timeout_seconds` caps
-wall-clock time per `bluebox run` — the VM is killed and reaped, and the exit
-code is `124`, matching `timeout(1)` so a harness can distinguish it from an
-ordinary failure. `0` disables it. `bluebox shell` is never timed out.
+`READONLY true` makes the guest root filesystem read-only; podman still provides
+a writable `/tmp`, and `/data` stays writable. `TIMEOUT` caps wall-clock time
+per `bluebox run` — the VM is killed and reaped, and the exit code is `124`,
+matching `timeout(1)` so a harness can distinguish it from an ordinary failure.
+`0` disables it. `bluebox shell` is never timed out.
 
 ## Runtime restrictions: where the boundary actually is
 
@@ -147,20 +176,22 @@ no kernel boundary. Worth checking after changing anything about the runtime set
 
 ## A Kali CTF sandbox
 
-```dockerfile
-FROM docker.io/kalilinux/kali-rolling
+The whole thing is one Bluefile:
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      nmap netcat-traditional python3 python3-pip gdb ltrace strace \
-      binutils file curl wget git \
- && rm -rf /var/lib/apt/lists/*
-RUN pip3 install --break-system-packages pwntools
-
-WORKDIR /data
+```
+BASE     docker.io/kalilinux/kali-rolling
+CPUS     4
+RAM      4096
+NETWORK  bridge
+READONLY true
+TIMEOUT  600
+PACKAGE  nmap netcat-traditional python3 python3-pip gdb ltrace strace
+PACKAGE  binutils file curl wget git
+RUN      pip3 install --break-system-packages pwntools
 ```
 
-Keep tools in the Containerfile and work products in `/data`. Then a broken or
-compromised sandbox is fixed by rebuilding, and nothing is lost.
+Tools go in the Bluefile; work products go in `/data`. A broken or compromised
+sandbox is fixed by rebuilding, and nothing is lost.
 
 ## Not implemented
 

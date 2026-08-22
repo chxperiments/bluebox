@@ -1,0 +1,20 @@
+# A Node.js development sandbox.
+# Demonstrates: an npm global install as a build step.
+
+base: docker.io/library/debian:bookworm-slim
+
+cpus: 4
+ram_mib: 4096
+network: bridge
+timeout_seconds: 0
+
+packages:
+  - nodejs
+  - npm
+  - git
+
+run:
+  - npm install -g --silent pnpm
+
+env:
+  NODE_ENV: development

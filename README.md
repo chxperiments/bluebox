@@ -113,6 +113,9 @@ bluebox run devbox -- python3 script.py   # one command in a fresh microVM
 bluebox shell devbox                      # interactive session
 ```
 
+Ready-made Bluefiles for Python, Node, Go, an AI-agent sandbox, an offline one
+and a system-experiments one live in [`examples/`](examples/).
+
 ## The Bluefile
 
 One YAML file per sandbox. Unknown keys are rejected, so typos fail loudly.

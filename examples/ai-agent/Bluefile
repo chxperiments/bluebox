@@ -1,0 +1,34 @@
+# A sandbox for an AI coding agent to work in.
+# Demonstrates: blueprint provisioning (a non-root user with sudo, a shell
+# profile), a read-only root, and a per-run timeout so a runaway command
+# cannot hang forever. Point the agent at:  bluebox run agent -- <command>
+
+base: docker.io/library/debian:bookworm-slim
+
+cpus: 4
+ram_mib: 4096
+network: bridge          # the agent installs deps and clones repos
+readonly: true           # root is fixed; work goes in /data
+timeout_seconds: 1800    # 30 min ceiling per command; exits 124 if hit
+
+packages:
+  - sudo
+  - git
+  - curl
+  - ripgrep
+  - python3
+  - python3-pip
+  - nodejs
+  - npm
+
+blueprint:
+  users:
+    - name: agent
+      shell: /bin/bash
+      sudo: true
+  write_files:
+    - path: /etc/motd
+      content: |
+        Agent sandbox. Your work lives in /data; everything else resets.
+  runcmd:
+    - echo 'cd /data' >> /home/agent/.bashrc

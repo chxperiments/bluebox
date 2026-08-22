@@ -1,0 +1,24 @@
+# A place to experiment with system configuration.
+# Demonstrates the point of a real kernel: commands like mount, sysctl and
+# modprobe act on the sandbox's own kernel, so you can try things that a
+# plain container cannot do and would not survive. dnf base, sudo user.
+
+base: docker.io/library/fedora:41
+
+cpus: 2
+ram_mib: 3072
+network: bridge
+timeout_seconds: 0
+
+packages:
+  - sudo
+  - procps-ng
+  - iproute
+  - util-linux
+  - systemd
+
+blueprint:
+  users:
+    - name: admin
+      shell: /bin/bash
+      sudo: true          # wheel + a NOPASSWD drop-in, chosen for dnf

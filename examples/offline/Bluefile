@@ -1,0 +1,16 @@
+# A fully offline sandbox.
+# Demonstrates: network none. Nothing inside can reach out; useful for
+# running code you want to keep off the network entirely. Tools must be
+# baked in at build time, since there is no egress afterward.
+
+base: docker.io/library/alpine:latest
+
+cpus: 2
+ram_mib: 2048
+network: none            # no route out at all
+readonly: true
+timeout_seconds: 300
+
+packages:
+  - python3
+  - jq

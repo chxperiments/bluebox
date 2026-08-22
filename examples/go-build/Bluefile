@@ -1,0 +1,20 @@
+# A Go build sandbox.
+# Demonstrates: pkgmgr override for a base whose name the tool cannot map,
+# and a read-only root -- the compiler writes only to /tmp and /data.
+
+base: docker.io/library/golang:1.26-bookworm
+pkgmgr: apt              # "golang:..." is not inferable; say which manager
+
+cpus: 4
+ram_mib: 4096
+network: bridge          # go get needs egress
+readonly: true           # /tmp and /data stay writable
+timeout_seconds: 1200
+
+packages:
+  - git
+  - make
+
+env:
+  CGO_ENABLED: "0"
+  GOFLAGS: -mod=mod

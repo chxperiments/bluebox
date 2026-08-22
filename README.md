@@ -88,28 +88,30 @@ bluebox shell devbox                      # interactive session
 
 ## The Bluefile
 
-One file per sandbox. Line-oriented `KEY value`; `#` comments and blank lines
-are ignored; `PACKAGE`, `RUN` and `ENV` may repeat.
+One YAML file per sandbox. Unknown keys are rejected, so typos fail loudly.
 
+```yaml
+base: docker.io/library/debian:bookworm-slim
+cpus: 4
+ram_mib: 4096
+network: bridge        # bridge = internet access, none = offline
+readonly: true         # read-only root (/tmp and /data stay writable)
+timeout_seconds: 600   # per-run wall clock limit, 0 = unlimited
+
+packages:
+  - python3
+  - git
+run:
+  - pip3 install --break-system-packages requests
+env:
+  LANG: C.UTF-8
 ```
-BASE     docker.io/library/debian:bookworm-slim
-CPUS     4
-RAM      4096          # MiB
-NETWORK  bridge        # bridge = internet access, none = offline
-READONLY true          # read-only root (/tmp and /data stay writable)
-TIMEOUT  600           # seconds per run, 0 = unlimited
 
-PACKAGE  python3 python3-pip git build-essential
-PACKAGE  ripgrep jq
-RUN      pip3 install --break-system-packages requests
-ENV      LANG=C.UTF-8
-```
+The package manager is chosen from `base`: Alpine uses `apk`, Debian and Ubuntu
+use `apt`, Fedora and RHEL-likes use `dnf`. For any other base, set `pkgmgr`
+explicitly to `apk`, `apt` or `dnf`.
 
-The package manager is chosen from `BASE`: Alpine uses `apk`, Debian and Ubuntu
-use `apt`, Fedora and RHEL-likes use `dnf`. For any other base, set it
-explicitly with `PKGMGR apk|apt|dnf`.
-
-`CPUS` maxes at 16 (a krun limit) and `RAM` is in MiB.
+`cpus` maxes at 16 (a krun limit) and `ram_mib` is in MiB.
 
 ## Commands
 

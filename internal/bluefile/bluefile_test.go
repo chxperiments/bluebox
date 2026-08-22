@@ -18,16 +18,19 @@ func write(t *testing.T, body string) string {
 
 func TestParseDefaultsAndOverrides(t *testing.T) {
 	s, err := Parse(write(t, `
-BASE     docker.io/library/alpine:latest
-CPUS     4
-RAM      4096
-NETWORK  none
-READONLY true
-TIMEOUT  60
-PACKAGE  ripgrep python3
-PACKAGE  jq
-RUN      pip3 install requests
-ENV      LANG=C.UTF-8
+base: docker.io/library/alpine:latest
+cpus: 4
+ram_mib: 4096
+network: none
+readonly: true
+timeout_seconds: 60
+packages:
+  - ripgrep
+  - python3
+run:
+  - pip3 install requests
+env:
+  LANG: C.UTF-8
 `))
 	if err != nil {
 		t.Fatal(err)
@@ -38,22 +41,37 @@ ENV      LANG=C.UTF-8
 	if !s.ReadOnlyRootfs || s.TimeoutSeconds != 60 {
 		t.Errorf("restriction fields wrong: %+v", s)
 	}
-	if got := strings.Join(s.Packages, ","); got != "ripgrep,python3,jq" {
-		t.Errorf("packages accumulate wrong: %q", got)
+	if got := strings.Join(s.Packages, ","); got != "ripgrep,python3" {
+		t.Errorf("packages wrong: %q", got)
 	}
-	if len(s.Run) != 1 || len(s.Env) != 1 {
+	if len(s.Run) != 1 || s.Env["LANG"] != "C.UTF-8" {
 		t.Errorf("run/env wrong: %+v", s)
+	}
+}
+
+// Omitted keys fall back to Default rather than zero values.
+func TestDefaultsApplyToOmittedKeys(t *testing.T) {
+	s, err := Parse(write(t, "base: docker.io/library/alpine:latest\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.CPUs != Default.CPUs || s.RAMMiB != Default.RAMMiB || s.Network != Default.Network {
+		t.Errorf("defaults not applied: %+v", s)
 	}
 }
 
 func TestValidation(t *testing.T) {
 	cases := map[string]string{
-		"cpus too high": "BASE x\nCPUS 99\n",
-		"bad network":   "BASE x\nNETWORK wifi\n",
-		"tiny ram":      "BASE x\nRAM 4\n",
-		"bad bool":      "BASE x\nREADONLY yes-please\n",
-		"unknown key":   "BASE x\nWIDGETS 3\n",
-		"no value":      "BASE\n",
+		"cpus too high":    "base: x\ncpus: 99\n",
+		"cpus zero":        "base: x\ncpus: 0\n",
+		"bad network":      "base: x\nnetwork: wifi\n",
+		"tiny ram":         "base: x\nram_mib: 4\n",
+		"negative timeout": "base: x\ntimeout_seconds: -1\n",
+		"empty base":       "base: \"\"\n",
+		"unknown key":      "base: x\nwidgets: 3\n",
+		"wrong type":       "base: x\ncpus: many\n",
+		"unclosed list":    "base: x\npackages: [jq\n",
+		"unterminated str": "base: \"oops\ncpus: 2\n",
 	}
 	for name, body := range cases {
 		if _, err := Parse(write(t, body)); err == nil {
@@ -71,7 +89,7 @@ func TestPackageManagerSelection(t *testing.T) {
 		{"quay.io/centos/centos:stream9", "dnf install"},
 	}
 	for _, c := range cases {
-		s, err := Parse(write(t, "BASE "+c.base+"\nPACKAGE jq\n"))
+		s, err := Parse(write(t, "base: "+c.base+"\npackages: [jq]\n"))
 		if err != nil {
 			t.Errorf("%s: %v", c.base, err)
 			continue
@@ -83,11 +101,11 @@ func TestPackageManagerSelection(t *testing.T) {
 }
 
 func TestPackageManagerCleanup(t *testing.T) {
-	apt, _ := Parse(write(t, "BASE docker.io/library/debian:12\nPACKAGE jq\n"))
+	apt, _ := Parse(write(t, "base: docker.io/library/debian:12\npackages: [jq]\n"))
 	if !strings.Contains(apt.Containerfile(), "rm -rf /var/lib/apt/lists") {
 		t.Error("apt should clean its lists")
 	}
-	dnf, _ := Parse(write(t, "BASE docker.io/library/fedora:41\nPACKAGE jq\n"))
+	dnf, _ := Parse(write(t, "base: docker.io/library/fedora:41\npackages: [jq]\n"))
 	if !strings.Contains(dnf.Containerfile(), "dnf clean all") {
 		t.Error("dnf should clean its cache")
 	}
@@ -96,28 +114,27 @@ func TestPackageManagerCleanup(t *testing.T) {
 // An unrecognised base must fail at parse time rather than generate a
 // Containerfile that dies partway through the build.
 func TestUnknownBaseNeedsPkgmgr(t *testing.T) {
-	if _, err := Parse(write(t, "BASE example.com/custom/image:1\nPACKAGE jq\n")); err == nil {
-		t.Error("expected an error asking for PKGMGR")
+	if _, err := Parse(write(t, "base: example.com/custom:1\npackages: [jq]\n")); err == nil {
+		t.Error("expected an error asking for pkgmgr")
 	}
-	// ...unless PKGMGR says which one to use.
-	s, err := Parse(write(t, "BASE example.com/custom/image:1\nPKGMGR apt\nPACKAGE jq\n"))
+	s, err := Parse(write(t, "base: example.com/custom:1\npkgmgr: apt\npackages: [jq]\n"))
 	if err != nil {
-		t.Fatalf("PKGMGR override should work: %v", err)
+		t.Fatalf("pkgmgr override should work: %v", err)
 	}
 	if !strings.Contains(s.Containerfile(), "apt-get install") {
-		t.Errorf("PKGMGR override ignored:\n%s", s.Containerfile())
+		t.Errorf("pkgmgr override ignored:\n%s", s.Containerfile())
 	}
 	// No packages means no package manager is needed at all.
-	if _, err := Parse(write(t, "BASE example.com/custom/image:1\n")); err != nil {
+	if _, err := Parse(write(t, "base: example.com/custom:1\n")); err != nil {
 		t.Errorf("base with no packages should parse: %v", err)
 	}
-	if _, err := Parse(write(t, "BASE alpine\nPKGMGR yum\nPACKAGE jq\n")); err == nil {
-		t.Error("expected an error for an unknown PKGMGR")
+	if _, err := Parse(write(t, "base: alpine\npkgmgr: yum\npackages: [jq]\n")); err == nil {
+		t.Error("expected an error for an unknown pkgmgr")
 	}
 }
 
 func TestContainerfileStructure(t *testing.T) {
-	s, _ := Parse(write(t, "BASE b\nENV K=V\nRUN echo hi\n"))
+	s, _ := Parse(write(t, "base: b\nenv:\n  K: V\nrun:\n  - echo hi\n"))
 	cf := s.Containerfile()
 	if !strings.HasPrefix(cf, "# generated") {
 		t.Error("missing generated header")
@@ -128,12 +145,33 @@ func TestContainerfileStructure(t *testing.T) {
 	}
 }
 
-func TestCommentsAndBlankLines(t *testing.T) {
-	s, err := Parse(write(t, "# comment\n\nBASE b   # trailing\nCPUS 3\n"))
+// Go map iteration is random, so env must be sorted or the generated
+// Containerfile changes between runs and busts podman's layer cache.
+func TestEnvOrderIsDeterministic(t *testing.T) {
+	src := "base: b\nenv:\n  Z: 1\n  A: 2\n  M: 3\n"
+	first, _ := Parse(write(t, src))
+	want := first.Containerfile()
+	for i := 0; i < 20; i++ {
+		s, _ := Parse(write(t, src))
+		if got := s.Containerfile(); got != want {
+			t.Fatalf("output not deterministic:\n%s\nvs\n%s", want, got)
+		}
+	}
+	if !strings.Contains(want, "ENV A=2\nENV M=3\nENV Z=1") {
+		t.Errorf("env not sorted:\n%s", want)
+	}
+}
+
+func TestCommentsAndEmptyFile(t *testing.T) {
+	s, err := Parse(write(t, "# just a comment\nbase: b   # trailing\ncpus: 3\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if s.Base != "b" || s.CPUs != 3 {
 		t.Errorf("comment handling wrong: %+v", s)
+	}
+	// An empty file is valid: every default applies.
+	if _, err := Parse(write(t, "")); err != nil {
+		t.Errorf("empty file should use defaults: %v", err)
 	}
 }

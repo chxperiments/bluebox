@@ -1,51 +1,53 @@
 // Package bluefile parses a Bluefile, the single declarative spec for a
 // sandbox, and generates the Containerfile podman builds from.
 //
-// A Bluefile describes both the VM (cpus, ram, network, restrictions) and its
-// image (base, packages, run steps) in one place, so a user never writes a
-// Containerfile by hand.
+// A Bluefile is YAML describing both the VM (cpus, ram, network, restrictions)
+// and its image (base, packages, run steps), so a user never writes a
+// Containerfile by hand:
 //
-// Format is line-oriented `KEY value`, one directive per line. `#` comments and
-// blank lines are ignored. Repeatable directives (PACKAGE, RUN, ENV) accumulate.
-//
-//	BASE       docker.io/library/debian:bookworm-slim
-//	CPUS       4
-//	RAM        4096
-//	NETWORK    bridge
-//	READONLY   true
-//	TIMEOUT    300
-//	SECCOMP    /home/me/.bluebox/seccomp/tight.json
-//	PKGMGR     apt
-//	PACKAGE    python3 python3-pip git
-//	PACKAGE    ripgrep jq
-//	RUN        pip3 install --break-system-packages requests
-//	ENV        LANG=C.UTF-8
+//	base: docker.io/library/debian:bookworm-slim
+//	cpus: 4
+//	ram_mib: 4096
+//	network: bridge
+//	readonly: true
+//	timeout_seconds: 300
+//	packages:
+//	  - python3
+//	  - git
+//	run:
+//	  - pip3 install --break-system-packages requests
+//	env:
+//	  LANG: C.UTF-8
 package bluefile
 
 import (
-	"bufio"
+	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"os"
-	"strconv"
+	"sort"
 	"strings"
+
+	"github.com/goccy/go-yaml"
 )
 
 // Spec is the parsed, validated contents of a Bluefile.
 type Spec struct {
-	Base           string
-	CPUs           int
-	RAMMiB         int
-	Network        string // "bridge" (egress) or "none" (airgapped)
-	ReadOnlyRootfs bool
-	TimeoutSeconds int
-	Seccomp        string
-	PkgMgr         string   // "apk"/"apt"/"dnf"; empty means infer from Base
-	Packages       []string // installed via the base image's package manager
-	Run            []string // extra Containerfile RUN steps, in order
-	Env            []string // KEY=VALUE pairs
+	Base           string            `yaml:"base"`
+	CPUs           int               `yaml:"cpus"`
+	RAMMiB         int               `yaml:"ram_mib"`
+	Network        string            `yaml:"network"` // "bridge" (egress) or "none"
+	ReadOnlyRootfs bool              `yaml:"readonly"`
+	TimeoutSeconds int               `yaml:"timeout_seconds"` // 0 = unlimited
+	Seccomp        string            `yaml:"seccomp"`         // profile path, filters the VMM
+	PkgMgr         string            `yaml:"pkgmgr"`          // apk/apt/dnf; empty = infer from base
+	Packages       []string          `yaml:"packages"`
+	Run            []string          `yaml:"run"` // extra Containerfile RUN steps, in order
+	Env            map[string]string `yaml:"env"`
 }
 
-// Default is used for values a Bluefile omits.
+// Default supplies values a Bluefile omits.
 var Default = Spec{
 	Base:    "docker.io/library/alpine:latest",
 	CPUs:    2,
@@ -57,46 +59,43 @@ var Default = Spec{
 const Template = `# Bluefile -- the whole sandbox in one place. bluebox generates the
 # Containerfile from this; you never edit that directly.
 
-BASE     docker.io/library/alpine:latest
+base: docker.io/library/alpine:latest
 
-CPUS     2
-RAM      2048          # MiB
-NETWORK  bridge        # bridge = internet access, none = airgapped
-READONLY false         # read-only guest rootfs (/tmp and /data stay writable)
-TIMEOUT  0             # seconds per run, 0 = unlimited
+cpus: 2
+ram_mib: 2048
+network: bridge       # bridge = internet access, none = offline
+readonly: false       # read-only guest root (/tmp and /data stay writable)
+timeout_seconds: 0    # per-run wall clock limit, 0 = unlimited
 
-# Tools baked into the image (reset every run). Repeat PACKAGE freely.
-PACKAGE  bash curl git
+# Tools baked into the image. Reset every run; keep work in /data.
+packages:
+  - bash
+  - curl
+  - git
 
 # Extra build steps, run in order:
-# RUN    pip3 install --break-system-packages requests
+# run:
+#   - pip3 install --break-system-packages requests
+
+# env:
+#   LANG: C.UTF-8
 `
 
-// Parse reads and validates a Bluefile.
+// Parse reads and validates a Bluefile. Unknown keys are rejected so a typo
+// fails loudly instead of being silently ignored.
 func Parse(path string) (Spec, error) {
-	f, err := os.Open(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return Spec{}, err
 	}
-	defer f.Close()
-
 	s := Default
-	sc := bufio.NewScanner(f)
-	for line := 1; sc.Scan(); line++ {
-		text := stripComment(sc.Text())
-		if strings.TrimSpace(text) == "" {
-			continue
+	// Decoding empty input clears the destination, wiping the defaults, so
+	// skip it entirely: a Bluefile with no content means "all defaults".
+	if len(bytes.TrimSpace(b)) > 0 {
+		dec := yaml.NewDecoder(bytes.NewReader(b), yaml.DisallowUnknownField())
+		if err := dec.Decode(&s); err != nil && !errors.Is(err, io.EOF) {
+			return Spec{}, fmt.Errorf("%s: %w", path, err)
 		}
-		key, val, ok := splitDirective(text)
-		if !ok {
-			return Spec{}, fmt.Errorf("%s:%d: expected `KEY value`, got %q", path, line, sc.Text())
-		}
-		if err := s.apply(key, val); err != nil {
-			return Spec{}, fmt.Errorf("%s:%d: %w", path, line, err)
-		}
-	}
-	if err := sc.Err(); err != nil {
-		return Spec{}, err
 	}
 	if err := s.validate(); err != nil {
 		return Spec{}, fmt.Errorf("%s: %w", path, err)
@@ -104,121 +103,46 @@ func Parse(path string) (Spec, error) {
 	return s, nil
 }
 
-func (s *Spec) apply(key, val string) error {
-	switch strings.ToUpper(key) {
-	case "BASE":
-		s.Base = val
-	case "CPUS":
-		n, err := strconv.Atoi(val)
-		if err != nil {
-			return fmt.Errorf("CPUS: %w", err)
-		}
-		s.CPUs = n
-	case "RAM":
-		n, err := strconv.Atoi(val)
-		if err != nil {
-			return fmt.Errorf("RAM: %w", err)
-		}
-		s.RAMMiB = n
-	case "NETWORK":
-		s.Network = val
-	case "READONLY":
-		b, err := strconv.ParseBool(val)
-		if err != nil {
-			return fmt.Errorf("READONLY: want true/false, got %q", val)
-		}
-		s.ReadOnlyRootfs = b
-	case "TIMEOUT":
-		n, err := strconv.Atoi(val)
-		if err != nil {
-			return fmt.Errorf("TIMEOUT: %w", err)
-		}
-		s.TimeoutSeconds = n
-	case "SECCOMP":
-		s.Seccomp = val
-	case "PKGMGR":
-		s.PkgMgr = strings.ToLower(val)
-	case "PACKAGE":
-		s.Packages = append(s.Packages, strings.Fields(val)...)
-	case "RUN":
-		s.Run = append(s.Run, val)
-	case "ENV":
-		if !strings.Contains(val, "=") {
-			return fmt.Errorf("ENV: want KEY=VALUE, got %q", val)
-		}
-		s.Env = append(s.Env, val)
-	default:
-		return fmt.Errorf("unknown directive %q", key)
-	}
-	return nil
-}
-
 func (s Spec) validate() error {
 	if s.Base == "" {
-		return fmt.Errorf("BASE is required")
+		return errors.New("base is required")
 	}
 	if s.CPUs < 1 || s.CPUs > 16 {
-		return fmt.Errorf("CPUS must be 1-16 (krun's limit), got %d", s.CPUs)
+		return fmt.Errorf("cpus must be 1-16 (krun's limit), got %d", s.CPUs)
 	}
 	if s.RAMMiB < 128 {
-		return fmt.Errorf("RAM must be at least 128 MiB, got %d", s.RAMMiB)
+		return fmt.Errorf("ram_mib must be at least 128, got %d", s.RAMMiB)
 	}
 	if s.Network != "bridge" && s.Network != "none" {
-		return fmt.Errorf("NETWORK must be bridge or none, got %q", s.Network)
+		return fmt.Errorf("network must be bridge or none, got %q", s.Network)
 	}
 	if s.TimeoutSeconds < 0 {
-		return fmt.Errorf("TIMEOUT must be >= 0, got %d", s.TimeoutSeconds)
+		return fmt.Errorf("timeout_seconds must be >= 0, got %d", s.TimeoutSeconds)
 	}
 	if s.Seccomp != "" {
 		if _, err := os.Stat(s.Seccomp); err != nil {
-			return fmt.Errorf("SECCOMP profile: %w", err)
+			return fmt.Errorf("seccomp profile: %w", err)
 		}
 	}
 	if s.PkgMgr != "" && !isKnownMgr(s.PkgMgr) {
-		return fmt.Errorf("PKGMGR must be apk, apt or dnf, got %q", s.PkgMgr)
+		return fmt.Errorf("pkgmgr must be apk, apt or dnf, got %q", s.PkgMgr)
 	}
 	if len(s.Packages) > 0 {
 		if _, ok := s.pkgMgr(); !ok {
-			return fmt.Errorf("cannot infer a package manager for BASE %q; "+
-				"set PKGMGR to apk, apt or dnf", s.Base)
+			return fmt.Errorf("cannot infer a package manager for base %q; "+
+				"set pkgmgr to apk, apt or dnf", s.Base)
 		}
 	}
 	return nil
 }
 
-// Containerfile renders the image build instructions for this spec. The package
-// manager comes from PKGMGR, or is inferred from the base image name.
-func (s Spec) Containerfile() string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "# generated by bluebox from the Bluefile -- do not edit\n")
-	fmt.Fprintf(&b, "FROM %s\n\n", s.Base)
-	for _, e := range s.Env {
-		fmt.Fprintf(&b, "ENV %s\n", e)
-	}
-	if len(s.Env) > 0 {
-		b.WriteByte('\n')
-	}
-	if len(s.Packages) > 0 {
-		mgr, _ := s.pkgMgr() // validate() already guaranteed this resolves
-		fmt.Fprintf(&b, "RUN %s\n\n", installCmd(mgr, s.Packages))
-	}
-	for _, r := range s.Run {
-		fmt.Fprintf(&b, "RUN %s\n", r)
-	}
-	if len(s.Run) > 0 {
-		b.WriteByte('\n')
-	}
-	b.WriteString("WORKDIR /data\n")
-	return b.String()
-}
-
-// pkgMgr returns the package manager for this spec: PKGMGR if set, otherwise
+// pkgMgr returns the package manager for this spec: pkgmgr if set, otherwise
 // inferred from the base image name. ok is false when neither works, so the
-// caller can ask for PKGMGR instead of emitting a Containerfile that fails
+// caller can ask for pkgmgr instead of emitting a Containerfile that fails
 // halfway through a build.
 func (s Spec) pkgMgr() (mgr string, ok bool) {
 	if s.PkgMgr != "" {
-		return s.PkgMgr, isKnownMgr(s.PkgMgr)
+		return strings.ToLower(s.PkgMgr), isKnownMgr(s.PkgMgr)
 	}
 	l := strings.ToLower(s.Base)
 	for _, d := range []struct{ match, mgr string }{
@@ -238,7 +162,45 @@ func (s Spec) pkgMgr() (mgr string, ok bool) {
 }
 
 func isKnownMgr(m string) bool {
-	return m == "apk" || m == "apt" || m == "dnf"
+	switch strings.ToLower(m) {
+	case "apk", "apt", "dnf":
+		return true
+	}
+	return false
+}
+
+// Containerfile renders the image build instructions for this spec. The package
+// manager comes from pkgmgr, or is inferred from the base image name.
+func (s Spec) Containerfile() string {
+	var b strings.Builder
+	b.WriteString("# generated by bluebox from the Bluefile -- do not edit\n")
+	fmt.Fprintf(&b, "FROM %s\n\n", s.Base)
+
+	// Sorted so the same Bluefile always yields byte-identical output, which
+	// keeps podman's layer cache warm across rebuilds.
+	if len(s.Env) > 0 {
+		keys := make([]string, 0, len(s.Env))
+		for k := range s.Env {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			fmt.Fprintf(&b, "ENV %s=%s\n", k, s.Env[k])
+		}
+		b.WriteByte('\n')
+	}
+	if len(s.Packages) > 0 {
+		mgr, _ := s.pkgMgr() // validate() already guaranteed this resolves
+		fmt.Fprintf(&b, "RUN %s\n\n", installCmd(mgr, s.Packages))
+	}
+	for _, r := range s.Run {
+		fmt.Fprintf(&b, "RUN %s\n", r)
+	}
+	if len(s.Run) > 0 {
+		b.WriteByte('\n')
+	}
+	b.WriteString("WORKDIR /data\n")
+	return b.String()
 }
 
 // installCmd builds a non-interactive install line, with the cache cleanup each
@@ -254,20 +216,4 @@ func installCmd(mgr string, pkgs []string) string {
 	default: // apk
 		return "apk add --no-cache " + list
 	}
-}
-
-func stripComment(line string) string {
-	if i := strings.IndexByte(line, '#'); i >= 0 {
-		return line[:i]
-	}
-	return line
-}
-
-func splitDirective(line string) (key, val string, ok bool) {
-	line = strings.TrimSpace(line)
-	i := strings.IndexAny(line, " \t")
-	if i < 0 {
-		return "", "", false
-	}
-	return line[:i], strings.TrimSpace(line[i+1:]), true
 }

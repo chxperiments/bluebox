@@ -22,6 +22,15 @@ from the host.
 Requirements: podman, libkrun, and Go 1.26+ to build. Linux needs KVM
 (`/dev/kvm`); see [macOS](#macos) for what that means there.
 
+**0. Or just take the binary**
+
+```sh
+curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh
+```
+
+That fetches the right build for your platform into `~/.local/bin`. You still
+need the runtime pieces below.
+
 **1. Install the runtime pieces**
 
 ```sh
@@ -257,3 +266,6 @@ internal/cli/       cobra commands (root.go, commands.go)
 ```
 
 `spike.sh` validates the runtime assumptions on a new host.
+
+`docs/` is the project site, served by GitHub Pages at
+<https://chxperiments.github.io/bluebox/>.

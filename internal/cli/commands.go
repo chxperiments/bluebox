@@ -242,6 +242,7 @@ func envCmd() *cobra.Command {
 			fmt.Printf("BLUEBOX_CPUS=%d\n", s.CPUs)
 			fmt.Printf("BLUEBOX_RAM_MIB=%d\n", s.RAMMiB)
 			fmt.Printf("BLUEBOX_NETWORK=%s\n", s.Network)
+			fmt.Printf("BLUEBOX_PASST=%t\n", s.Passt)
 			fmt.Printf("BLUEBOX_READONLY=%t\n", s.ReadOnlyRootfs)
 			fmt.Printf("BLUEBOX_TIMEOUT_SECONDS=%d\n", s.TimeoutSeconds)
 			keys := make([]string, 0, len(s.Env))

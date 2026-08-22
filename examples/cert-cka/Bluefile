@@ -1,27 +1,34 @@
-# CKA practice: Kubernetes admin tooling.
-# Bakes in kubectl, helm, k9s and the k3s binary. Because the sandbox has
-# its own kernel, you can start a real single-node cluster inside it:
+# CKA practice: a real single-node Kubernetes cluster.
+# This runs a genuine k3s control plane with a scheduled, running pod inside
+# the microVM -- verified end to end. Getting there needs a few settings the
+# minimal guest kernel forces, all handled by the baked-in `start-cluster`:
 #
 #   bluebox shell cka
-#   k3s server &            # brings up a cluster
+#   start-cluster &          # k3s comes up in ~15s
 #   k3s kubectl get nodes
+#   k3s kubectl run web --image=nginx:alpine --overrides='{"spec":{"hostNetwork":true}}'
 #
-# Cluster state lives under /var/lib/rancher and resets with the VM. For
-# work you want to keep, put manifests in /data.
+# passt: true gives the guest a real NIC and default route (k3s needs it).
+# The guest kernel has no VXLAN or nf_conntrack, so overlay CNI and Services
+# do not work; `start-cluster` therefore uses host-gw and disables kube-proxy,
+# and pods should use hostNetwork. Everything else -- the API, scheduling,
+# RBAC, kubectl, running containers -- works.
 #
-# For kubeadm-specific objectives (bootstrap, upgrades, etcd backup, joining
-# nodes) install kubeadm/kubelet from the pkgs.k8s.io repo on top of this.
+# For kubeadm-specific objectives (bootstrap, upgrades, etcd) layer kubeadm
+# on top; those are exercises against the API and tooling, which are all here.
 
 base: docker.io/library/ubuntu:24.04
 
 cpus: 4
 ram_mib: 4096
 network: bridge
+passt: true              # real interface + default route; k3s cannot start without it
 timeout_seconds: 0
 
 packages:
   - curl
   - ca-certificates
+  - iproute2
   - iptables
   - conntrack
   - socat
@@ -33,3 +40,17 @@ run:
   - curl -sfL https://github.com/k3s-io/k3s/releases/latest/download/k3s -o /usr/local/bin/k3s && chmod +x /usr/local/bin/k3s
   - curl -sfL https://get.helm.sh/helm-v3.16.3-linux-amd64.tar.gz | tar -xz -C /tmp && mv /tmp/linux-amd64/helm /usr/local/bin/helm
   - ln -sf /usr/local/bin/k3s /usr/local/bin/kubectl
+
+blueprint:
+  write_files:
+    - path: /usr/local/bin/start-cluster
+      mode: "0755"
+      content: |
+        #!/bin/sh
+        # Start k3s with the settings the minimal guest kernel requires.
+        exec k3s server \
+          --snapshotter=native \
+          --flannel-backend=host-gw \
+          --disable-kube-proxy \
+          --disable=traefik,servicelb,metrics-server,local-storage \
+          --kubelet-arg=local-storage-capacity-isolation=false "$@"

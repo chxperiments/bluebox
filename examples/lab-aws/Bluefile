@@ -9,7 +9,7 @@
 # Run Floci in its own container/sandbox or on the host, then here:
 #
 #   bluebox shell aws-saa
-#   cp /path/to/examples/cert-aws-saa/main.tf /data && cd /data
+#   cp /path/to/examples/lab-aws/main.tf /data && cd /data
 #   terraform init && terraform apply
 #   aws s3 ls
 #

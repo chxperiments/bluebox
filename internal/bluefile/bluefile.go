@@ -40,6 +40,7 @@ type Spec struct {
 	CPUs           int               `yaml:"cpus"`
 	RAMMiB         int               `yaml:"ram_mib"`
 	Network        string            `yaml:"network"` // "bridge" (egress) or "none"
+	Passt          bool              `yaml:"passt"`   // real in-guest interface + default route
 	ReadOnlyRootfs bool              `yaml:"readonly"`
 	TimeoutSeconds int               `yaml:"timeout_seconds"` // 0 = unlimited
 	Seccomp        string            `yaml:"seccomp"`         // profile path, filters the VMM
@@ -92,6 +93,7 @@ base: docker.io/library/alpine:latest
 cpus: 2
 ram_mib: 2048
 network: bridge       # bridge = internet access, none = offline
+passt: false          # real NIC + default route in the guest (needed for k3s)
 readonly: false       # read-only guest root (/tmp and /data stay writable)
 timeout_seconds: 0    # per-run wall clock limit, 0 = unlimited
 

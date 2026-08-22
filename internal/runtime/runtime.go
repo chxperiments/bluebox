@@ -73,6 +73,12 @@ func vmArgs(name string, s bluefile.Spec, interactive, useKrun bool) ([]string, 
 		"--annotation", "krun.ram_mib="+strconv.Itoa(s.RAMMiB),
 		"-v", data+":/data",
 	)
+	// passt gives the guest a real interface with a default route, which
+	// krun's default TSI networking does not. Workloads that inspect routing
+	// (k3s, anything expecting a normal NIC) need it.
+	if s.Passt {
+		args = append(args, "--annotation", "krun.use_passt=1")
+	}
 	if s.ReadOnlyRootfs {
 		args = append(args, "--read-only")
 	}

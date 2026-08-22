@@ -33,11 +33,16 @@ Containerfile and verifies isolation.
 |---|---|---|
 | [`cert-rhcsa`](cert-rhcsa/Bluefile) | RHCSA (EX200) | AlmaLinux 9, storage/SELinux/podman toolset |
 | [`cert-rhce`](cert-rhce/Bluefile) | RHCE 9 (EX294) | Ansible automation environment |
-| [`cert-cka`](cert-cka/Bluefile) | CKA | kubectl, helm, a k3s cluster you start in the shell |
+| [`cert-cka`](cert-cka/Bluefile) | CKA | a real k3s cluster you start with `start-cluster` |
 | [`cert-cks`](cert-cks/Bluefile) | CKS | k3s + trivy/kube-bench, AppArmor & seccomp on a real kernel |
-| [`cert-aws-saa`](cert-aws-saa/) | AWS SAA-C03 | AWS CLI + Terraform against [Floci](https://floci.io/); see [`main.tf`](cert-aws-saa/main.tf) |
 
-Two things about the cert sandboxes worth knowing, because they are honest
+### Labs
+
+| Example | What it shows |
+|---|---|
+| [`lab-aws`](lab-aws/) | AWS CLI + Terraform against [Floci](https://floci.io/), a local AWS emulator; see [`main.tf`](lab-aws/main.tf) |
+
+Three things about the cert sandboxes worth knowing, because they are honest
 limits rather than bugs:
 
 - **State is ephemeral.** Each `bluebox run` is a fresh VM. Start a cluster or
@@ -48,9 +53,17 @@ limits rather than bugs:
   need a running init — users, permissions, LVM/storage, SELinux contexts,
   networking config, containers, kernel features — all work, and work *because*
   the sandbox has its own kernel.
+- **Kubernetes runs, with a networking caveat.** `cert-cka`/`cert-cks` boot a
+  real k3s cluster (verified: node Ready, pods scheduled and serving). The
+  minimal guest kernel has no VXLAN or nf_conntrack, so overlay CNI and
+  Services do not work; `start-cluster` uses host-gw with kube-proxy off, and
+  pods should run with `hostNetwork: true`. The API, scheduling, RBAC, kubectl,
+  running containers, and the security tooling all work — which covers most of
+  the exam objectives. Full overlay networking would need a fuller guest kernel
+  (a possible future via libkrun's external-kernel support).
 
-For `cert-aws-saa`, run Floci separately (it serves AWS APIs on port 4566),
-then point the sandbox's endpoint vars at it. If Floci is on the host, use the
+For `lab-aws`, run Floci separately (it serves AWS APIs on port 4566), then
+point the sandbox's endpoint vars at it. If Floci is on the host, use the
 host's bridge address rather than `localhost`, since inside the sandbox
 `localhost` is the sandbox.
 

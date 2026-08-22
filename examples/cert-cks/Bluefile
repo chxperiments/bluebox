@@ -1,31 +1,34 @@
-# CKS practice: Kubernetes security tooling.
-# This is where a real kernel earns its place. CKS covers AppArmor,
-# seccomp, and runtime detection -- all kernel features a plain container
-# cannot exercise. The sandbox has its own kernel, so they work here.
-#
-# Baked in: a k3s cluster (as in cert-cka) plus the userspace security
-# tools -- trivy (image scanning), kube-bench (CIS benchmark), kubesec
-# (manifest scoring), and apparmor/seccomp userspace.
+# CKS practice: Kubernetes security tooling on a real kernel.
+# Same working single-node k3s as cert-cka (start-cluster brings it up),
+# plus the security tools CKS leans on. The kernel-level topics -- AppArmor,
+# seccomp -- are exactly what a real kernel gives you over a container.
 #
 #   bluebox shell cks
-#   k3s server &
-#   trivy image nginx:latest
+#   start-cluster &
+#   k3s kubectl run web --image=nginx:alpine --overrides='{"spec":{"hostNetwork":true}}'
+#   trivy image nginx:alpine
 #   kube-bench run
 #
-# Note on Falco: its modern-eBPF probe needs BTF in the guest kernel.
-# Whether libkrunfw's kernel ships BTF is worth checking before you rely
-# on Falco specifically; the rest of the toolset does not depend on it.
+# Networking limits are the same as cert-cka: no VXLAN or nf_conntrack in the
+# guest kernel, so use host-gw + hostNetwork pods; Services need kube-proxy,
+# which is off. Manifest scanning, image scanning, benchmarks, RBAC, admission
+# and the AppArmor/seccomp topics all work.
+#
+# Falco note: its modern-eBPF probe needs BTF in the guest kernel; verify that
+# before relying on Falco specifically. The rest does not depend on it.
 
 base: docker.io/library/ubuntu:24.04
 
 cpus: 4
 ram_mib: 4096
 network: bridge
+passt: true
 timeout_seconds: 0
 
 packages:
   - curl
   - ca-certificates
+  - iproute2
   - iptables
   - conntrack
   - socat
@@ -33,10 +36,22 @@ packages:
   - git
   - apparmor
   - apparmor-utils
-  - seccomp
 
 run:
   - curl -sfL https://github.com/k3s-io/k3s/releases/latest/download/k3s -o /usr/local/bin/k3s && chmod +x /usr/local/bin/k3s
   - ln -sf /usr/local/bin/k3s /usr/local/bin/kubectl
   - curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.58.1/trivy_0.58.1_Linux-64bit.tar.gz | tar -xz -C /usr/local/bin trivy
   - curl -sfL https://github.com/aquasecurity/kube-bench/releases/download/v0.9.3/kube-bench_0.9.3_linux_amd64.tar.gz | tar -xz -C /usr/local/bin kube-bench
+
+blueprint:
+  write_files:
+    - path: /usr/local/bin/start-cluster
+      mode: "0755"
+      content: |
+        #!/bin/sh
+        exec k3s server \
+          --snapshotter=native \
+          --flannel-backend=host-gw \
+          --disable-kube-proxy \
+          --disable=traefik,servicelb,metrics-server,local-storage \
+          --kubelet-arg=local-storage-capacity-isolation=false "$@"

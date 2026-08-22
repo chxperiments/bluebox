@@ -113,6 +113,33 @@ explicitly to `apk`, `apt` or `dnf`.
 
 `cpus` maxes at 16 (a krun limit) and `ram_mib` is in MiB.
 
+### blueprint
+
+For cloud-init-style provisioning — users, files and commands:
+
+```yaml
+blueprint:
+  users:
+    - name: admin
+      shell: /bin/bash
+      sudo: true          # passwordless; put sudo in packages
+  write_files:
+    - path: /etc/motd
+      content: |
+        Welcome.
+      mode: "0644"        # optional
+  runcmd:
+    - echo provisioned > /etc/stamp
+```
+
+Unlike cloud-init this is applied at **build** time, not first boot. Every run
+is a fresh VM, so boot-time provisioning would repeat on every command.
+
+`write_files` contents are copied into the image rather than echoed through a
+shell, so quotes, newlines and `$variables` survive exactly as written. User
+creation adapts to the base: `useradd` on apt/dnf images, `adduser` on Alpine,
+and the sudo group is `sudo` or `wheel` as that distro expects.
+
 ## Commands
 
 | Command | What it does |
@@ -123,6 +150,14 @@ explicitly to `apk`, `apt` or `dnf`.
 | `bluebox shell <name>` | interactive session in one microVM |
 | `bluebox verify <name>` | re-check that the sandbox has its own kernel |
 | `bluebox ls` | list sandboxes |
+| `bluebox env <name>` | print effective settings as `KEY=VALUE` |
+| `bluebox logs <name> [lines]` | show recent runs (default 200 lines) |
+| `bluebox rename <old> <new>` | rename, keeping data, logs and the built image |
+| `bluebox destroy <name> [--data]` | remove a sandbox; `--data` also deletes `/data` |
+
+`bluebox env` is shell-consumable, so `eval $(bluebox env devbox)` puts
+`BLUEBOX_DATA` and friends in your environment. `destroy` keeps `/data` unless
+you pass `--data`, since it is the one thing a rebuild cannot reproduce.
 
 `bluebox run` behaves like any subprocess: stdout, stderr and exit codes pass
 straight through, so it scripts and automates cleanly. A run stopped by

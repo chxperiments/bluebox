@@ -7,8 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -75,14 +77,32 @@ func Build(name string, s bluefile.Spec) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(cfPath, []byte(s.Containerfile()), 0o644); err != nil {
-		return err
-	}
 	dir, err := sandbox.Dir(name)
 	if err != nil {
 		return err
 	}
+	cf, err := s.Render(dir) // materialises any blueprint files first
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(cfPath, []byte(cf), 0o644); err != nil {
+		return err
+	}
 	return stream(exec.Command("podman", "build", "-t", sandbox.ImageTag(name), dir))
+}
+
+// RemoveImage deletes a sandbox's built image, if there is one.
+func RemoveImage(name string) {
+	exec.Command("podman", "rmi", "-f", sandbox.ImageTag(name)).Run()
+}
+
+// RetagImage moves a built image to a new name so a rename does not force a
+// rebuild. A missing image is not an error: the sandbox may never have built.
+func RetagImage(from, to string) {
+	if err := exec.Command("podman", "tag",
+		sandbox.ImageTag(from), sandbox.ImageTag(to)).Run(); err == nil {
+		exec.Command("podman", "rmi", "-f", sandbox.ImageTag(from)).Run()
+	}
 }
 
 // Run executes argv in a fresh microVM. A timed-out run is reaped explicitly:
@@ -102,12 +122,46 @@ func Run(name string, s bluefile.Spec, argv []string) error {
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(s.TimeoutSeconds)*time.Second)
 		defer cancel()
 	}
-	err = stream(exec.CommandContext(ctx, "podman", args...))
+
+	log := openLog(name)
+	if log != nil {
+		defer log.Close()
+		fmt.Fprintf(log, "\n=== %s run: %s\n",
+			time.Now().UTC().Format(time.RFC3339), strings.Join(argv, " "))
+	}
+	started := time.Now()
+	cmd := exec.CommandContext(ctx, "podman", args...)
+	err = streamTee(cmd, log)
+	if log != nil {
+		code := 0
+		if err != nil {
+			code = ExitCode(err)
+		}
+		fmt.Fprintf(log, "=== exit %d (%.1fs)\n", code, time.Since(started).Seconds())
+	}
+
 	if ctx.Err() == context.DeadlineExceeded {
 		exec.Command("podman", "rm", "-f", runName).Run()
 		return ErrTimeout
 	}
 	return err
+}
+
+// openLog returns an append handle for the sandbox's run log, or nil if it
+// cannot be opened. Logging is best-effort: it must never break a run.
+func openLog(name string) *os.File {
+	p, err := sandbox.LogPath(name)
+	if err != nil {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		return nil
+	}
+	f, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return nil
+	}
+	return f
 }
 
 // Shell opens an interactive session in one microVM. No timeout: the user is it.
@@ -140,9 +194,17 @@ func HostKernel() (string, error) {
 
 // stream runs cmd with its stdout/stderr wired to the process. Any timeout is
 // bound into the command via exec.CommandContext before it reaches here.
-func stream(cmd *exec.Cmd) error {
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+func stream(cmd *exec.Cmd) error { return streamTee(cmd, nil) }
+
+// streamTee is stream, additionally copying output to log when non-nil.
+func streamTee(cmd *exec.Cmd, log io.Writer) error {
+	out, errw := io.Writer(os.Stdout), io.Writer(os.Stderr)
+	if log != nil {
+		out = io.MultiWriter(os.Stdout, log)
+		errw = io.MultiWriter(os.Stderr, log)
+	}
+	cmd.Stdout = out
+	cmd.Stderr = errw
 	return cmd.Run()
 }
 

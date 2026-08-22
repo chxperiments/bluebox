@@ -55,7 +55,70 @@ func ContainerfilePath(name string) (string, error) {
 	return filepath.Join(d, "Containerfile"), nil
 }
 
+// LogPath is the append-only record of runs for a sandbox.
+func LogPath(name string) (string, error) {
+	h, err := Home()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(h, "logs", name+".log"), nil
+}
+
 func ImageTag(name string) string { return "bluebox/" + name + ":latest" }
+
+// Remove deletes a sandbox definition. Data is kept unless withData is set,
+// because it is the only thing a rebuild cannot reproduce.
+func Remove(name string, withData bool) error {
+	dir, err := Dir(name)
+	if err != nil {
+		return err
+	}
+	if err := os.RemoveAll(dir); err != nil {
+		return err
+	}
+	if log, err := LogPath(name); err == nil {
+		os.Remove(log)
+	}
+	if withData {
+		data, err := DataDir(name)
+		if err != nil {
+			return err
+		}
+		return os.RemoveAll(data)
+	}
+	return nil
+}
+
+// Rename moves a sandbox's definition, data and log to a new name.
+func Rename(from, to string) error {
+	if !Exists(from) {
+		return fmt.Errorf("no sandbox %q", from)
+	}
+	if Exists(to) {
+		return fmt.Errorf("sandbox %q already exists", to)
+	}
+	type pair struct{ src, dst func(string) (string, error) }
+	for _, p := range []pair{{Dir, Dir}, {DataDir, DataDir}, {LogPath, LogPath}} {
+		src, err := p.src(from)
+		if err != nil {
+			return err
+		}
+		dst, err := p.dst(to)
+		if err != nil {
+			return err
+		}
+		if _, err := os.Stat(src); os.IsNotExist(err) {
+			continue // data or log may not exist yet
+		}
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			return err
+		}
+		if err := os.Rename(src, dst); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // Exists reports whether a sandbox has been created.
 func Exists(name string) bool {

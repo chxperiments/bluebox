@@ -175,3 +175,91 @@ func TestCommentsAndEmptyFile(t *testing.T) {
 		t.Errorf("empty file should use defaults: %v", err)
 	}
 }
+
+func TestBlueprintRendersUsersFilesAndCommands(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "Bluefile")
+	os.WriteFile(p, []byte(`
+base: docker.io/library/debian:12
+blueprint:
+  users:
+    - name: admin
+      shell: /bin/bash
+      sudo: true
+  write_files:
+    - path: /etc/motd
+      content: "hi\n"
+    - path: /usr/local/bin/x
+      content: "#!/bin/sh\necho x\n"
+      mode: "0755"
+  runcmd:
+    - echo done
+`), 0o644)
+	s, err := Parse(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cf, err := s.Render(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"useradd -m -s /bin/bash admin", // apt base uses useradd, not adduser
+		"sudoers.d/admin",
+		"COPY .blueprint/f0 /etc/motd",
+		"COPY .blueprint/f1 /usr/local/bin/x",
+		"RUN chmod 0755 /usr/local/bin/x",
+		"RUN echo done",
+	} {
+		if !strings.Contains(cf, want) {
+			t.Errorf("missing %q in:\n%s", want, cf)
+		}
+	}
+	// Contents are materialised verbatim into the build context.
+	got, err := os.ReadFile(filepath.Join(dir, ".blueprint", "f0"))
+	if err != nil || string(got) != "hi\n" {
+		t.Errorf("asset f0 wrong: %q %v", got, err)
+	}
+}
+
+// Alpine has no useradd, so the apk path must use adduser instead.
+func TestBlueprintUserCommandPerDistro(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "Bluefile")
+	os.WriteFile(p, []byte("base: docker.io/library/alpine:latest\n"+
+		"blueprint:\n  users:\n    - name: a\n"), 0o644)
+	s, _ := Parse(p)
+	if cf, _ := s.Render(dir); !strings.Contains(cf, "adduser -D -s /bin/sh a") {
+		t.Errorf("alpine should use adduser:\n%s", cf)
+	}
+}
+
+// Removing a write_files entry must not leave its asset behind.
+func TestRenderClearsStaleAssets(t *testing.T) {
+	dir := t.TempDir()
+	stale := filepath.Join(dir, ".blueprint", "f9")
+	os.MkdirAll(filepath.Dir(stale), 0o755)
+	os.WriteFile(stale, []byte("old"), 0o644)
+	s := Default
+	if _, err := s.Render(dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Error("stale blueprint asset survived Render")
+	}
+}
+
+func TestBlueprintValidation(t *testing.T) {
+	cases := map[string]string{
+		"relative path":  "base: docker.io/library/alpine\nblueprint:\n  write_files:\n    - path: etc/x\n      content: y\n",
+		"empty user":     "base: docker.io/library/alpine\nblueprint:\n  users:\n    - name: \"\"\n",
+		"user needs mgr": "base: example.com/x:1\nblueprint:\n  users:\n    - name: a\n",
+	}
+	for name, body := range cases {
+		p := filepath.Join(t.TempDir(), "Bluefile")
+		os.WriteFile(p, []byte(body), 0o644)
+		if _, err := Parse(p); err == nil {
+			t.Errorf("%s: expected error, got none", name)
+		}
+	}
+}

@@ -5,7 +5,9 @@ package cli
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
+	"strings"
 
 	"bluebox/internal/bluefile"
 	"bluebox/internal/runtime"
@@ -14,12 +16,16 @@ import (
 
 const usage = `bluebox -- disposable microVM sandboxes
 
-  bluebox new <name>          scaffold a sandbox (writes a Bluefile)
-  bluebox build <name>        generate the Containerfile, build, verify isolation
-  bluebox run <name> [cmd...] run a command in a fresh microVM
-  bluebox shell <name>        interactive shell in a fresh microVM
-  bluebox verify <name>       prove the sandbox has its own kernel
-  bluebox ls                  list sandboxes
+  bluebox new <name>            scaffold a sandbox (writes a Bluefile)
+  bluebox build <name>          generate the Containerfile, build, verify isolation
+  bluebox run <name> [cmd...]   run a command in a fresh microVM
+  bluebox shell <name>          interactive shell in a fresh microVM
+  bluebox verify <name>         prove the sandbox has its own kernel
+  bluebox ls                    list sandboxes
+  bluebox env <name>            print the sandbox's effective settings as KEY=VALUE
+  bluebox logs <name> [lines]   show recent runs (default 200 lines)
+  bluebox rename <old> <new>    rename a sandbox, keeping its data
+  bluebox destroy <name> [--data]  remove a sandbox; --data also deletes /data
 
 A sandbox is defined by one Bluefile: base image, cpus, ram, network, and the
 tools to install. Every run is a NEW microVM; only /data persists.`
@@ -36,7 +42,9 @@ func Run(argv []string) int {
 		return cmdList()
 	}
 	// Every other command needs a sandbox name as its first argument.
-	if cmd != "new" && cmd != "build" && cmd != "verify" && cmd != "run" && cmd != "shell" {
+	switch cmd {
+	case "new", "build", "verify", "run", "shell", "env", "logs", "rename", "destroy":
+	default:
 		fmt.Println(usage)
 		return 2
 	}
@@ -57,6 +65,14 @@ func Run(argv []string) int {
 		return cmdRun(name, rest[1:])
 	case "shell":
 		return cmdShell(name)
+	case "env":
+		return cmdEnv(name)
+	case "logs":
+		return cmdLogs(name, rest[1:])
+	case "rename":
+		return cmdRename(name, rest[1:])
+	case "destroy":
+		return cmdDestroy(name, rest[1:])
 	}
 	return 2 // unreachable: cmd is guarded above
 }
@@ -185,6 +201,102 @@ func cmdShell(name string) int {
 			return code
 		}
 		return fail("%v", err)
+	}
+	return 0
+}
+
+// cmdEnv prints the effective settings as KEY=VALUE, so it can be consumed
+// with `eval $(bluebox env <name>)`.
+func cmdEnv(name string) int {
+	s, ok := loadSpec(name)
+	if !ok {
+		return 1
+	}
+	data, _ := sandbox.DataDir(name)
+	fmt.Printf("BLUEBOX_NAME=%s\n", name)
+	fmt.Printf("BLUEBOX_IMAGE=%s\n", sandbox.ImageTag(name))
+	fmt.Printf("BLUEBOX_DATA=%s\n", data)
+	fmt.Printf("BLUEBOX_BASE=%s\n", s.Base)
+	fmt.Printf("BLUEBOX_CPUS=%d\n", s.CPUs)
+	fmt.Printf("BLUEBOX_RAM_MIB=%d\n", s.RAMMiB)
+	fmt.Printf("BLUEBOX_NETWORK=%s\n", s.Network)
+	fmt.Printf("BLUEBOX_READONLY=%t\n", s.ReadOnlyRootfs)
+	fmt.Printf("BLUEBOX_TIMEOUT_SECONDS=%d\n", s.TimeoutSeconds)
+	// The guest's own env, from the Bluefile, sorted for stable output.
+	keys := make([]string, 0, len(s.Env))
+	for k := range s.Env {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		fmt.Printf("%s=%s\n", k, s.Env[k])
+	}
+	return 0
+}
+
+func cmdLogs(name string, args []string) int {
+	if !sandbox.Exists(name) {
+		return fail("no sandbox %q", name)
+	}
+	lines := 200
+	if len(args) > 0 {
+		n, err := strconv.Atoi(args[0])
+		if err != nil || n < 1 {
+			return fail("logs: line count must be a positive number, got %q", args[0])
+		}
+		lines = n
+	}
+	p, err := sandbox.LogPath(name)
+	if err != nil {
+		return fail("%v", err)
+	}
+	b, err := os.ReadFile(p)
+	if err != nil {
+		fmt.Printf("no runs logged yet for %q\n", name)
+		return 0
+	}
+	all := strings.Split(strings.TrimRight(string(b), "\n"), "\n")
+	if len(all) > lines {
+		all = all[len(all)-lines:]
+	}
+	fmt.Println(strings.Join(all, "\n"))
+	return 0
+}
+
+func cmdRename(from string, args []string) int {
+	if len(args) < 1 {
+		return fail("rename needs a new name, e.g. bluebox rename %s newname", from)
+	}
+	to := args[0]
+	if err := sandbox.Rename(from, to); err != nil {
+		return fail("%v", err)
+	}
+	// Retag rather than rebuild, so the image survives the rename.
+	runtime.RetagImage(from, to)
+	fmt.Printf("renamed %s -> %s (data and logs moved)\n", from, to)
+	return 0
+}
+
+func cmdDestroy(name string, args []string) int {
+	if !sandbox.Exists(name) {
+		return fail("no sandbox %q", name)
+	}
+	withData := false
+	for _, a := range args {
+		if a != "--data" {
+			return fail("destroy: unknown option %q (only --data)", a)
+		}
+		withData = true
+	}
+	data, _ := sandbox.DataDir(name)
+	runtime.RemoveImage(name)
+	if err := sandbox.Remove(name, withData); err != nil {
+		return fail("%v", err)
+	}
+	if withData {
+		fmt.Printf("destroyed %s, including %s\n", name, data)
+	} else {
+		fmt.Printf("destroyed %s. Data kept at %s (use --data to delete it too)\n", name, data)
 	}
 	return 0
 }

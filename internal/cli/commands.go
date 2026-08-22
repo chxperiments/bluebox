@@ -17,7 +17,7 @@ import (
 
 func newCmd() *cobra.Command {
 	return &cobra.Command{
-		Use: "new <name>", Short: "Create a sandbox", GroupID: groupSandbox,
+		Use: "new <name>", Short: "write a Bluefile", GroupID: groupSandbox,
 		Args: cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			if _, err := sandbox.Create(args[0]); err != nil {
@@ -38,7 +38,7 @@ func newCmd() *cobra.Command {
 
 func buildCmd() *cobra.Command {
 	return &cobra.Command{
-		Use: "build <name>", Short: "Build the image and verify isolation", GroupID: groupSandbox,
+		Use: "build <name>", Short: "build image, verify isolation", GroupID: groupSandbox,
 		Args: cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			s, err := loadSpec(args[0])
@@ -60,7 +60,7 @@ func buildCmd() *cobra.Command {
 
 func verifyCmd() *cobra.Command {
 	return &cobra.Command{
-		Use: "verify <name>", Short: "Check the sandbox has its own kernel", GroupID: groupInspect,
+		Use: "verify <name>", Short: "re-check the kernel boundary", GroupID: groupInspect,
 		Args: cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			s, err := loadSpec(args[0])
@@ -94,7 +94,7 @@ func verify(name string, s bluefile.Spec) error {
 
 func runCmd() *cobra.Command {
 	return &cobra.Command{
-		Use: "run <name> [command...]", Short: "Run a command in a fresh microVM", GroupID: groupRun,
+		Use: "run <name> [command...]", Short: "one command, fresh microVM", GroupID: groupRun,
 		Args:    cobra.MinimumNArgs(2),
 		Example: "  bluebox run devbox -- python3 script.py",
 		RunE: func(_ *cobra.Command, args []string) error {
@@ -127,7 +127,7 @@ func runCmd() *cobra.Command {
 
 func shellCmd() *cobra.Command {
 	return &cobra.Command{
-		Use: "shell <name>", Short: "Open an interactive shell", GroupID: groupRun,
+		Use: "shell <name>", Short: "interactive session", GroupID: groupRun,
 		Args: cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			s, err := loadSpec(args[0])
@@ -152,7 +152,7 @@ func shellCmd() *cobra.Command {
 func resetCmd() *cobra.Command {
 	var yes bool
 	c := &cobra.Command{
-		Use: "reset <name>", Short: "Clear a sandbox's /data", GroupID: groupState,
+		Use: "reset <name>", Short: "empty /data", GroupID: groupState,
 		Long: "Empties /data, returning the sandbox to a clean state.\n" +
 			"The sandbox and its image are untouched.",
 		Args: cobra.ExactArgs(1),
@@ -185,7 +185,7 @@ func resetCmd() *cobra.Command {
 func snapshotCmd() *cobra.Command {
 	var list bool
 	c := &cobra.Command{
-		Use: "snapshot <name>", Short: "Archive a sandbox's /data", GroupID: groupState,
+		Use: "snapshot <name>", Short: "archive /data", GroupID: groupState,
 		Long: "Archives /data to ~/.bluebox/snapshots/<name>/<timestamp>.tar.gz.\n" +
 			"Restore with: tar -xzf <archive> -C \"$(bluebox env <name> | grep BLUEBOX_DATA | cut -d= -f2)\"",
 		Args: cobra.ExactArgs(1),
@@ -218,7 +218,7 @@ func snapshotCmd() *cobra.Command {
 
 func envCmd() *cobra.Command {
 	return &cobra.Command{
-		Use: "env <name>", Short: "Print settings as KEY=VALUE", GroupID: groupInspect,
+		Use: "env <name>", Short: "settings as KEY=VALUE", GroupID: groupInspect,
 		Long:    "Shell-consumable settings, for: eval $(bluebox env <name>)",
 		Args:    cobra.ExactArgs(1),
 		Example: "  eval $(bluebox env devbox)",
@@ -254,7 +254,7 @@ func envCmd() *cobra.Command {
 func logsCmd() *cobra.Command {
 	var lines int
 	c := &cobra.Command{
-		Use: "logs <name>", Short: "Show recent runs", GroupID: groupInspect,
+		Use: "logs <name>", Short: "recent runs", GroupID: groupInspect,
 		Args: cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			name := args[0]
@@ -283,7 +283,7 @@ func logsCmd() *cobra.Command {
 
 func renameCmd() *cobra.Command {
 	return &cobra.Command{
-		Use: "rename <old> <new>", Short: "Rename a sandbox", GroupID: groupRemove,
+		Use: "rename <old> <new>", Short: "rename, keeping data", GroupID: groupRemove,
 		Long: "Moves the definition, data, logs and snapshots, and retags the\n" +
 			"built image so no rebuild is needed.",
 		Args: cobra.ExactArgs(2),
@@ -301,7 +301,7 @@ func renameCmd() *cobra.Command {
 func destroyCmd() *cobra.Command {
 	var withData, yes bool
 	c := &cobra.Command{
-		Use: "destroy <name>", Short: "Remove a sandbox", GroupID: groupRemove,
+		Use: "destroy <name>", Short: "remove one sandbox", GroupID: groupRemove,
 		Long: "Removes the sandbox and its image. /data is kept unless --data,\n" +
 			"since it is the only part a rebuild cannot reproduce.",
 		Args: cobra.ExactArgs(1),
@@ -339,7 +339,7 @@ func destroyCmd() *cobra.Command {
 func nukeCmd() *cobra.Command {
 	var noData, yes bool
 	c := &cobra.Command{
-		Use: "nuke", Short: "Remove every sandbox", GroupID: groupRemove,
+		Use: "nuke", Short: "remove every sandbox", GroupID: groupRemove,
 		Long: "Removes every sandbox, its image and its data.\n" +
 			"Pass --no-data to keep the data directories.",
 		Args: cobra.NoArgs,
@@ -374,7 +374,7 @@ func nukeCmd() *cobra.Command {
 
 func lsCmd() *cobra.Command {
 	return &cobra.Command{
-		Use: "ls", Short: "List sandboxes", GroupID: groupSandbox,
+		Use: "ls", Short: "list sandboxes", GroupID: groupSandbox,
 		Args: cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			names, err := sandbox.List()

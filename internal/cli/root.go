@@ -38,16 +38,11 @@ func newRoot() *cobra.Command {
 	cobra.EnableCommandSorting = false
 
 	root := &cobra.Command{
-		Use:     "bluebox",
-		Short:   "Isolated, persistent sandboxes",
-		Version: Version,
-		Long: "bluebox runs each sandbox as a real microVM with its own kernel.\n" +
-			"Work in /data persists; everything else resets on every run.",
+		Use:           "bluebox",
+		Short:         "Isolated, persistent sandboxes",
+		Version:       Version,
 		SilenceUsage:  true, // an error is not a reason to reprint the manual
 		SilenceErrors: true, // printed by Execute, without a stack of usage text
-		Example: "  bluebox new devbox\n" +
-			"  bluebox build devbox\n" +
-			"  bluebox run devbox -- python3 script.py",
 	}
 	root.AddGroup(
 		&cobra.Group{ID: groupSandbox, Title: "Defining sandboxes:"},
@@ -59,6 +54,7 @@ func newRoot() *cobra.Command {
 	)
 	root.SetHelpCommandGroupID(groupHelp)
 	root.SetCompletionCommandGroupID(groupHelp)
+	installHelp(root)
 
 	root.AddCommand(
 		newCmd(), buildCmd(), lsCmd(),

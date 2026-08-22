@@ -2,47 +2,10 @@ package cli
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
-
-// banner is drawn on `bluebox` and `bluebox --help`. It is the same solid,
-// shaded box the site turns, rendered once at a fixed angle.
-const banner = `                   ██████
-            ████████████████████
-       ████████████████████████████░░
-       ▓████████████████████████░░░░░
-       ▓▓▓▓█████████████████░░░░░░░░░
-        ▓▓▓▓▓▓▓█████████░░░░░░░░░░░░
-        ▓▓▓▓▓▓▓▓▓▓▓███░░░░░░░░░░░░░░
-         ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░
-         ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░
-          ▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░
-          ▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░
-            ▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░
-              ▓▓▓▓▓▓▓▓░░░░░░░░
-                ▓▓▓▓▓▓░░░░░░
-                  ▓▓▓▓░░░░
-                    ▓▓░░`
-
-// blue wraps s in a true-blue SGR sequence when the terminal will render it.
-// Piped output and NO_COLOR get plain text, so logs stay clean.
-func blue(s string) string {
-	if !colorOK() {
-		return s
-	}
-	return "\x1b[38;5;33m" + s + "\x1b[0m"
-}
-
-func colorOK() bool {
-	if os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" {
-		return false
-	}
-	fi, err := os.Stdout.Stat()
-	return err == nil && fi.Mode()&os.ModeCharDevice != 0
-}
 
 // helpGroups is the order groups appear, with the short label shown once per
 // group instead of a heading line per section.
@@ -54,12 +17,11 @@ var helpGroups = []struct{ id, label string }{
 	{groupRemove, "remove"},
 }
 
-// rootHelp prints a compact overview: the box, one usage line, and one line
-// per command. Detail lives behind `bluebox <command> -h`.
+// rootHelp prints a compact overview: one usage line, then one line per
+// command. Detail lives behind `bluebox <command> -h`.
 func rootHelp(c *cobra.Command) {
 	var b strings.Builder
-	b.WriteString(blue(banner))
-	b.WriteString("\n\n   usage: bluebox <command> [flags]\n\n")
+	b.WriteString("\n   usage: bluebox <command> [flags]\n\n")
 
 	for _, g := range helpGroups {
 		label := g.label

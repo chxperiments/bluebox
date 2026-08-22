@@ -24,9 +24,9 @@ RAM      4096
 NETWORK  none
 READONLY true
 TIMEOUT  60
-PACKAGE  nmap python3
-PACKAGE  gdb
-RUN      pip install pwntools
+PACKAGE  ripgrep python3
+PACKAGE  jq
+RUN      pip3 install requests
 ENV      LANG=C.UTF-8
 `))
 	if err != nil {
@@ -38,7 +38,7 @@ ENV      LANG=C.UTF-8
 	if !s.ReadOnlyRootfs || s.TimeoutSeconds != 60 {
 		t.Errorf("restriction fields wrong: %+v", s)
 	}
-	if got := strings.Join(s.Packages, ","); got != "nmap,python3,gdb" {
+	if got := strings.Join(s.Packages, ","); got != "ripgrep,python3,jq" {
 		t.Errorf("packages accumulate wrong: %q", got)
 	}
 	if len(s.Run) != 1 || len(s.Env) != 1 {
@@ -62,15 +62,57 @@ func TestValidation(t *testing.T) {
 	}
 }
 
-func TestContainerfileApkVsApt(t *testing.T) {
-	apk, _ := Parse(write(t, "BASE docker.io/library/alpine:latest\nPACKAGE nmap\n"))
-	if !strings.Contains(apk.Containerfile(), "apk add --no-cache nmap") {
-		t.Errorf("alpine should use apk:\n%s", apk.Containerfile())
+func TestPackageManagerSelection(t *testing.T) {
+	cases := []struct{ base, want string }{
+		{"docker.io/library/alpine:latest", "apk add --no-cache"},
+		{"docker.io/library/debian:bookworm-slim", "apt-get install"},
+		{"docker.io/library/ubuntu:24.04", "apt-get install"},
+		{"docker.io/library/fedora:41", "dnf install"},
+		{"quay.io/centos/centos:stream9", "dnf install"},
 	}
-	apt, _ := Parse(write(t, "BASE docker.io/kalilinux/kali-rolling\nPACKAGE nmap\n"))
-	cf := apt.Containerfile()
-	if !strings.Contains(cf, "apt-get install") || !strings.Contains(cf, "rm -rf /var/lib/apt/lists") {
-		t.Errorf("kali should use apt with cleanup:\n%s", cf)
+	for _, c := range cases {
+		s, err := Parse(write(t, "BASE "+c.base+"\nPACKAGE jq\n"))
+		if err != nil {
+			t.Errorf("%s: %v", c.base, err)
+			continue
+		}
+		if cf := s.Containerfile(); !strings.Contains(cf, c.want) {
+			t.Errorf("%s: want %q in:\n%s", c.base, c.want, cf)
+		}
+	}
+}
+
+func TestPackageManagerCleanup(t *testing.T) {
+	apt, _ := Parse(write(t, "BASE docker.io/library/debian:12\nPACKAGE jq\n"))
+	if !strings.Contains(apt.Containerfile(), "rm -rf /var/lib/apt/lists") {
+		t.Error("apt should clean its lists")
+	}
+	dnf, _ := Parse(write(t, "BASE docker.io/library/fedora:41\nPACKAGE jq\n"))
+	if !strings.Contains(dnf.Containerfile(), "dnf clean all") {
+		t.Error("dnf should clean its cache")
+	}
+}
+
+// An unrecognised base must fail at parse time rather than generate a
+// Containerfile that dies partway through the build.
+func TestUnknownBaseNeedsPkgmgr(t *testing.T) {
+	if _, err := Parse(write(t, "BASE example.com/custom/image:1\nPACKAGE jq\n")); err == nil {
+		t.Error("expected an error asking for PKGMGR")
+	}
+	// ...unless PKGMGR says which one to use.
+	s, err := Parse(write(t, "BASE example.com/custom/image:1\nPKGMGR apt\nPACKAGE jq\n"))
+	if err != nil {
+		t.Fatalf("PKGMGR override should work: %v", err)
+	}
+	if !strings.Contains(s.Containerfile(), "apt-get install") {
+		t.Errorf("PKGMGR override ignored:\n%s", s.Containerfile())
+	}
+	// No packages means no package manager is needed at all.
+	if _, err := Parse(write(t, "BASE example.com/custom/image:1\n")); err != nil {
+		t.Errorf("base with no packages should parse: %v", err)
+	}
+	if _, err := Parse(write(t, "BASE alpine\nPKGMGR yum\nPACKAGE jq\n")); err == nil {
+		t.Error("expected an error for an unknown PKGMGR")
 	}
 }
 

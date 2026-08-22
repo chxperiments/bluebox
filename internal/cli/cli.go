@@ -137,7 +137,7 @@ func verify(name string, s bluefile.Spec) int {
 	fmt.Printf("  host kernel:  %s\n  guest kernel: %s\n", host, guest)
 	if guest == host {
 		return fail("NOT ISOLATED: guest and host share a kernel. This is a\n" +
-			"container, not a microVM -- do not run untrusted code in it.")
+			"container, not a microVM -- the isolation you expect is not there.")
 	}
 	fmt.Println("  OK: separate kernel, genuine microVM.")
 	return 0
@@ -148,7 +148,7 @@ func cmdRun(name string, argv []string) int {
 		argv = argv[1:]
 	}
 	if len(argv) == 0 {
-		return fail("run needs a command, e.g. bluebox run %s -- nmap -sV target", name)
+		return fail("run needs a command, e.g. bluebox run %s -- python3 script.py", name)
 	}
 	s, ok := loadSpec(name)
 	if !ok {

@@ -75,20 +75,24 @@ func verifyCmd() *cobra.Command {
 	}
 }
 
+// verify proves the sandbox got its own kernel, by comparing it against the
+// kernel a plain container sees. Comparing against the host's own uname would
+// be wrong on macOS, where the host runs Darwin and any Linux container kernel
+// differs from it whether or not a microVM is involved.
 func verify(name string, s bluefile.Spec) error {
-	host, err := runtime.HostKernel()
-	if err != nil {
-		return err
-	}
 	guest, err := runtime.GuestKernel(name, s)
 	if err != nil || guest == "" {
-		return fmt.Errorf("could not read the guest kernel; is the image built?")
+		return fmt.Errorf("could not start the sandbox; is the image built?")
 	}
-	if guest == host {
-		return fmt.Errorf("not isolated: guest and host both run %s.\n"+
-			"This is a container, not a microVM", host)
+	baseline, err := runtime.BaselineKernel(name, s)
+	if err != nil || baseline == "" {
+		return fmt.Errorf("could not read the baseline kernel")
 	}
-	fmt.Printf("isolated: host %s, guest %s\n", host, guest)
+	if guest == baseline {
+		return fmt.Errorf("not isolated: the sandbox shares kernel %s.\n"+
+			"This is a container, not a microVM", baseline)
+	}
+	fmt.Printf("isolated: sandbox %s, outside %s\n", guest, baseline)
 	return nil
 }
 

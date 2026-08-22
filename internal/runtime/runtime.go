@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -27,8 +28,23 @@ const ExitTimeout = 124
 var ErrTimeout = errors.New("timed out")
 
 // Preflight fails loudly rather than letting podman silently fall back to a
-// plain container, which would look identical but share the host kernel.
+// plain container, which would look identical but share a kernel.
 func Preflight() error {
+	if _, err := exec.LookPath("podman"); err != nil {
+		return fmt.Errorf("podman not found on PATH")
+	}
+	if goruntime.GOOS == "darwin" {
+		// On macOS every container already runs inside the podman machine VM,
+		// so KVM and the krun runtime live in there, not out here. All we can
+		// check from this side is that the machine is up; whether it can
+		// actually nest a microVM is settled by Verify.
+		out, err := exec.Command("podman", "machine", "list", "--format", "{{.Running}}").Output()
+		if err != nil || !strings.Contains(string(out), "true") {
+			return fmt.Errorf("no podman machine is running:\n" +
+				"  podman machine init && podman machine start")
+		}
+		return nil
+	}
 	if _, err := os.Stat("/dev/kvm"); err != nil {
 		return fmt.Errorf("/dev/kvm not available -- microVMs need KVM on this host")
 	}
@@ -42,19 +58,21 @@ func Preflight() error {
 
 // vmArgs builds the podman invocation. All isolation lives in these flags, so
 // they are constructed in exactly one place.
-func vmArgs(name string, s bluefile.Spec, interactive bool) ([]string, error) {
+func vmArgs(name string, s bluefile.Spec, interactive, useKrun bool) ([]string, error) {
 	data, err := sandbox.DataDir(name)
 	if err != nil {
 		return nil, err
 	}
-	args := []string{
-		"run", "--rm",
-		"--runtime", "krun",
-		"--network=" + s.Network,
-		"--annotation", "krun.cpus=" + strconv.Itoa(s.CPUs),
-		"--annotation", "krun.ram_mib=" + strconv.Itoa(s.RAMMiB),
-		"-v", data + ":/data",
+	args := []string{"run", "--rm"}
+	if useKrun {
+		args = append(args, "--runtime", "krun")
 	}
+	args = append(args,
+		"--network="+s.Network,
+		"--annotation", "krun.cpus="+strconv.Itoa(s.CPUs),
+		"--annotation", "krun.ram_mib="+strconv.Itoa(s.RAMMiB),
+		"-v", data+":/data",
+	)
 	if s.ReadOnlyRootfs {
 		args = append(args, "--read-only")
 	}
@@ -108,7 +126,7 @@ func RetagImage(from, to string) {
 // Run executes argv in a fresh microVM. A timed-out run is reaped explicitly:
 // killing the podman CLI does not stop the VM it started, so --rm never fires.
 func Run(name string, s bluefile.Spec, argv []string) error {
-	base, err := vmArgs(name, s, false)
+	base, err := vmArgs(name, s, false, true)
 	if err != nil {
 		return err
 	}
@@ -166,7 +184,7 @@ func openLog(name string) *os.File {
 
 // Shell opens an interactive session in one microVM. No timeout: the user is it.
 func Shell(name string, s bluefile.Spec) error {
-	base, err := vmArgs(name, s, true)
+	base, err := vmArgs(name, s, true, true)
 	if err != nil {
 		return err
 	}
@@ -178,7 +196,20 @@ func Shell(name string, s bluefile.Spec) error {
 
 // GuestKernel returns the kernel reported from inside the microVM.
 func GuestKernel(name string, s bluefile.Spec) (string, error) {
-	base, err := vmArgs(name, s, false)
+	return kernelOf(name, s, true)
+}
+
+// BaselineKernel returns the kernel a plain container sees: the host kernel on
+// Linux, the podman machine's kernel on macOS. Comparing against this rather
+// than the host's own uname is what makes the isolation check honest on macOS,
+// where the host runs Darwin and every container kernel differs from it
+// whether or not a microVM is involved.
+func BaselineKernel(name string, s bluefile.Spec) (string, error) {
+	return kernelOf(name, s, false)
+}
+
+func kernelOf(name string, s bluefile.Spec, useKrun bool) (string, error) {
+	base, err := vmArgs(name, s, false, useKrun)
 	if err != nil {
 		return "", err
 	}

@@ -35,12 +35,13 @@ jobs:
         run: |
           mkdir -p dist
           # Pure Go (no cgo), so cross-compiling needs no toolchain setup.
-          for arch in amd64 arm64; do
-            CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build \
+          for target in linux/amd64 linux/arm64 darwin/arm64 darwin/amd64; do
+            os="${target%/*}"; arch="${target#*/}"
+            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build \
               -trimpath \
               -ldflags "-s -w -X bluebox/internal/cli.Version=${VERSION}" \
               -o "dist/bluebox" ./cmd/bluebox
-            tar -czf "dist/bluebox_${VERSION}_linux_${arch}.tar.gz" \
+            tar -czf "dist/bluebox_${VERSION}_${os}_${arch}.tar.gz" \
               -C dist bluebox -C "$GITHUB_WORKSPACE" README.md
             rm dist/bluebox
           done

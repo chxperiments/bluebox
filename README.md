@@ -19,7 +19,8 @@ from the host.
 
 ## Install
 
-Requirements: Linux with KVM (`/dev/kvm`), podman, libkrun, and Go 1.26+ to build.
+Requirements: podman, libkrun, and Go 1.26+ to build. Linux needs KVM
+(`/dev/kvm`); see [macOS](#macos) for what that means there.
 
 **1. Install the runtime pieces**
 
@@ -73,6 +74,29 @@ isolated: host 6.18.33.2, guest 6.12.91
 ```
 
 If they match, you got a plain container and bluebox refuses the sandbox.
+
+### macOS
+
+bluebox builds and runs on macOS, but the isolation story is different and
+worth understanding before relying on it.
+
+Every container on macOS already runs inside the **podman machine** VM, so
+there is no `/dev/kvm` on the host and the `krun` runtime lives inside the
+machine rather than beside your shell. `bluebox` checks that a machine is
+running instead, and leaves the real question to `bluebox verify`.
+
+Nesting a microVM *inside* that VM needs nested virtualisation, which on Apple
+Silicon means an **M3 or later running macOS 15+**, with crun built against
+libkrun available inside the machine image. Where that holds, sandboxes behave
+as they do on Linux. Where it does not, `bluebox verify` fails and says the
+sandbox shares a kernel, rather than pretending.
+
+That check is deliberately not a comparison against the host's own `uname`: on
+macOS the host runs Darwin, so any Linux container kernel differs from it
+whether or not a microVM is involved, and comparing against the host would
+report isolation that is not there. bluebox compares the sandbox against the
+kernel a plain container sees instead, which is the host kernel on Linux and
+the podman machine's kernel on macOS.
 
 ## Quick start
 

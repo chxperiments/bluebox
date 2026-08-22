@@ -13,9 +13,29 @@ Containerfile; bluebox generates one from the Bluefile.
 ## Why
 
 A container shares your host kernel. bluebox gives each sandbox its **own**
-kernel, so it can install anything, change anything, and never touch your
-machine — while the files you care about survive in one directory you can read
-from the host.
+kernel, so `mount`, `sysctl`, `modprobe` and `rm -rf /` act on a machine that
+is rebuilt on the next run — while the files you care about survive in one
+directory you can read from the host.
+
+## What the boundary is, and is not
+
+A separate kernel is a real boundary, and a much stronger one than a container.
+It is not an absence of attack surface. Reaching the host means getting through
+libkrun, KVM, or the virtiofs share, so treat it as defence worth having rather
+than a guarantee.
+
+Three things are worth knowing before you trust it with something hostile:
+
+- **`/data` is the one surface in constant use.** The guest root filesystem is
+  virtiofs, served by the VMM process, so guest file I/O becomes work the host
+  side performs on every call. Operations the guest kernel answers alone — a
+  `uname`, say — never involve the host at all.
+- **Inside the guest the workload is root with every capability**, and can
+  mount. That is fine: those syscalls hit a disposable kernel. It does mean
+  anything that escapes arrives with full privilege, so confinement belongs at
+  the VMM boundary, not inside the guest.
+- **Run bluebox rootless.** Podman rootless means the VMM is your user, so the
+  blast radius of an escape is your account rather than root.
 
 ## Install
 

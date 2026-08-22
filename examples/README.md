@@ -16,6 +16,8 @@ bluebox run "$name" -- python3 --version
 Bluefile over the scaffold gives it this configuration; `build` generates the
 Containerfile and verifies isolation.
 
+### Development
+
 | Example | What it shows |
 |---|---|
 | [`python-dev`](python-dev/Bluefile) | apt packages, a pip build step, env vars |
@@ -24,6 +26,33 @@ Containerfile and verifies isolation.
 | [`ai-agent`](ai-agent/Bluefile) | blueprint user + sudo, read-only root, per-run timeout |
 | [`offline`](offline/Bluefile) | `network: none` — no egress at all |
 | [`os-lab`](os-lab/Bluefile) | a real kernel: `mount`, `sysctl`, `modprobe` work |
+
+### Certification prep
+
+| Example | For | What it shows |
+|---|---|---|
+| [`cert-rhcsa`](cert-rhcsa/Bluefile) | RHCSA (EX200) | AlmaLinux 9, storage/SELinux/podman toolset |
+| [`cert-rhce`](cert-rhce/Bluefile) | RHCE 9 (EX294) | Ansible automation environment |
+| [`cert-cka`](cert-cka/Bluefile) | CKA | kubectl, helm, a k3s cluster you start in the shell |
+| [`cert-cks`](cert-cks/Bluefile) | CKS | k3s + trivy/kube-bench, AppArmor & seccomp on a real kernel |
+| [`cert-aws-saa`](cert-aws-saa/) | AWS SAA-C03 | AWS CLI + Terraform against [Floci](https://floci.io/); see [`main.tf`](cert-aws-saa/main.tf) |
+
+Two things about the cert sandboxes worth knowing, because they are honest
+limits rather than bugs:
+
+- **State is ephemeral.** Each `bluebox run` is a fresh VM. Start a cluster or
+  a service inside `bluebox shell`, and keep anything you want to keep in
+  `/data`. A k3s cluster's own state resets with the VM.
+- **bluebox runs a command, not a full boot.** systemd is not PID 1, so live
+  `systemctl start/enable` on services is limited. The many topics that do not
+  need a running init — users, permissions, LVM/storage, SELinux contexts,
+  networking config, containers, kernel features — all work, and work *because*
+  the sandbox has its own kernel.
+
+For `cert-aws-saa`, run Floci separately (it serves AWS APIs on port 4566),
+then point the sandbox's endpoint vars at it. If Floci is on the host, use the
+host's bridge address rather than `localhost`, since inside the sandbox
+`localhost` is the sandbox.
 
 ## Notes
 

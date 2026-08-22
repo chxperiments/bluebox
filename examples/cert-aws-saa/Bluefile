@@ -1,0 +1,47 @@
+# AWS Solutions Architect Associate (SAA-C03) practice, against Floci.
+# Floci is a local AWS emulator (a drop-in LocalStack replacement) that
+# serves AWS-shaped APIs on port 4566. SAA is mostly design, but the
+# hands-on parts are best practised locally, off a billable account.
+#
+# Baked in: AWS CLI, Terraform, boto3, jq. The env below points every tool
+# at Floci with throwaway credentials.
+#
+# Run Floci in its own container/sandbox or on the host, then here:
+#
+#   bluebox shell aws-saa
+#   cp /path/to/examples/cert-aws-saa/main.tf /data && cd /data
+#   terraform init && terraform apply
+#   aws s3 ls
+#
+# main.tf (next to this file) is the sample stack. Copy it into /data so
+# terraform state persists.
+#
+# Networking note: if Floci runs on the host, localhost from inside the
+# sandbox is the sandbox, not the host. Set the endpoint vars below to the
+# host's bridge address (e.g. http://10.88.0.1:4566) in that case.
+
+base: docker.io/library/debian:bookworm-slim
+
+cpus: 2
+ram_mib: 2048
+network: bridge
+timeout_seconds: 0
+
+packages:
+  - awscli
+  - python3-boto3
+  - jq
+  - git
+  - curl
+  - unzip
+  - vim
+
+run:
+  - curl -fsSL https://releases.hashicorp.com/terraform/1.10.3/terraform_1.10.3_linux_amd64.zip -o /tmp/tf.zip && unzip -q /tmp/tf.zip -d /usr/local/bin && rm /tmp/tf.zip
+
+env:
+  FLOCI_ENDPOINT: http://localhost:4566
+  AWS_ENDPOINT_URL: http://localhost:4566
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  AWS_DEFAULT_REGION: us-east-1

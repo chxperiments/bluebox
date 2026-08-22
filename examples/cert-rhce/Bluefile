@@ -1,0 +1,32 @@
+# RHCE 9 (EX294) practice: automation with Ansible.
+# RHCE 9 is an Ansible exam, so this bakes in ansible-core plus the
+# collections the objectives lean on, and an SSH client for managing
+# inventory hosts. Point it at nodes you spin up (other sandboxes, or
+# hosts you control) and keep your playbooks in /data.
+
+base: docker.io/library/almalinux:9
+
+cpus: 2
+ram_mib: 2048
+network: bridge
+timeout_seconds: 0
+
+packages:
+  - ansible-core
+  - git
+  - openssh-clients
+  - sshpass
+  - python3-pip
+  - vim-enhanced
+  - sudo
+
+run:
+  - ansible-galaxy collection install ansible.posix community.general
+
+blueprint:
+  users:
+    - name: student
+      shell: /bin/bash
+      sudo: true
+  runcmd:
+    - echo 'cd /data' >> /home/student/.bashrc

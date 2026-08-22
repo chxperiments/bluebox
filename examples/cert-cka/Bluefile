@@ -1,0 +1,35 @@
+# CKA practice: Kubernetes admin tooling.
+# Bakes in kubectl, helm, k9s and the k3s binary. Because the sandbox has
+# its own kernel, you can start a real single-node cluster inside it:
+#
+#   bluebox shell cka
+#   k3s server &            # brings up a cluster
+#   k3s kubectl get nodes
+#
+# Cluster state lives under /var/lib/rancher and resets with the VM. For
+# work you want to keep, put manifests in /data.
+#
+# For kubeadm-specific objectives (bootstrap, upgrades, etcd backup, joining
+# nodes) install kubeadm/kubelet from the pkgs.k8s.io repo on top of this.
+
+base: docker.io/library/ubuntu:24.04
+
+cpus: 4
+ram_mib: 4096
+network: bridge
+timeout_seconds: 0
+
+packages:
+  - curl
+  - ca-certificates
+  - iptables
+  - conntrack
+  - socat
+  - vim
+  - git
+  - bash-completion
+
+run:
+  - curl -sfL https://github.com/k3s-io/k3s/releases/latest/download/k3s -o /usr/local/bin/k3s && chmod +x /usr/local/bin/k3s
+  - curl -sfL https://get.helm.sh/helm-v3.16.3-linux-amd64.tar.gz | tar -xz -C /tmp && mv /tmp/linux-amd64/helm /usr/local/bin/helm
+  - ln -sf /usr/local/bin/k3s /usr/local/bin/kubectl

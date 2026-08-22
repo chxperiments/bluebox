@@ -1,0 +1,43 @@
+# RHCSA (EX200) practice on a RHEL-compatible base.
+# AlmaLinux 9 is binary-compatible with RHEL 9, so users, permissions,
+# LVM/storage, SELinux, networking config, cron, tar/find and rootless
+# podman all behave as on the exam. The guest has its own kernel, so
+# SELinux contexts and storage stack topics work where a container cannot.
+#
+# Limit to know: bluebox runs a command, not a full systemd boot, so
+# `systemctl start/enable` on live services is limited. Practise the many
+# RHCSA topics that do not need a running init here; use the whole toolset.
+
+base: docker.io/library/almalinux:9
+
+cpus: 2
+ram_mib: 3072
+network: bridge
+timeout_seconds: 0
+
+packages:
+  - sudo
+  - passwd
+  - util-linux
+  - lvm2
+  - parted
+  - nfs-utils
+  - autofs
+  - chrony
+  - cronie
+  - firewalld
+  - NetworkManager
+  - policycoreutils
+  - policycoreutils-python-utils
+  - setools-console
+  - tar
+  - rsync
+  - vim-enhanced
+  - man-db
+  - podman
+
+blueprint:
+  users:
+    - name: student
+      shell: /bin/bash
+      sudo: true

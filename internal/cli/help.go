@@ -10,18 +10,14 @@ import (
 
 // banner is drawn on `bluebox` and `bluebox --help`. It is the same solid,
 // shaded box the site turns, rendered once at a fixed angle.
-const banner = `              $$$$$$
-       $$$$$$$$$$$$$$$$$$$$
-     $$$$$$$$$$$$$$$$$$$$----
-      ==$$$$$$$$$$$$$-------
-      ======$$$$$$----------
-       ========$$----------
-       ==========----------
-       ==========---------
-        =========---------
-          =======-------
-            =====-----
-              ===---`
+const banner = `                    $$$$$$$$$$$$$$$$$$
+        $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$------
+         ====$$$$$$$$$$$$$$$$$$$$----------------
+          ==============$$$$$-------------------
+            =================-----------------
+             ================----------------
+                    =========---------
+                          ===---`
 
 // blue wraps s in a true-blue SGR sequence when the terminal will render it.
 // Piped output and NO_COLOR get plain text, so logs stay clean.

@@ -69,9 +69,7 @@ The build ends by comparing kernels. Two different versions means real
 isolation:
 
 ```
-  host kernel:  6.18.33.2
-  guest kernel: 6.12.91
-  OK: separate kernel, genuine microVM.
+isolated: host 6.18.33.2, guest 6.12.91
 ```
 
 If they match, you got a plain container and bluebox refuses the sandbox.
@@ -151,17 +149,29 @@ and the sudo group is `sudo` or `wheel` as that distro expects.
 | `bluebox verify <name>` | re-check that the sandbox has its own kernel |
 | `bluebox ls` | list sandboxes |
 | `bluebox env <name>` | print effective settings as `KEY=VALUE` |
-| `bluebox logs <name> [lines]` | show recent runs (default 200 lines) |
+| `bluebox logs <name> [-n]` | show recent runs (default 200 lines) |
+| `bluebox reset <name>` | empty `/data`, keeping the sandbox |
+| `bluebox snapshot <name> [-l]` | archive `/data`; `-l` lists archives |
 | `bluebox rename <old> <new>` | rename, keeping data, logs and the built image |
 | `bluebox destroy <name> [--data]` | remove a sandbox; `--data` also deletes `/data` |
+| `bluebox nuke [--no-data]` | remove every sandbox; `--no-data` keeps data |
 
-`bluebox env` is shell-consumable, so `eval $(bluebox env devbox)` puts
-`BLUEBOX_DATA` and friends in your environment. `destroy` keeps `/data` unless
-you pass `--data`, since it is the one thing a rebuild cannot reproduce.
+`bluebox env` is shell-consumable: `eval $(bluebox env devbox)`.
+
+Anything that deletes data asks first, and `-y` skips the prompt. `destroy`
+keeps `/data` unless you pass `--data`; `nuke` deletes it unless you pass
+`--no-data`. Without a terminal they refuse rather than assume yes, so a script
+cannot wipe your work by accident.
+
+Snapshots are plain tarballs under `~/.bluebox/snapshots/<name>/`. To restore:
+
+```sh
+tar -xzf <archive> -C "$(bluebox env <name> | grep BLUEBOX_DATA | cut -d= -f2)"
+```
 
 `bluebox run` behaves like any subprocess: stdout, stderr and exit codes pass
 straight through, so it scripts and automates cleanly. A run stopped by
-`TIMEOUT` exits `124`, matching `timeout(1)`.
+`timeout_seconds` exits `124`, matching `timeout(1)`.
 
 ## What persists
 
@@ -185,6 +195,8 @@ back on your host.
 ~/.bluebox/
   sandboxes/<name>/Bluefile        the spec you edit
   sandboxes/<name>/Containerfile   generated on build
+  snapshots/<name>/                /data archives
+  logs/<name>.log                  run history
   data/<name>/                     mounted at /data -- the only persistent part
 ```
 
@@ -192,7 +204,7 @@ Override the root with `BLUEBOX_HOME`.
 
 ## Notes
 
-`READONLY` and `SECCOMP` apply on the host side. The workload inside the guest
+`readonly` and `seccomp` apply on the host side. The workload inside the guest
 runs unconfined against its own throwaway kernel, which is the point — but it
 means a seccomp profile filters the VMM process, not the guest. Operations the
 VMM performs on the host (file I/O, which goes through virtiofs) are filterable;
@@ -210,7 +222,7 @@ cmd/bluebox/      entrypoint
 internal/bluefile/  Bluefile parser + Containerfile generator
 internal/sandbox/   on-disk layout
 internal/runtime/   podman + krun driver -- the only backend-aware code
-internal/cli/       subcommand wiring
+internal/cli/       cobra commands (root.go, commands.go)
 ```
 
 `spike.sh` validates the runtime assumptions on a new host.

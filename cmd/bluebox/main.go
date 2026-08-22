@@ -1,5 +1,4 @@
-// Command bluebox runs disposable microVM sandboxes for AI harnesses.
-// All logic lives in internal/cli; this is just the entrypoint.
+// Command bluebox runs isolated, persistent sandboxes as microVMs.
 package main
 
 import (
@@ -9,5 +8,5 @@ import (
 )
 
 func main() {
-	os.Exit(cli.Run(os.Args[1:]))
+	os.Exit(cli.Execute())
 }

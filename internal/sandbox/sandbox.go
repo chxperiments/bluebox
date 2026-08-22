@@ -4,8 +4,10 @@ package sandbox
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 // Home is the bluebox root, overridable with BLUEBOX_HOME.
@@ -66,6 +68,87 @@ func LogPath(name string) (string, error) {
 
 func ImageTag(name string) string { return "bluebox/" + name + ":latest" }
 
+// SnapshotsDir holds archived copies of a sandbox's /data.
+func SnapshotsDir(name string) (string, error) {
+	h, err := Home()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(h, "snapshots", name), nil
+}
+
+// DataEmpty reports whether a sandbox has nothing worth losing.
+func DataEmpty(name string) (bool, error) {
+	d, err := DataDir(name)
+	if err != nil {
+		return false, err
+	}
+	entries, err := os.ReadDir(d)
+	if os.IsNotExist(err) {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return len(entries) == 0, nil
+}
+
+// ResetData empties a sandbox's /data, leaving the sandbox itself intact.
+func ResetData(name string) error {
+	d, err := DataDir(name)
+	if err != nil {
+		return err
+	}
+	if err := os.RemoveAll(d); err != nil {
+		return err
+	}
+	return os.MkdirAll(d, 0o755)
+}
+
+// Snapshot archives a sandbox's /data and returns the archive path. tar is used
+// rather than a Go implementation so permissions and symlinks are preserved
+// exactly as the guest wrote them.
+func Snapshot(name, stamp string) (string, error) {
+	data, err := DataDir(name)
+	if err != nil {
+		return "", err
+	}
+	dir, err := SnapshotsDir(name)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	out := filepath.Join(dir, stamp+".tar.gz")
+	cmd := exec.Command("tar", "-czf", out, "-C", data, ".")
+	if msg, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(out)
+		return "", fmt.Errorf("tar: %s", strings.TrimSpace(string(msg)))
+	}
+	return out, nil
+}
+
+// Snapshots lists a sandbox's archives, newest last.
+func Snapshots(name string) ([]string, error) {
+	dir, err := SnapshotsDir(name)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, nil // no snapshots yet is not an error
+	}
+	var out []string
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".tar.gz") {
+			out = append(out, filepath.Join(dir, e.Name()))
+		}
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
 // Remove deletes a sandbox definition. Data is kept unless withData is set,
 // because it is the only thing a rebuild cannot reproduce.
 func Remove(name string, withData bool) error {
@@ -84,7 +167,13 @@ func Remove(name string, withData bool) error {
 		if err != nil {
 			return err
 		}
-		return os.RemoveAll(data)
+		if err := os.RemoveAll(data); err != nil {
+			return err
+		}
+		// Snapshots are copies of that same data, so they go with it.
+		if snaps, err := SnapshotsDir(name); err == nil {
+			return os.RemoveAll(snaps)
+		}
 	}
 	return nil
 }

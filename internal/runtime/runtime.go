@@ -102,7 +102,7 @@ func Run(name string, s bluefile.Spec, argv []string) error {
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(s.TimeoutSeconds)*time.Second)
 		defer cancel()
 	}
-	err = streamCtx(ctx, exec.CommandContext(ctx, "podman", args...))
+	err = stream(exec.CommandContext(ctx, "podman", args...))
 	if ctx.Err() == context.DeadlineExceeded {
 		exec.Command("podman", "rm", "-f", runName).Run()
 		return ErrTimeout
@@ -138,9 +138,9 @@ func HostKernel() (string, error) {
 	return strings.TrimSpace(string(out)), err
 }
 
-func stream(cmd *exec.Cmd) error { return streamCtx(context.Background(), cmd) }
-
-func streamCtx(_ context.Context, cmd *exec.Cmd) error {
+// stream runs cmd with its stdout/stderr wired to the process. Any timeout is
+// bound into the command via exec.CommandContext before it reaches here.
+func stream(cmd *exec.Cmd) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

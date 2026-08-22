@@ -32,51 +32,33 @@ func Run(argv []string) int {
 	}
 	cmd, rest := argv[0], argv[1:]
 
-	needName := func() (string, bool) {
-		if len(rest) < 1 {
-			fmt.Fprintf(os.Stderr, "bluebox: %s needs a sandbox name\n", cmd)
-			return "", false
-		}
-		return rest[0], true
-	}
-
-	switch cmd {
-	case "new":
-		name, ok := needName()
-		if !ok {
-			return 2
-		}
-		return cmdNew(name)
-	case "build":
-		name, ok := needName()
-		if !ok {
-			return 2
-		}
-		return cmdBuild(name)
-	case "verify":
-		name, ok := needName()
-		if !ok {
-			return 2
-		}
-		return cmdVerify(name)
-	case "run":
-		name, ok := needName()
-		if !ok {
-			return 2
-		}
-		return cmdRun(name, rest[1:])
-	case "shell":
-		name, ok := needName()
-		if !ok {
-			return 2
-		}
-		return cmdShell(name)
-	case "ls":
+	if cmd == "ls" {
 		return cmdList()
-	default:
+	}
+	// Every other command needs a sandbox name as its first argument.
+	if cmd != "new" && cmd != "build" && cmd != "verify" && cmd != "run" && cmd != "shell" {
 		fmt.Println(usage)
 		return 2
 	}
+	if len(rest) < 1 {
+		fmt.Fprintf(os.Stderr, "bluebox: %s needs a sandbox name\n", cmd)
+		return 2
+	}
+	name := rest[0]
+
+	switch cmd {
+	case "new":
+		return cmdNew(name)
+	case "build":
+		return cmdBuild(name)
+	case "verify":
+		return cmdVerify(name)
+	case "run":
+		return cmdRun(name, rest[1:])
+	case "shell":
+		return cmdShell(name)
+	}
+	return 2 // unreachable: cmd is guarded above
 }
 
 func fail(format string, a ...any) int {

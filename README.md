@@ -115,6 +115,16 @@ explicitly to `apk`, `apt` or `dnf`.
 
 `cpus` maxes at 16 (a krun limit) and `ram_mib` is in MiB.
 
+Field constraints, enforced at parse time so a bad value fails loudly instead
+of leaking into the generated Containerfile:
+
+- `base` must be an image reference without whitespace.
+- `env` keys are identifiers (`LANG`, `CGO_ENABLED`); values cannot contain
+  newlines — put multi-step builds in `run` instead.
+- `packages` entries must be plain package names (no spaces or `; | & $ \``).
+- blueprint user names are lowercase identifiers, `shell` an absolute path,
+  and file `mode`s octal (e.g. `"0755"`).
+
 ### blueprint
 
 For cloud-init-style provisioning — users, files and commands:
@@ -143,6 +153,11 @@ creation adapts to the base: `useradd` on apt/dnf images, `adduser` on Alpine,
 and the sudo group is `sudo` or `wheel` as that distro expects.
 
 ## Commands
+
+Sandbox names use letters, digits, `.`, `_` and `-` (max 64 characters,
+starting with a letter or digit). A name is a single path component by
+construction, so nothing a sandbox does with its name can reach outside
+`~/.bluebox`.
 
 | Command | What it does |
 |---|---|

@@ -6,9 +6,23 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
+
+// nameRe keeps a sandbox name a single safe path component, so every path
+// derived from a name stays inside the bluebox root. The alphanumeric first
+// character rejects ".", ".." and hidden names in one stroke.
+var nameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
+
+// ValidName reports whether name is usable as a sandbox name.
+func ValidName(name string) error {
+	if !nameRe.MatchString(name) {
+		return fmt.Errorf("invalid sandbox name %q: use letters, digits, '.', '_' or '-' (max 64, starting with a letter or digit)", name)
+	}
+	return nil
+}
 
 // Home is the bluebox root, overridable with BLUEBOX_HOME.
 func Home() (string, error) {
@@ -24,6 +38,9 @@ func Home() (string, error) {
 
 // Dir holds a sandbox's definition (its Bluefile and generated Containerfile).
 func Dir(name string) (string, error) {
+	if err := ValidName(name); err != nil {
+		return "", err
+	}
 	h, err := Home()
 	if err != nil {
 		return "", err
@@ -33,6 +50,9 @@ func Dir(name string) (string, error) {
 
 // DataDir is the only path that survives between runs; mounted at /data.
 func DataDir(name string) (string, error) {
+	if err := ValidName(name); err != nil {
+		return "", err
+	}
 	h, err := Home()
 	if err != nil {
 		return "", err
@@ -59,6 +79,9 @@ func ContainerfilePath(name string) (string, error) {
 
 // LogPath is the append-only record of runs for a sandbox.
 func LogPath(name string) (string, error) {
+	if err := ValidName(name); err != nil {
+		return "", err
+	}
 	h, err := Home()
 	if err != nil {
 		return "", err
@@ -66,6 +89,9 @@ func LogPath(name string) (string, error) {
 	return filepath.Join(h, "logs", name+".log"), nil
 }
 
+// ImageTag formats the podman image tag. The name is not re-validated here:
+// every call site reaches this through a path builder that already ran
+// ValidName, and podman itself rejects malformed refs loudly.
 func ImageTag(name string) string { return "bluebox/" + name + ":latest" }
 
 // SnapshotsDir holds archived copies of a sandbox's /data.

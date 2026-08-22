@@ -17,6 +17,11 @@ import (
 // error: a sandbox command that exits 3 is not a bluebox failure.
 var exitCode = 0
 
+// Version is stamped at build time:
+//
+//	go build -ldflags "-X bluebox/internal/cli.Version=v1.2.3" ./cmd/bluebox
+var Version = "dev"
+
 // Command groups, in the order they appear in help.
 const (
 	groupSandbox = "sandbox"
@@ -33,8 +38,9 @@ func newRoot() *cobra.Command {
 	cobra.EnableCommandSorting = false
 
 	root := &cobra.Command{
-		Use:   "bluebox",
-		Short: "Isolated, persistent sandboxes",
+		Use:     "bluebox",
+		Short:   "Isolated, persistent sandboxes",
+		Version: Version,
 		Long: "bluebox runs each sandbox as a real microVM with its own kernel.\n" +
 			"Work in /data persists; everything else resets on every run.",
 		SilenceUsage:  true, // an error is not a reason to reprint the manual

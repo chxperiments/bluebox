@@ -75,15 +75,60 @@ Override the root with `BLUEBOX_HOME`.
 
 ```json
 {
-  "cpus": 2,
-  "memory_mib": 2048,
-  "network": "bridge"
+  "cpus": 4,
+  "memory_mib": 4096,
+  "network": "bridge",
+  "readonly_rootfs": true,
+  "timeout_seconds": 300,
+  "seccomp": ""
 }
 ```
 
 `network: "bridge"` gives outbound access (needed for `apt`, `pip`, CTF targets).
 `network: "none"` cuts it off entirely — use it when detonating untrusted
 binaries that should not phone home. `cpus` maxes out at 16, which is krun's limit.
+
+`readonly_rootfs` makes the guest root filesystem read-only; podman still
+provides a writable `/tmp`, and `/data` stays writable. `timeout_seconds` caps
+wall-clock time per `bluebox run` — the VM is killed and reaped, and the exit
+code is `124`, matching `timeout(1)` so a harness can distinguish it from an
+ordinary failure. `0` disables it. `bluebox shell` is never timed out.
+
+## Runtime restrictions: where the boundary actually is
+
+Worth understanding before reaching for seccomp or eBPF, because a microVM
+moves the trust boundary and container instincts mislead here.
+
+**Inside the guest, the workload is unconfined.** It runs as root with full
+capabilities and can even mount filesystems. `--cap-drop=ALL` does *not* reach
+it — `CapEff` still reads `000001ffffffffff` with the flag set. That is fine:
+those syscalls hit the **guest** kernel, which is disposable and rebuilt on the
+next run. Confining them buys little.
+
+**The real boundary is the VMM process on the host.** The guest root filesystem
+is `virtiofs`, served by the VMM, so anything the guest does that touches host
+resources becomes a syscall made by the VMM. That is what host-side controls
+filter, and it is exactly the blast radius of a VM escape.
+
+This produces a result that surprises people. A seccomp profile blocking `mkdir`
+*does* stop `mkdir` inside the guest — not because the guest is filtered
+(`/proc/self/status` shows `Seccomp: 0`, no filter loaded) but because the
+directory creation is ultimately performed by the VMM on the host. Meanwhile a
+profile blocking `uname` does **not** stop `uname` in the guest, because the
+guest kernel answers it without ever involving the host.
+
+So: **host-served operations are filterable, guest-only operations are not.**
+
+Point `seccomp` at a profile path to filter the VMM. Podman already applies its
+default profile, so custom profiles are for tightening further — and a profile
+that is too aggressive will break virtiofs or networking rather than fail
+loudly. Test with `bluebox verify` and a real workload before trusting one.
+
+**On eBPF:** it is not where the value is here. In-guest eBPF would confine a
+throwaway kernel. Host-side eBPF would confine the VMM, which seccomp already
+does more simply. If you want stronger runtime restriction, the highest-value
+addition is **egress allow-listing** (nftables rules against the sandbox's
+network, rather than the current all-or-nothing `bridge`/`none`), not eBPF.
 
 ## Verifying isolation
 

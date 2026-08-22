@@ -42,6 +42,29 @@ Containerfile and verifies isolation.
 |---|---|
 | [`lab-aws`](lab-aws/) | AWS CLI + Terraform against [Floci](https://floci.io/), a local AWS emulator; see [`main.tf`](lab-aws/main.tf) |
 
+**lab-aws**, verified end to end from inside the microVM: S3 (create/put/get), a
+full `terraform apply` (VPC, subnet, internet gateway, route table, security
+group, EC2 instance, S3 bucket — 8 resources), and a Python **Lambda** that
+executes and returns its payload.
+
+Start Floci on the host first with [`floci-up.sh`](lab-aws/floci-up.sh), which
+handles the rootless-podman details Lambda needs (a container socket, and
+putting Floci's spawned Lambda containers on a shared network so their callback
+to the Runtime API works). Then:
+
+```sh
+./examples/lab-aws/floci-up.sh          # start Floci on the host
+bluebox build lab-aws
+bluebox shell lab-aws
+# inside: the sandbox reaches Floci at host.containers.internal:4566 (preset)
+cp /path/to/main.tf /data && cd /data
+terraform init && terraform apply
+aws s3 ls
+```
+
+The sandbox ships AWS CLI v2 and Terraform, with `AWS_ENDPOINT_URL` preset, so
+tools talk to Floci with no flags.
+
 Three things about the cert sandboxes worth knowing, because they are honest
 limits rather than bugs:
 

@@ -21,7 +21,7 @@ terraform {
 variable "endpoint" {
   description = "Floci endpoint. Use the host's bridge address if Floci runs on the host."
   type        = string
-  default     = "http://localhost:4566"
+  default     = "http://host.containers.internal:4566"
 }
 
 provider "aws" {

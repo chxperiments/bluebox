@@ -28,7 +28,6 @@ network: bridge
 timeout_seconds: 0
 
 packages:
-  - awscli
   - python3-boto3
   - jq
   - git
@@ -37,11 +36,14 @@ packages:
   - vim
 
 run:
+  # Terraform
   - curl -fsSL https://releases.hashicorp.com/terraform/1.10.3/terraform_1.10.3_linux_amd64.zip -o /tmp/tf.zip && unzip -q /tmp/tf.zip -d /usr/local/bin && rm /tmp/tf.zip
+  # AWS CLI v2 (debian's package predates AWS_ENDPOINT_URL support)
+  - curl -fsSL https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscliv2.zip && unzip -q /tmp/awscliv2.zip -d /tmp && /tmp/aws/install && rm -rf /tmp/aws /tmp/awscliv2.zip
 
 env:
-  FLOCI_ENDPOINT: http://localhost:4566
-  AWS_ENDPOINT_URL: http://localhost:4566
+  FLOCI_ENDPOINT: http://host.containers.internal:4566
+  AWS_ENDPOINT_URL: http://host.containers.internal:4566
   AWS_ACCESS_KEY_ID: test
   AWS_SECRET_ACCESS_KEY: test
   AWS_DEFAULT_REGION: us-east-1

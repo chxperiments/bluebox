@@ -117,6 +117,7 @@ func TestMountsNormalize(t *testing.T) {
 func TestMountValidation(t *testing.T) {
 	cases := map[string]string{
 		"relative host":  "base: x\nmounts:\n  - host: rel/dir\n    guest: /work\n",
+		"colon in host":  "base: x\nmounts:\n  - host: /tmp/a:b\n    guest: /work\n",
 		"relative guest": "base: x\nmounts:\n  - host: /tmp/h\n    guest: work\n",
 		"bad mode":       "base: x\nmounts:\n  - host: /tmp/h\n    guest: /work\n    mode: w\n",
 		"dup guest":      "base: x\nmounts:\n  - host: /tmp/a\n    guest: /work\n  - host: /tmp/b\n    guest: /work\n",

@@ -246,6 +246,12 @@ func (s Spec) validate() error {
 		if !filepath.IsAbs(m.Host) {
 			return fmt.Errorf("mounts[%d]: host path must be absolute (or ~), got %q", i, m.Host)
 		}
+		// A ':' would split the host off into extra fields of the -v spec, so a
+		// colon in the path silently mounts the wrong thing. Reject it here
+		// rather than hand podman a corrupt volume argument.
+		if strings.ContainsRune(m.Host, ':') {
+			return fmt.Errorf("mounts[%d]: host path must not contain ':', got %q", i, m.Host)
+		}
 		if !pathRe.MatchString(m.Guest) {
 			return fmt.Errorf("mounts[%d]: guest path must be absolute (letters, digits, '/', '.', '_', '-'), got %q", i, m.Guest)
 		}

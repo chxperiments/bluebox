@@ -132,6 +132,8 @@ of leaking into the generated Containerfile:
 - `packages` entries must be plain package names (no spaces or `; | & $ \``).
 - blueprint user names are lowercase identifiers, `shell` an absolute path,
   and file `mode`s octal (e.g. `"0755"`).
+- `write_files` paths are absolute and free of shell metacharacters — the path
+  reaches a build `RUN`, so it is checked the same way as a mode.
 
 ### blueprint
 

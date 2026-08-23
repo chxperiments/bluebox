@@ -35,6 +35,9 @@ func TestPathBuildersRejectUnsafeNames(t *testing.T) {
 		if p, err := LogPath(name); err == nil {
 			t.Errorf("LogPath(%q) = %q, want error", name, p)
 		}
+		if p, err := SnapshotsDir(name); err == nil {
+			t.Errorf("SnapshotsDir(%q) = %q, want error", name, p)
+		}
 	}
 }
 

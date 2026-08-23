@@ -75,6 +75,14 @@ isolated: host 6.18.33.2, guest 6.12.91
 
 If they match, you got a plain container and bluebox refuses the sandbox.
 
+Every `run` and `shell` re-checks this boundary, but cheaply: the result is
+cached against a fingerprint of the runtime (the `krun` symlink, the `crun` it
+resolves to, and the podman and libkrun versions). While that fingerprint is
+unchanged the check is a fast lookup; if it changes — a re-pointed symlink, an
+upgraded `crun`, libkrun support dropped — the full kernel comparison runs
+again before the command does, and a sandbox that has quietly become a plain
+container is refused rather than run.
+
 ## Quick start
 
 ```sh

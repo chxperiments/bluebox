@@ -82,18 +82,12 @@ func verifyCmd() *cobra.Command {
 // be wrong on macOS, where the host runs Darwin and any Linux container kernel
 // differs from it whether or not a microVM is involved.
 func verify(name string, s bluefile.Spec) error {
-	guest, err := runtime.GuestKernel(name, s)
-	if err != nil || guest == "" {
-		return fmt.Errorf("could not start the sandbox; is the image built?")
+	guest, baseline, err := runtime.CheckIsolation(name, s)
+	if err != nil {
+		return err
 	}
-	baseline, err := runtime.BaselineKernel(name, s)
-	if err != nil || baseline == "" {
-		return fmt.Errorf("could not read the baseline kernel")
-	}
-	if guest == baseline {
-		return fmt.Errorf("not isolated: the sandbox shares kernel %s.\n"+
-			"This is a container, not a microVM", baseline)
-	}
+	// Prime the cache so runs on this same runtime skip the double boot.
+	runtime.MarkVerified(guest, baseline)
 	fmt.Printf("isolated: sandbox %s, outside %s\n", guest, baseline)
 	return nil
 }
@@ -111,6 +105,13 @@ func runCmd() *cobra.Command {
 			}
 			if err := runtime.Preflight(); err != nil {
 				return err
+			}
+			// A run is where untrusted code executes, so confirm the kernel
+			// boundary still holds -- cheaply when the runtime is unchanged.
+			if fresh, err := runtime.EnsureIsolated(name, s); err != nil {
+				return err
+			} else if fresh {
+				fmt.Fprintln(os.Stderr, "bluebox: re-verified isolation (runtime changed since last check)")
 			}
 			err = runtime.Run(name, s, argv)
 			switch {
@@ -142,6 +143,11 @@ func shellCmd() *cobra.Command {
 			}
 			if err := runtime.Preflight(); err != nil {
 				return err
+			}
+			if fresh, err := runtime.EnsureIsolated(args[0], s); err != nil {
+				return err
+			} else if fresh {
+				fmt.Fprintln(os.Stderr, "bluebox: re-verified isolation (runtime changed since last check)")
 			}
 			if err := runtime.Shell(args[0], s); err != nil {
 				if code := runtime.ExitCode(err); code >= 0 {

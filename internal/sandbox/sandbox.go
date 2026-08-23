@@ -68,6 +68,17 @@ func LogPath(name string) (string, error) {
 
 func ImageTag(name string) string { return "bluebox/" + name + ":latest" }
 
+// VerifyCachePath holds the last successful isolation check, keyed on the
+// runtime's identity. It is not per-sandbox: isolation is a property of the
+// podman + krun toolchain, so one cleared runtime clears it for every sandbox.
+func VerifyCachePath() (string, error) {
+	h, err := Home()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(h, "verify.json"), nil
+}
+
 // SnapshotsDir holds archived copies of a sandbox's /data.
 func SnapshotsDir(name string) (string, error) {
 	h, err := Home()

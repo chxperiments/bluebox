@@ -27,6 +27,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -133,9 +134,24 @@ func Parse(path string) (Spec, error) {
 	return s, nil
 }
 
+// Grammar rules for spec fields that are data, not instructions. A value
+// violating its rule could otherwise change the structure of the generated
+// Containerfile (a newline in an env value becomes a new instruction, a mode
+// like "0755; x" becomes a second shell command), so it is rejected at parse
+// time instead of being escaped at render time.
+var (
+	envKeyRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+	modeRe   = regexp.MustCompile(`^[0-7]{3,4}$`)
+	userRe   = regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,31}$`)
+	shellRe  = regexp.MustCompile(`^/[A-Za-z0-9/._-]+$`)
+)
+
 func (s Spec) validate() error {
 	if s.Base == "" {
 		return errors.New("base is required")
+	}
+	if strings.ContainsAny(s.Base, " \t\r\n\x00") {
+		return fmt.Errorf("base must be an image reference without whitespace or control characters, got %q", s.Base)
 	}
 	if s.CPUs < 1 || s.CPUs > 16 {
 		return fmt.Errorf("cpus must be 1-16 (krun's limit), got %d", s.CPUs)
@@ -168,13 +184,45 @@ func (s Spec) validate() error {
 		if strings.TrimSpace(u.Name) == "" {
 			return fmt.Errorf("blueprint.users[%d]: name is required", i)
 		}
+		if !userRe.MatchString(u.Name) {
+			return fmt.Errorf("blueprint.users[%d]: name must be lowercase letters, digits, '_' or '-' (max 32), got %q", i, u.Name)
+		}
+		if u.Shell != "" && !shellRe.MatchString(u.Shell) {
+			return fmt.Errorf("blueprint.users[%d]: shell must be an absolute path (letters, digits, '/', '.', '_', '-'), got %q", i, u.Shell)
+		}
 	}
 	for i, f := range s.Blueprint.WriteFiles {
 		if !strings.HasPrefix(f.Path, "/") {
 			return fmt.Errorf("blueprint.write_files[%d]: path must be absolute, got %q", i, f.Path)
 		}
+		if f.Mode != "" && !modeRe.MatchString(f.Mode) {
+			return fmt.Errorf("blueprint.write_files[%d]: mode must be octal (e.g. \"0644\"), got %q", i, f.Mode)
+		}
+	}
+	for _, k := range s.EnvKeys() {
+		if !envKeyRe.MatchString(k) {
+			return fmt.Errorf("env: key must be an identifier (letters, digits, '_'), got %q", k)
+		}
+		if strings.ContainsAny(s.Env[k], "\r\n") {
+			return fmt.Errorf("env[%s]: value must not contain a newline; put build steps in 'run' instead", k)
+		}
+	}
+	for i, p := range s.Packages {
+		if p == "" || strings.ContainsAny(p, " \t\r\n;|&$`") {
+			return fmt.Errorf("packages[%d]: %q is not a plain package name", i, p)
+		}
 	}
 	return nil
+}
+
+// EnvKeys returns the env keys in sorted order.
+func (s Spec) EnvKeys() []string {
+	keys := make([]string, 0, len(s.Env))
+	for k := range s.Env {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // pkgMgr returns the package manager for this spec: pkgmgr if set, otherwise
@@ -251,12 +299,7 @@ func (s Spec) Containerfile() string {
 	// Sorted so the same Bluefile always yields byte-identical output, which
 	// keeps podman's layer cache warm across rebuilds.
 	if len(s.Env) > 0 {
-		keys := make([]string, 0, len(s.Env))
-		for k := range s.Env {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
+		for _, k := range s.EnvKeys() {
 			fmt.Fprintf(&b, "ENV %s=%s\n", k, s.Env[k])
 		}
 		b.WriteByte('\n')

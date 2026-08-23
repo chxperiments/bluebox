@@ -49,7 +49,17 @@ type Spec struct {
 	Packages       []string          `yaml:"packages"`
 	Run            []string          `yaml:"run"` // extra Containerfile RUN steps, in order
 	Env            map[string]string `yaml:"env"`
+	Mounts         []Mount           `yaml:"mounts"` // explicit host shares, on top of /data
 	Blueprint      Blueprint         `yaml:"blueprint"`
+}
+
+// Mount is an explicit host directory shared into the guest. Unlike the
+// implicit /data share, each mount states what it exposes and whether the
+// guest may write it.
+type Mount struct {
+	Host  string `yaml:"host"`  // absolute host path; ~ expands to the home dir
+	Guest string `yaml:"guest"` // absolute guest path
+	Mode  string `yaml:"mode"`  // "ro" (default) or "rw"
 }
 
 // Blueprint is cloud-init-style provisioning. Unlike cloud-init it is applied
@@ -107,6 +117,12 @@ packages:
 # Extra build steps, run in order:
 # run:
 #   - pip3 install --break-system-packages requests
+
+# Host directories shared into the guest (on top of /data):
+# mounts:
+#   - host: ~/projects/demo
+#     guest: /work
+#     mode: ro              # ro (default) or rw
 
 # env:
 #   LANG: C.UTF-8
@@ -216,7 +232,53 @@ func (s Spec) validate() error {
 			return fmt.Errorf("packages[%d]: %q is not a plain package name", i, p)
 		}
 	}
+	// Mounts are the most security-relevant surface in the spec, so every
+	// field is checked here and normalized (tilde expanded, mode defaulted)
+	// rather than re-decided at run time.
+	seen := map[string]bool{"/data": true} // /data belongs to the implicit share
+	for i := range s.Mounts {
+		m := &s.Mounts[i]
+		host, err := expandTilde(m.Host)
+		if err != nil {
+			return fmt.Errorf("mounts[%d]: %w", i, err)
+		}
+		m.Host = host
+		if !filepath.IsAbs(m.Host) {
+			return fmt.Errorf("mounts[%d]: host path must be absolute (or ~), got %q", i, m.Host)
+		}
+		// A ':' would split the host off into extra fields of the -v spec, so a
+		// colon in the path silently mounts the wrong thing. Reject it here
+		// rather than hand podman a corrupt volume argument.
+		if strings.ContainsRune(m.Host, ':') {
+			return fmt.Errorf("mounts[%d]: host path must not contain ':', got %q", i, m.Host)
+		}
+		if !pathRe.MatchString(m.Guest) {
+			return fmt.Errorf("mounts[%d]: guest path must be absolute (letters, digits, '/', '.', '_', '-'), got %q", i, m.Guest)
+		}
+		if m.Mode == "" {
+			m.Mode = "ro" // fail safe: a mount you forgot to make writable stays read-only
+		}
+		if m.Mode != "ro" && m.Mode != "rw" {
+			return fmt.Errorf("mounts[%d]: mode must be ro or rw, got %q", i, m.Mode)
+		}
+		if seen[m.Guest] {
+			return fmt.Errorf("mounts[%d]: guest path %q is mounted more than once", i, m.Guest)
+		}
+		seen[m.Guest] = true
+	}
 	return nil
+}
+
+// expandTilde resolves a leading ~ to the user's home directory.
+func expandTilde(p string) (string, error) {
+	if p != "~" && !strings.HasPrefix(p, "~/") {
+		return p, nil
+	}
+	h, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("cannot resolve %q: %w", p, err)
+	}
+	return filepath.Join(h, strings.TrimPrefix(p, "~")), nil
 }
 
 // EnvKeys returns the env keys in sorted order.

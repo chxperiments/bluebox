@@ -73,6 +73,15 @@ func vmArgs(name string, s bluefile.Spec, interactive, useKrun bool) ([]string, 
 		"--annotation", "krun.ram_mib="+strconv.Itoa(s.RAMMiB),
 		"-v", data+":/data",
 	)
+	// Declarative mounts from the Bluefile. Mode was normalized at parse
+	// time, but stay defensive: an empty mode means read-only.
+	for _, m := range s.Mounts {
+		mode := m.Mode
+		if mode == "" {
+			mode = "ro"
+		}
+		args = append(args, "-v", m.Host+":"+m.Guest+":"+mode)
+	}
 	// passt gives the guest a real interface with a default route, which
 	// krun's default TSI networking does not. Workloads that inspect routing
 	// (k3s, anything expecting a normal NIC) need it.

@@ -135,6 +135,25 @@ of leaking into the generated Containerfile:
 - `write_files` paths are absolute and free of shell metacharacters — the path
   reaches a build `RUN`, so it is checked the same way as a mode.
 
+### mounts
+
+Beyond the implicit `/data` share, a Bluefile can declare exactly which host
+directories a sandbox sees:
+
+```yaml
+mounts:
+  - host: ~/projects/demo
+    guest: /work
+    mode: ro              # ro (default) or rw
+```
+
+`host` must be an absolute path (`~` expands to your home directory) with no
+`:`, `guest` an absolute guest path that cannot shadow `/data`, and `mode` is
+`ro` or `rw` — defaulting to `ro`, so a mount you forgot to make writable stays
+read-only. What a sandbox can touch on the host is now visible in the spec
+rather than implicit. Note that a writable mount still exposes that directory
+fully: the guest writes through virtiofs with your user's permissions.
+
 ### blueprint
 
 For cloud-init-style provisioning — users, files and commands:

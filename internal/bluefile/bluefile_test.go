@@ -101,6 +101,35 @@ func TestGrammarValidation(t *testing.T) {
 	}
 }
 
+// Mounts are normalized at parse time: tilde expanded, mode defaulted to ro.
+func TestMountsNormalize(t *testing.T) {
+	t.Setenv("HOME", "/home/tester")
+	s, err := Parse(write(t, "base: docker.io/library/alpine\nmounts:\n  - host: ~/proj\n    guest: /work\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := s.Mounts[0]
+	if m.Host != "/home/tester/proj" || m.Guest != "/work" || m.Mode != "ro" {
+		t.Errorf("mount not normalized: %+v", m)
+	}
+}
+
+func TestMountValidation(t *testing.T) {
+	cases := map[string]string{
+		"relative host":  "base: x\nmounts:\n  - host: rel/dir\n    guest: /work\n",
+		"colon in host":  "base: x\nmounts:\n  - host: /tmp/a:b\n    guest: /work\n",
+		"relative guest": "base: x\nmounts:\n  - host: /tmp/h\n    guest: work\n",
+		"bad mode":       "base: x\nmounts:\n  - host: /tmp/h\n    guest: /work\n    mode: w\n",
+		"dup guest":      "base: x\nmounts:\n  - host: /tmp/a\n    guest: /work\n  - host: /tmp/b\n    guest: /work\n",
+		"shadows /data":  "base: x\nmounts:\n  - host: /tmp/a\n    guest: /data\n",
+	}
+	for name, body := range cases {
+		if _, err := Parse(write(t, body)); err == nil {
+			t.Errorf("%s: expected error, got none", name)
+		}
+	}
+}
+
 // Everything shipped under examples/ must keep parsing as the validation
 // rules grow.
 func TestShippedExamplesStillParse(t *testing.T) {

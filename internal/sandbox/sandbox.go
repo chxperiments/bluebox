@@ -189,6 +189,118 @@ func Snapshots(name string) ([]string, error) {
 	return out, nil
 }
 
+// SnapshotPath resolves a snapshot reference to an archive path. A bare
+// reference names a snapshot of this sandbox (with or without the .tar.gz
+// suffix); an empty one means the most recent. A reference containing a
+// separator is taken as a path to an archive kept elsewhere.
+func SnapshotPath(name, ref string) (string, error) {
+	if ref == "" {
+		snaps, err := Snapshots(name)
+		if err != nil {
+			return "", err
+		}
+		if len(snaps) == 0 {
+			return "", fmt.Errorf("no snapshots for %q; take one with: bluebox snapshot %s", name, name)
+		}
+		return snaps[len(snaps)-1], nil // Snapshots sorts newest last
+	}
+	if !strings.ContainsRune(ref, filepath.Separator) {
+		dir, err := SnapshotsDir(name)
+		if err != nil {
+			return "", err
+		}
+		for _, cand := range []string{filepath.Join(dir, ref+".tar.gz"), filepath.Join(dir, ref)} {
+			if fi, err := os.Stat(cand); err == nil && !fi.IsDir() {
+				return cand, nil
+			}
+		}
+		return "", fmt.Errorf("no snapshot %q for %s; list them with: bluebox snapshot %s -l", ref, name, name)
+	}
+	if fi, err := os.Stat(ref); err != nil || fi.IsDir() {
+		return "", fmt.Errorf("no archive at %s", ref)
+	}
+	return ref, nil
+}
+
+// checkMember rejects an archive entry that would write outside the directory
+// it is extracted into. GNU tar refuses these itself, but bsdtar (the tar on
+// macOS) differs, so the check is made here rather than assumed of the tool.
+func checkMember(m string) error {
+	// Checked before the trailing slash is trimmed, or a bare "/" would look
+	// like the archive root rather than an absolute path.
+	if strings.HasPrefix(m, "/") || filepath.IsAbs(m) {
+		return fmt.Errorf("entry %q is an absolute path", m)
+	}
+	p := strings.TrimSuffix(m, "/")
+	if p == "" || p == "." {
+		return nil // the archive root
+	}
+	for _, part := range strings.Split(p, "/") {
+		if part == ".." {
+			return fmt.Errorf("entry %q escapes the archive root", m)
+		}
+	}
+	if c := filepath.Clean(p); c == ".." || strings.HasPrefix(c, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("entry %q escapes the archive root", m)
+	}
+	return nil
+}
+
+// VerifyArchive reads an archive's index and fails if any entry would land
+// outside the extraction directory.
+func VerifyArchive(archive string) error {
+	out, err := exec.Command("tar", "-tzf", archive).Output()
+	if err != nil {
+		return fmt.Errorf("cannot read %s as a gzip archive", filepath.Base(archive))
+	}
+	for _, m := range strings.Split(strings.TrimRight(string(out), "\n"), "\n") {
+		if m == "" {
+			continue
+		}
+		if err := checkMember(m); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Restore replaces a sandbox's /data with the contents of an archive. The
+// archive is checked first, then unpacked beside the existing data and swapped
+// in only once it is complete, so a failed restore leaves /data as it was.
+func Restore(name, archive string) error {
+	data, err := DataDir(name)
+	if err != nil {
+		return err
+	}
+	if err := VerifyArchive(archive); err != nil {
+		return err
+	}
+	staged, replaced := data+".restoring", data+".replaced"
+	os.RemoveAll(staged)
+	os.RemoveAll(replaced)
+	if err := os.MkdirAll(staged, 0o755); err != nil {
+		return err
+	}
+	cmd := exec.Command("tar", "-xzf", archive, "-C", staged)
+	if msg, err := cmd.CombinedOutput(); err != nil {
+		os.RemoveAll(staged)
+		return fmt.Errorf("tar: %s", strings.TrimSpace(string(msg)))
+	}
+	if _, err := os.Stat(data); err == nil {
+		if err := os.Rename(data, replaced); err != nil {
+			os.RemoveAll(staged)
+			return err
+		}
+	}
+	if err := os.Rename(staged, data); err != nil {
+		os.Rename(replaced, data) // put the original back
+		os.RemoveAll(staged)
+		return err
+	}
+	os.RemoveAll(replaced)
+	return nil
+}
+
 // Remove deletes a sandbox definition. Data is kept unless withData is set,
 // because it is the only thing a rebuild cannot reproduce.
 func Remove(name string, withData bool) error {

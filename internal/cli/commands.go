@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -199,7 +200,7 @@ func snapshotCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use: "snapshot <name>", Short: "archive /data", GroupID: groupState,
 		Long: "Archives /data to ~/.bluebox/snapshots/<name>/<timestamp>.tar.gz.\n" +
-			"Restore with: tar -xzf <archive> -C \"$(bluebox env <name> | grep BLUEBOX_DATA | cut -d= -f2)\"",
+			"Restore one with: bluebox restore <name> [snapshot]",
 		Args: cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			name := args[0]
@@ -225,6 +226,53 @@ func snapshotCmd() *cobra.Command {
 		},
 	}
 	c.Flags().BoolVarP(&list, "list", "l", false, "list existing snapshots instead")
+	return c
+}
+
+func restoreCmd() *cobra.Command {
+	var yes bool
+	c := &cobra.Command{
+		Use: "restore <name> [snapshot]", Short: "restore /data from a snapshot", GroupID: groupState,
+		Long: "Replaces /data with the contents of a snapshot, the inverse of snapshot.\n" +
+			"With no snapshot named, the most recent one is used.\n\n" +
+			"Archive entries are checked before anything is unpacked, and the new\n" +
+			"data is swapped in only once it is complete, so a failed restore\n" +
+			"leaves the existing /data untouched.",
+		Args: cobra.RangeArgs(1, 2),
+		Example: "  bluebox restore devbox\n" +
+			"  bluebox restore devbox 20260823T150405Z",
+		RunE: func(_ *cobra.Command, args []string) error {
+			name := args[0]
+			if !sandbox.Exists(name) {
+				return fmt.Errorf("no sandbox %q", name)
+			}
+			ref := ""
+			if len(args) == 2 {
+				ref = args[1]
+			}
+			archive, err := sandbox.SnapshotPath(name, ref)
+			if err != nil {
+				return err
+			}
+			// Only ask when there is actually something to overwrite.
+			empty, err := sandbox.DataEmpty(name)
+			if err != nil {
+				return err
+			}
+			if !empty {
+				if err := confirm(fmt.Sprintf("Replace %s's /data with %s?",
+					name, filepath.Base(archive)), yes); err != nil {
+					return err
+				}
+			}
+			if err := sandbox.Restore(name, archive); err != nil {
+				return err
+			}
+			fmt.Printf("restored %s from %s\n", name, filepath.Base(archive))
+			return nil
+		},
+	}
+	c.Flags().BoolVarP(&yes, "yes", "y", false, "skip the confirmation prompt")
 	return c
 }
 

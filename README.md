@@ -201,6 +201,7 @@ construction, so nothing a sandbox does with its name can reach outside
 | `bluebox logs <name> [-n]` | show recent runs (default 200 lines) |
 | `bluebox reset <name>` | empty `/data`, keeping the sandbox |
 | `bluebox snapshot <name> [-l]` | archive `/data`; `-l` lists archives |
+| `bluebox restore <name> [snap]` | replace `/data` from a snapshot (newest by default) |
 | `bluebox rename <old> <new>` | rename, keeping data, logs and the built image |
 | `bluebox destroy <name> [--data]` | remove a sandbox; `--data` also deletes `/data` |
 | `bluebox nuke [--no-data]` | remove every sandbox; `--no-data` keeps data |
@@ -218,11 +219,19 @@ keeps `/data` unless you pass `--data`; `nuke` deletes it unless you pass
 `--no-data`. Without a terminal they refuse rather than assume yes, so a script
 cannot wipe your work by accident.
 
-Snapshots are plain tarballs under `~/.bluebox/snapshots/<name>/`. To restore:
+Snapshots are plain tarballs under `~/.bluebox/snapshots/<name>/`:
 
 ```sh
-tar -xzf <archive> -C "$(bluebox env <name> | grep BLUEBOX_DATA | cut -d= -f2)"
+bluebox snapshot devbox               # archive /data
+bluebox snapshot devbox -l            # list archives
+bluebox restore devbox                # roll back to the newest
+bluebox restore devbox 20260823T150405Z   # or to a named one
 ```
+
+`restore` names a snapshot by its stamp, or takes a path to an archive kept
+elsewhere. Entries are checked before anything is unpacked — an archive that
+would write outside `/data` is refused — and the new data is swapped in only
+once it is complete, so a failed restore leaves `/data` as it was.
 
 `bluebox run` behaves like any subprocess: stdout, stderr and exit codes pass
 straight through, so it scripts and automates cleanly. A run stopped by

@@ -96,6 +96,9 @@ func ImageTag(name string) string { return "bluebox/" + name + ":latest" }
 
 // SnapshotsDir holds archived copies of a sandbox's /data.
 func SnapshotsDir(name string) (string, error) {
+	if err := ValidName(name); err != nil {
+		return "", err
+	}
 	h, err := Home()
 	if err != nil {
 		return "", err

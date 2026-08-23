@@ -144,6 +144,7 @@ var (
 	modeRe   = regexp.MustCompile(`^[0-7]{3,4}$`)
 	userRe   = regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,31}$`)
 	shellRe  = regexp.MustCompile(`^/[A-Za-z0-9/._-]+$`)
+	pathRe   = regexp.MustCompile(`^/[A-Za-z0-9/._-]+$`)
 )
 
 func (s Spec) validate() error {
@@ -192,8 +193,11 @@ func (s Spec) validate() error {
 		}
 	}
 	for i, f := range s.Blueprint.WriteFiles {
-		if !strings.HasPrefix(f.Path, "/") {
-			return fmt.Errorf("blueprint.write_files[%d]: path must be absolute, got %q", i, f.Path)
+		// The path reaches `RUN chmod <mode> <path>`, so anything beyond a
+		// plain absolute path would double as build grammar. This subsumes
+		// the old leading-"/" check.
+		if !pathRe.MatchString(f.Path) {
+			return fmt.Errorf("blueprint.write_files[%d]: path must be an absolute path (letters, digits, '/', '.', '_', '-'), got %q", i, f.Path)
 		}
 		if f.Mode != "" && !modeRe.MatchString(f.Mode) {
 			return fmt.Errorf("blueprint.write_files[%d]: mode must be octal (e.g. \"0644\"), got %q", i, f.Mode)

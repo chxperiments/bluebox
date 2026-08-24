@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 )
 
 // nameRe keeps a sandbox name a single safe path component, so every path
@@ -20,6 +21,16 @@ var nameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
 func ValidName(name string) error {
 	if !nameRe.MatchString(name) {
 		return fmt.Errorf("invalid sandbox name %q: use letters, digits, '.', '_' or '-' (max 64, starting with a letter or digit)", name)
+	}
+	return nil
+}
+
+// ValidLabel reports whether label is usable to name a snapshot. Labels share
+// the sandbox name grammar: an archive is <label>.tar.gz, so a label has to be
+// a single safe path component for the same reason a name does.
+func ValidLabel(label string) error {
+	if !nameRe.MatchString(label) {
+		return fmt.Errorf("invalid snapshot name %q: use letters, digits, '.', '_' or '-' (max 64, starting with a letter or digit)", label)
 	}
 	return nil
 }
@@ -145,10 +156,15 @@ func ResetData(name string) error {
 	return os.MkdirAll(d, 0o755)
 }
 
-// Snapshot archives a sandbox's /data and returns the archive path. tar is used
+// Snapshot archives a sandbox's /data as label and returns the archive path.
+// The label is either a timestamp or a name the user chose; either way it
+// becomes a filename, so it is validated here rather than trusted. tar is used
 // rather than a Go implementation so permissions and symlinks are preserved
 // exactly as the guest wrote them.
-func Snapshot(name, stamp string) (string, error) {
+func Snapshot(name, label string) (string, error) {
+	if err := ValidLabel(label); err != nil {
+		return "", err
+	}
 	data, err := DataDir(name)
 	if err != nil {
 		return "", err
@@ -160,16 +176,26 @@ func Snapshot(name, stamp string) (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
-	out := filepath.Join(dir, stamp+".tar.gz")
-	cmd := exec.Command("tar", "-czf", out, "-C", data, ".")
+	out := filepath.Join(dir, label+".tar.gz")
+	// Written beside the target and renamed into place, so an interrupted
+	// snapshot leaves no half-written archive -- and, when a label is being
+	// reused, does not destroy the archive it was going to replace.
+	tmp := out + ".partial"
+	cmd := exec.Command("tar", "-czf", tmp, "-C", data, ".")
 	if msg, err := cmd.CombinedOutput(); err != nil {
-		os.Remove(out)
+		os.Remove(tmp)
 		return "", fmt.Errorf("tar: %s", strings.TrimSpace(string(msg)))
+	}
+	if err := os.Rename(tmp, out); err != nil {
+		os.Remove(tmp)
+		return "", err
 	}
 	return out, nil
 }
 
-// Snapshots lists a sandbox's archives, newest last.
+// Snapshots lists a sandbox's archives, newest last. They are ordered by
+// modification time rather than by name: a labelled snapshot sorts nowhere
+// near a timestamped one, so a name says nothing about which came last.
 func Snapshots(name string) ([]string, error) {
 	dir, err := SnapshotsDir(name)
 	if err != nil {
@@ -179,13 +205,31 @@ func Snapshots(name string) ([]string, error) {
 	if err != nil {
 		return nil, nil // no snapshots yet is not an error
 	}
-	var out []string
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".tar.gz") {
-			out = append(out, filepath.Join(dir, e.Name()))
-		}
+	type archive struct {
+		path string
+		mod  time.Time
 	}
-	sort.Strings(out)
+	var found []archive
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".tar.gz") {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue // vanished between the read and the stat
+		}
+		found = append(found, archive{filepath.Join(dir, e.Name()), info.ModTime()})
+	}
+	sort.Slice(found, func(i, j int) bool {
+		if found[i].mod.Equal(found[j].mod) {
+			return found[i].path < found[j].path // stable for same-second writes
+		}
+		return found[i].mod.Before(found[j].mod)
+	})
+	out := make([]string, 0, len(found))
+	for _, a := range found {
+		out = append(out, a.path)
+	}
 	return out, nil
 }
 

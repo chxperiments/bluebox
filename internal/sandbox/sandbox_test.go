@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestValidName(t *testing.T) {
@@ -232,5 +233,98 @@ func TestSnapshotPathWithoutAnySnapshots(t *testing.T) {
 	setup(t, "demo")
 	if _, err := SnapshotPath("demo", ""); err == nil {
 		t.Error("expected an error when the sandbox has no snapshots")
+	}
+}
+
+// A label is a filename, so the name grammar applies to it: nothing a label
+// contains may reach outside the sandbox's snapshot directory.
+func TestSnapshotRejectsUnsafeLabel(t *testing.T) {
+	setup(t, "demo")
+	for _, label := range []string{"", "..", "../escape", "a/b", "with space", ".hidden"} {
+		if p, err := Snapshot("demo", label); err == nil {
+			t.Errorf("Snapshot(%q) = %q, want error", label, p)
+		}
+	}
+}
+
+// A labelled snapshot is restored by its label, the point of having one.
+func TestSnapshotLabelRoundTrip(t *testing.T) {
+	data := setup(t, "demo")
+	if _, err := Snapshot("demo", "before-upgrade"); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(data, "keep.txt"), []byte("changed"), 0o644)
+
+	got, err := SnapshotPath("demo", "before-upgrade")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Base(got) != "before-upgrade.tar.gz" {
+		t.Errorf("SnapshotPath resolved to %q", got)
+	}
+	if err := Restore("demo", got); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(data, "keep.txt")); string(b) != "original" {
+		t.Errorf("keep.txt = %q, want %q", b, "original")
+	}
+}
+
+// Reusing a label replaces that snapshot rather than accumulating archives.
+func TestSnapshotLabelIsReusable(t *testing.T) {
+	data := setup(t, "demo")
+	if _, err := Snapshot("demo", "nightly"); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(data, "keep.txt"), []byte("second"), 0o644)
+	if _, err := Snapshot("demo", "nightly"); err != nil {
+		t.Fatal(err)
+	}
+	snaps, err := Snapshots("demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snaps) != 1 {
+		t.Fatalf("snapshots = %v, want one", snaps)
+	}
+	// The staging file must not be left behind, nor be listed as a snapshot.
+	if _, err := os.Stat(snaps[0] + ".partial"); !os.IsNotExist(err) {
+		t.Error("a completed snapshot should leave no .partial file")
+	}
+	if err := Restore("demo", snaps[0]); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(data, "keep.txt")); string(b) != "second" {
+		t.Errorf("keep.txt = %q, want the re-taken snapshot's contents", b)
+	}
+}
+
+// Labels sort nowhere near timestamps, so "newest" has to come from the
+// archives' times rather than their names.
+func TestSnapshotsOrderedByTimeNotName(t *testing.T) {
+	setup(t, "demo")
+	// "aaa" sorts before any timestamp, but is taken after it.
+	older, err := Snapshot("demo", "20260101T000000Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	newer, err := Snapshot("demo", "aaa")
+	if err != nil {
+		t.Fatal(err)
+	}
+	past := time.Now().Add(-time.Hour)
+	if err := os.Chtimes(older, past, past); err != nil {
+		t.Fatal(err)
+	}
+	snaps, err := Snapshots("demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snaps) != 2 || snaps[len(snaps)-1] != newer {
+		t.Errorf("Snapshots = %v, want %q last", snaps, newer)
+	}
+	// So an unqualified restore rolls back to the one actually taken last.
+	if got, err := SnapshotPath("demo", ""); err != nil || got != newer {
+		t.Errorf("SnapshotPath(\"\") = %q %v, want %q", got, err, newer)
 	}
 }

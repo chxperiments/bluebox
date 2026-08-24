@@ -202,13 +202,19 @@ func resetCmd() *cobra.Command {
 }
 
 func snapshotCmd() *cobra.Command {
-	var list bool
+	var list, yes bool
 	c := &cobra.Command{
-		Use: "snapshot <name>", Short: "archive /data", GroupID: groupState,
-		Long: "Archives /data to ~/.bluebox/snapshots/<name>/<timestamp>.tar.gz.\n" +
+		Use: "snapshot <name> [label]", Short: "archive /data", GroupID: groupState,
+		Long: "Archives /data to ~/.bluebox/snapshots/<name>/.\n\n" +
+			"With a label the archive is named for it instead of the time, so it\n" +
+			"can be restored by that name rather than by a timestamp you would\n" +
+			"have to look up. Reusing a label replaces that snapshot.\n\n" +
 			"Restore one with: bluebox restore <name> [snapshot]",
-		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: completeName,
+		Args:              cobra.RangeArgs(1, 2),
+		ValidArgsFunction: completeName, // the label is invented, not chosen
+		Example: "  bluebox snapshot devbox\n" +
+			"  bluebox snapshot devbox before-upgrade\n" +
+			"  bluebox restore devbox before-upgrade",
 		RunE: func(_ *cobra.Command, args []string) error {
 			name := args[0]
 			if !sandbox.Exists(name) {
@@ -224,7 +230,23 @@ func snapshotCmd() *cobra.Command {
 				}
 				return nil
 			}
-			path, err := sandbox.Snapshot(name, time.Now().UTC().Format("20060102T150405Z"))
+			label := time.Now().UTC().Format("20060102T150405Z")
+			if len(args) == 2 {
+				// A label typed with the suffix names the archive, not
+				// "before-upgrade.tar.gz.tar.gz".
+				label = strings.TrimSuffix(args[1], ".tar.gz")
+				if err := sandbox.ValidLabel(label); err != nil {
+					return err
+				}
+				// Reusing a label loses what that snapshot held, so ask first.
+				if prev, err := sandbox.SnapshotPath(name, label); err == nil {
+					if err := confirm(fmt.Sprintf("Replace the existing snapshot %s?",
+						filepath.Base(prev)), yes); err != nil {
+						return err
+					}
+				}
+			}
+			path, err := sandbox.Snapshot(name, label)
 			if err != nil {
 				return err
 			}
@@ -233,6 +255,7 @@ func snapshotCmd() *cobra.Command {
 		},
 	}
 	c.Flags().BoolVarP(&list, "list", "l", false, "list existing snapshots instead")
+	c.Flags().BoolVarP(&yes, "yes", "y", false, "skip the confirmation prompt")
 	return c
 }
 

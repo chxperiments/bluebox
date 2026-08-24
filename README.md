@@ -200,7 +200,7 @@ construction, so nothing a sandbox does with its name can reach outside
 | `bluebox env <name>` | print effective settings as `KEY=VALUE` |
 | `bluebox logs <name> [-n]` | show recent runs (default 200 lines) |
 | `bluebox reset <name>` | empty `/data`, keeping the sandbox |
-| `bluebox snapshot <name> [-l]` | archive `/data`; `-l` lists archives |
+| `bluebox snapshot <name> [label]` | archive `/data` under a name; `-l` lists archives |
 | `bluebox restore <name> [snap]` | replace `/data` from a snapshot (newest by default) |
 | `bluebox rename <old> <new>` | rename, keeping data, logs and the built image |
 | `bluebox destroy <name> [--data]` | remove a sandbox; `--data` also deletes `/data` |
@@ -219,19 +219,33 @@ keeps `/data` unless you pass `--data`; `nuke` deletes it unless you pass
 `--no-data`. Without a terminal they refuse rather than assume yes, so a script
 cannot wipe your work by accident.
 
-Snapshots are plain tarballs under `~/.bluebox/snapshots/<name>/`:
+Snapshots are plain tarballs under `~/.bluebox/snapshots/<name>/`. Give one a
+label and you restore it by that label, instead of looking up a timestamp:
+
+```sh
+bluebox snapshot devbox before-upgrade    # archive /data as before-upgrade
+bluebox restore devbox before-upgrade     # go back to it
+```
+
+Without a label the archive is named for the time it was taken:
 
 ```sh
 bluebox snapshot devbox               # archive /data
-bluebox snapshot devbox -l            # list archives
-bluebox restore devbox                # roll back to the newest
-bluebox restore devbox 20260823T150405Z   # or to a named one
+bluebox snapshot devbox -l            # list archives, newest last
+bluebox restore devbox                # roll back to the most recent
+bluebox restore devbox 20260823T150405Z   # or to a specific one
 ```
 
-`restore` names a snapshot by its stamp, or takes a path to an archive kept
-elsewhere. Entries are checked before anything is unpacked — an archive that
-would write outside `/data` is refused — and the new data is swapped in only
-once it is complete, so a failed restore leaves `/data` as it was.
+Labels are reusable — `bluebox snapshot devbox nightly` replaces the previous
+`nightly` rather than piling up archives — so it asks before overwriting, and
+`-y` skips the prompt. The new archive is written beside the old one and
+renamed into place, so an interrupted snapshot never destroys the one it was
+replacing.
+
+`restore` names a snapshot by its label or stamp, or takes a path to an archive
+kept elsewhere. Entries are checked before anything is unpacked — an archive
+that would write outside `/data` is refused — and the new data is swapped in
+only once it is complete, so a failed restore leaves `/data` as it was.
 
 `bluebox run` behaves like any subprocess: stdout, stderr and exit codes pass
 straight through, so it scripts and automates cleanly. A run stopped by

@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"bluebox/internal/agent"
 	"bluebox/internal/bluefile"
 	"bluebox/internal/sandbox"
 )
@@ -233,10 +234,8 @@ func kernelOf(name string, s bluefile.Spec, useKrun bool) (string, error) {
 	return strings.TrimSpace(string(out)), err
 }
 
-func HostKernel() (string, error) {
-	out, err := exec.Command("uname", "-r").Output()
-	return strings.TrimSpace(string(out)), err
-}
+// HostKernel is the kernel release this process runs on.
+func HostKernel() (string, error) { return agent.KernelRelease() }
 
 // stream runs cmd with its stdout/stderr wired to the process. Any timeout is
 // bound into the command via exec.CommandContext before it reaches here.

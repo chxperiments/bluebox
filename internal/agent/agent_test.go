@@ -7,6 +7,7 @@ import (
 	"net"
 	"strings"
 	"testing"
+	"time"
 )
 
 const testToken = "secret"
@@ -112,5 +113,35 @@ func TestCheckRefusesBeforeRunning(t *testing.T) {
 		func(string) error { return refused }, nil, &out, &errw)
 	if !errors.Is(err, refused) || out.Len() != 0 {
 		t.Fatalf("err %v, stdout %q", err, out.String())
+	}
+}
+
+func TestSilentPeersCannotStarveTheOwner(t *testing.T) {
+	addr := startAgent(t, "k")
+	// Fill every unauthenticated slot with a peer that never says hello.
+	var idle []net.Conn
+	for range maxUnauthenticated * 2 {
+		c, err := net.Dial("tcp", addr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		idle = append(idle, c)
+	}
+	defer func() {
+		for _, c := range idle {
+			c.Close()
+		}
+	}()
+	// Once the silent peers time out, the owner gets through.
+	deadline := time.Now().Add(2*helloTimeout + time.Second)
+	for {
+		res, _, _, err := call(t, addr, Request{Argv: []string{"true"}}, "")
+		if err == nil && res.Code == 0 {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("owner still locked out: %v", err)
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
 }

@@ -30,7 +30,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -161,26 +160,51 @@ func Serve() error {
 	if err != nil {
 		return err
 	}
-	return serveOn(ln, token, unameRelease())
+	kernel, _ := KernelRelease()
+	return serveOn(ln, token, kernel)
 }
 
 // serveOn is Serve on a given listener, so tests can drive the protocol
 // without a VM.
 func serveOn(ln net.Listener, token, kernel string) error {
+	// Anyone on the host can reach the published port, so connections that
+	// have not yet shown the token are capped: a local process flooding the
+	// agent is turned away at the door instead of starving the owner.
+	unauth := make(chan struct{}, maxUnauthenticated)
 	for {
-		c, err := ln.Accept()
+		nc, err := ln.Accept()
+		if errors.Is(err, net.ErrClosed) {
+			return err
+		}
 		if err != nil {
+			time.Sleep(10 * time.Millisecond) // e.g. out of fds; do not spin
 			continue
 		}
-		go handle(newConn(c), token, kernel)
+		select {
+		case unauth <- struct{}{}:
+		default:
+			nc.Close()
+			continue
+		}
+		go handle(newConn(nc), token, kernel, func() { <-unauth })
 	}
 }
 
-func handle(c *conn, token, kernel string) {
-	defer c.c.Close()
+// maxUnauthenticated bounds handshakes in flight, and helloTimeout how long
+// one may take. A real client sends its hello immediately.
+const (
+	maxUnauthenticated = 16
+	helloTimeout       = 3 * time.Second
+)
 
-	// A peer that connects and says nothing must not hold a goroutine forever.
-	c.c.SetReadDeadline(time.Now().Add(10 * time.Second))
+func handle(c *conn, token, kernel string, authed func()) {
+	defer c.c.Close()
+	var once sync.Once
+	release := func() { once.Do(authed) }
+	defer release()
+
+	// A peer that connects and says nothing must not hold a slot for long.
+	c.c.SetReadDeadline(time.Now().Add(helloTimeout))
 	t, p, err := c.read()
 	if err != nil || t != fHello {
 		return
@@ -193,6 +217,7 @@ func handle(c *conn, token, kernel string) {
 	if subtle.ConstantTimeCompare([]byte(req.Token), []byte(token)) != 1 {
 		return
 	}
+	release()
 	if c.writeJSON(fReady, ready{Kernel: kernel}) != nil {
 		return
 	}
@@ -290,21 +315,6 @@ func exitStatus(cmd *exec.Cmd, err error) int {
 		return 1
 	}
 	return 0
-}
-
-func unameRelease() string {
-	var u syscall.Utsname
-	if syscall.Uname(&u) != nil {
-		return ""
-	}
-	var b strings.Builder
-	for _, c := range u.Release {
-		if c == 0 {
-			break
-		}
-		b.WriteByte(byte(c))
-	}
-	return b.String()
 }
 
 // Exec runs req through the agent at addr. check sees the guest kernel before

@@ -1,0 +1,15 @@
+# A small general-purpose sandbox: Alpine with bash, curl and git.
+
+base: docker.io/library/alpine:latest
+
+cpus: 1
+ram_mib: 256
+network: bridge
+timeout_seconds: 300
+warm: 0                  # set 1-2 for ~50ms runs; each waiting VM holds its RAM
+
+packages:
+  - bash
+  - curl
+  - ca-certificates
+  - git

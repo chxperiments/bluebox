@@ -1,0 +1,14 @@
+# A small Node.js sandbox, on Alpine.
+
+base: docker.io/library/alpine:latest
+
+cpus: 1
+ram_mib: 512
+network: bridge
+readonly: true
+timeout_seconds: 60
+warm: 0                  # set 1-2 for ~50ms runs; each waiting VM holds its RAM
+
+packages:
+  - nodejs
+  - npm

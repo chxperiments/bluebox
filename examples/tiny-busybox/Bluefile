@@ -1,0 +1,11 @@
+# The smallest useful sandbox: busybox's sh and coreutils, a few MB.
+# For shell scripts and static binaries (Go, Rust) dropped into /data.
+
+base: docker.io/library/busybox:latest
+
+cpus: 1
+ram_mib: 256
+network: bridge
+readonly: true           # nothing to install, so nothing needs writing
+timeout_seconds: 60
+warm: 0                  # set 1-2 for ~50ms runs; each waiting VM holds its RAM

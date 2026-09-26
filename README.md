@@ -97,8 +97,13 @@ bluebox exec devbox -- pytest             # milliseconds per command
 bluebox down devbox
 ```
 
-Ready-made Bluefiles for Python, Node, Go, an AI-agent sandbox, an offline one
-and a system-experiments one live in [`examples/`](examples/).
+Ready-made Bluefiles for Python, Node, Go, an AI-agent sandbox, an offline one,
+a system-experiments one and tiny images from ~5 MB live in
+[`examples/`](examples/). They are built into bluebox:
+
+```sh
+bluebox new agent --from tiny-python      # start from an example
+```
 
 ## The Bluefile
 

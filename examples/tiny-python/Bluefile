@@ -1,0 +1,22 @@
+# A small Python sandbox for agent-generated code, on Alpine.
+#
+# Alpine uses musl, not glibc: pure-Python packages install fine, but some
+# with compiled parts have no musl wheel and build from source or fail. If
+# that bites, python-dev is the glibc (Debian) equivalent.
+
+base: docker.io/library/alpine:latest
+
+cpus: 1
+ram_mib: 512
+network: bridge
+readonly: true           # agent code writes to /data or /tmp, not the image
+timeout_seconds: 60
+warm: 0                  # set 1-2 for ~50ms runs; each waiting VM holds its RAM
+
+packages:
+  - python3
+  - py3-pip
+
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTHONUNBUFFERED: "1"

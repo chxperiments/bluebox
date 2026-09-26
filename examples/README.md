@@ -2,19 +2,32 @@
 
 Ready-to-use Bluefiles. Each directory is one sandbox.
 
-To try one, scaffold a sandbox by that name and drop the example in:
+The examples are built into bluebox, so you can start a sandbox from one
+directly, without this repo:
 
 ```sh
-name=python-dev
-bluebox new "$name"
-cp examples/"$name"/Bluefile ~/.bluebox/sandboxes/"$name"/Bluefile
-bluebox build "$name"
-bluebox run "$name" -- python3 --version
+bluebox new agent --from tiny-python
+bluebox build agent
+bluebox run agent -- python3 --version
 ```
 
-`bluebox new` creates the sandbox and its `/data` directory; copying the
-Bluefile over the scaffold gives it this configuration; `build` generates the
-Containerfile and verifies isolation.
+Any other files that come with an example (such as `lab-aws`'s `main.tf`) are
+placed in the new sandbox's `/data`.
+
+### Tiny
+
+Small images for agent code and scripts. They build and pull faster, use less
+disk, and leave less inside the VM for a workload to exploit.
+
+| Example | Image | What it has |
+|---|---|---|
+| [`tiny-busybox`](tiny-busybox/Bluefile) | ~5 MB | busybox `sh` and coreutils; for scripts and static binaries |
+| [`tiny-alpine`](tiny-alpine/Bluefile) | ~25 MB | bash, curl, git |
+| [`tiny-python`](tiny-python/Bluefile) | ~63 MB | Python 3 + pip on Alpine (musl: see the file's note on wheels) |
+| [`tiny-node`](tiny-node/Bluefile) | ~90 MB | Node.js + npm |
+
+For comparison, `python-dev` on Debian is several hundred MB. Set `warm: 1` or
+more in any of them to get runs that start in ~50ms.
 
 ### Development
 

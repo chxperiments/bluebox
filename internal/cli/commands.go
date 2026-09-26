@@ -13,17 +13,33 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"bluebox/examples"
 	"bluebox/internal/bluefile"
 	"bluebox/internal/runtime"
 	"bluebox/internal/sandbox"
 )
 
 func newCmd() *cobra.Command {
-	return &cobra.Command{
+	var from string
+	c := &cobra.Command{
 		Use: "new <name>", Short: "write a Bluefile", GroupID: groupSandbox,
+		Long: "Creates a sandbox with a starter Bluefile.\n\n" +
+			"--from starts from a shipped example instead; any files that come\n" +
+			"with it (a sample main.tf, say) are placed in its /data.\n" +
+			"Examples: " + strings.Join(examples.Names(), ", "),
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completeNothing,
+		Example: "  bluebox new devbox\n" +
+			"  bluebox new agent --from tiny-python",
 		RunE: func(_ *cobra.Command, args []string) error {
+			content := []byte(bluefile.Template)
+			var extras map[string][]byte
+			if from != "" {
+				var err error
+				if content, extras, err = examples.Load(from); err != nil {
+					return err
+				}
+			}
 			if _, err := sandbox.Create(args[0]); err != nil {
 				return err
 			}
@@ -31,13 +47,27 @@ func newCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := os.WriteFile(path, []byte(bluefile.Template), 0o644); err != nil {
+			if err := os.WriteFile(path, content, 0o644); err != nil {
 				return err
+			}
+			data, err := sandbox.DataDir(args[0])
+			if err != nil {
+				return err
+			}
+			for name, b := range extras {
+				if err := os.WriteFile(filepath.Join(data, name), b, 0o644); err != nil {
+					return err
+				}
 			}
 			fmt.Println(path)
 			return nil
 		},
 	}
+	c.Flags().StringVar(&from, "from", "", "start from a shipped example")
+	c.RegisterFlagCompletionFunc("from", func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return matching(examples.Names(), toComplete), cobra.ShellCompDirectiveNoFileComp
+	})
+	return c
 }
 
 func buildCmd() *cobra.Command {

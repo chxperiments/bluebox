@@ -58,10 +58,11 @@ func newRoot() *cobra.Command {
 
 	root.AddCommand(
 		newCmd(), editCmd(), buildCmd(), lsCmd(),
-		runCmd(), shellCmd(),
+		runCmd(), shellCmd(), upCmd(), execCmd(), downCmd(),
 		resetCmd(), snapshotCmd(), restoreCmd(),
 		envCmd(), logsCmd(), verifyCmd(),
 		renameCmd(), destroyCmd(), nukeCmd(),
+		agentCmd(),
 	)
 	return root
 }

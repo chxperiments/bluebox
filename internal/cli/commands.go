@@ -180,6 +180,9 @@ func resetCmd() *cobra.Command {
 			if !sandbox.Exists(name) {
 				return fmt.Errorf("no sandbox %q", name)
 			}
+			if err := refuseWhileUp(name, "reset it"); err != nil {
+				return err
+			}
 			// Only ask when there is actually something to lose.
 			empty, err := sandbox.DataEmpty(name)
 			if err != nil {
@@ -280,6 +283,9 @@ func restoreCmd() *cobra.Command {
 			ref := ""
 			if len(args) == 2 {
 				ref = args[1]
+			}
+			if err := refuseWhileUp(name, "restore it"); err != nil {
+				return err
 			}
 			archive, err := sandbox.SnapshotPath(name, ref)
 			if err != nil {
@@ -383,6 +389,9 @@ func renameCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(2),
 		ValidArgsFunction: completeName,
 		RunE: func(_ *cobra.Command, args []string) error {
+			if err := refuseWhileUp(args[0], "rename it"); err != nil {
+				return err
+			}
 			if err := sandbox.Rename(args[0], args[1]); err != nil {
 				return err
 			}
@@ -415,6 +424,7 @@ func destroyCmd() *cobra.Command {
 					}
 				}
 			}
+			runtime.Down(name)
 			runtime.RemoveImage(name)
 			if err := sandbox.Remove(name, withData); err != nil {
 				return err
@@ -455,6 +465,7 @@ func nukeCmd() *cobra.Command {
 				return err
 			}
 			for _, n := range names {
+				runtime.Down(n)
 				runtime.RemoveImage(n)
 				if err := sandbox.Remove(n, !noData); err != nil {
 					return fmt.Errorf("%s: %w", n, err)
@@ -479,8 +490,8 @@ func lsCmd() *cobra.Command {
 			if err != nil || len(names) == 0 {
 				return nil
 			}
-			fmt.Printf("%-14s %-5s %-7s %-7s %-6s %-8s %s\n",
-				"NAME", "CPUS", "RAM", "NET", "RO", "TIMEOUT", "BASE")
+			fmt.Printf("%-14s %-5s %-5s %-7s %-7s %-6s %-8s %s\n",
+				"NAME", "STATE", "CPUS", "RAM", "NET", "RO", "TIMEOUT", "BASE")
 			for _, name := range names {
 				path, _ := sandbox.BluefilePath(name)
 				s, err := bluefile.Parse(path)
@@ -492,7 +503,11 @@ func lsCmd() *cobra.Command {
 				if s.TimeoutSeconds > 0 {
 					timeout = strconv.Itoa(s.TimeoutSeconds) + "s"
 				}
-				fmt.Printf("%-14s %-5d %-7s %-7s %-6t %-8s %s\n", name, s.CPUs,
+				state := "-"
+				if sandbox.IsUp(name) {
+					state = "up"
+				}
+				fmt.Printf("%-14s %-5s %-5d %-7s %-7s %-6t %-8s %s\n", name, state, s.CPUs,
 					strconv.Itoa(s.RAMMiB)+"M", s.Network, s.ReadOnlyRootfs, timeout, s.Base)
 			}
 			return nil

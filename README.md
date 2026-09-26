@@ -53,7 +53,7 @@ sudo ln -sf $(command -v crun) /usr/local/bin/krun
 ```sh
 git clone https://github.com/chxperiments/bluebox
 cd bluebox
-go build -o bluebox ./cmd/bluebox
+CGO_ENABLED=0 go build -o bluebox ./cmd/bluebox
 install -Dm755 bluebox ~/.local/bin/bluebox
 ```
 
@@ -91,6 +91,10 @@ $EDITOR ~/.bluebox/sandboxes/devbox/Bluefile
 bluebox build devbox                      # build the image, verify isolation
 bluebox run devbox -- python3 script.py   # one command in a fresh microVM
 bluebox shell devbox                      # interactive session
+
+bluebox up devbox                         # boot once, keep it running
+bluebox exec devbox -- pytest             # milliseconds per command
+bluebox down devbox
 ```
 
 Ready-made Bluefiles for Python, Node, Go, an AI-agent sandbox, an offline one
@@ -195,6 +199,9 @@ construction, so nothing a sandbox does with its name can reach outside
 | `bluebox build <name>` | generate the Containerfile, build, verify isolation |
 | `bluebox run <name> -- <cmd>` | run one command in a fresh microVM |
 | `bluebox shell <name>` | interactive session in one microVM |
+| `bluebox up <name>` | boot the microVM once and keep it running |
+| `bluebox exec <name> -- <cmd>` | run one command in the running microVM |
+| `bluebox down <name>` | stop the running microVM |
 | `bluebox verify <name>` | re-check that the sandbox has its own kernel |
 | `bluebox ls` | list sandboxes |
 | `bluebox env <name>` | print effective settings as `KEY=VALUE` |
@@ -276,11 +283,48 @@ working directory, environment change, or background process carries from one
 command to the next. Use `bluebox shell` when you need a session that holds
 state, and keep anything worth saving in `/data`.
 
-This is a consequence of the design rather than a limitation to work around:
 `podman exec` does not work with krun (`the handler does not support exec`),
 because a microVM has its own kernel and there is no host-side namespace to
 step into. Booting per command means there is no path that can quietly land
 back on your host.
+
+### Running sandboxes: up and exec
+
+Booting a microVM per command costs a second or more. When you want to run
+many commands (an agent loop, a test suite, a build), bring the sandbox up
+once and `exec` into it:
+
+```sh
+bluebox up devbox                              # ~1s, once
+bluebox exec devbox -- pip install requests    # ~20-40ms each
+echo 'import requests' | bluebox exec devbox -- python3 -
+bluebox down devbox
+```
+
+`up` starts a small agent (the bluebox binary itself, mounted read-only at
+`/.bluebox`) as the VM's main process, and `exec` asks it to run a command.
+The agent is reached through a port published on `127.0.0.1` only, and it
+answers only to a random per-VM token kept in `~/.bluebox/run/<name>.json`
+(mode 0600). Before every command, the guest reports its kernel, and the
+command is refused if it matches the host's.
+
+Unlike `run`, state carries between commands, like a shell session: files
+outside `/data`, installed packages and background processes all last until
+`down`. Exit codes, stdout and stderr pass through, and `timeout_seconds`
+applies per command (exit `124`). Piped stdin is forwarded, and a terminal is
+forwarded only with `-i`.
+
+Limits for now:
+
+- Linux hosts only.
+- The sandbox needs a network, because the agent is reached through a
+  published port, and podman publishes none with `network: none`.
+- bluebox must be a static build (`CGO_ENABLED=0`, as release binaries are),
+  since it runs inside whatever distro the guest is. `up` says so if it isn't.
+- No TTY yet. Use `bluebox shell` for interactive programs.
+
+While a sandbox is up, `reset`, `restore` and `rename` refuse to run, because
+the VM holds `/data` mounted. `destroy` and `nuke` bring it down first.
 
 ## Where things live
 
@@ -291,6 +335,8 @@ back on your host.
   snapshots/<name>/                /data archives
   logs/<name>.log                  run history
   data/<name>/                     mounted at /data -- the only persistent part
+  run/<name>.json                  agent address + token while a sandbox is up
+  agent/bluebox                    the agent binary running sandboxes mount
 ```
 
 Override the root with `BLUEBOX_HOME`.
@@ -306,7 +352,7 @@ operations the guest kernel answers alone are not.
 ## Development
 
 ```sh
-go build -o bluebox ./cmd/bluebox
+CGO_ENABLED=0 go build -o bluebox ./cmd/bluebox   # static, so `up` can use it
 go test ./...        # covers the Bluefile parser and Containerfile generator
 ```
 
@@ -315,6 +361,7 @@ cmd/bluebox/      entrypoint
 internal/bluefile/  Bluefile parser + Containerfile generator
 internal/sandbox/   on-disk layout
 internal/runtime/   podman + krun driver -- the only backend-aware code
+internal/agent/     in-guest agent and its wire protocol (up/exec)
 internal/cli/       cobra commands (root.go, commands.go)
 ```
 

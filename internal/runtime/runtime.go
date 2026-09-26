@@ -260,5 +260,9 @@ func ExitCode(err error) int {
 	if errors.As(err, &ee) {
 		return ee.ExitCode()
 	}
+	var es *ExitStatus
+	if errors.As(err, &es) {
+		return es.Code
+	}
 	return -1
 }

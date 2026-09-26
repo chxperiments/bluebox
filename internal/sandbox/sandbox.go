@@ -116,6 +116,42 @@ func VerifyCachePath() (string, error) {
 	return filepath.Join(h, "verify.json"), nil
 }
 
+// RunStatePath records a sandbox brought up with `bluebox up`: where its agent
+// listens and the token that admits a client. It exists only while the VM is
+// meant to be running.
+func RunStatePath(name string) (string, error) {
+	if err := ValidName(name); err != nil {
+		return "", err
+	}
+	h, err := Home()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(h, "run", name+".json"), nil
+}
+
+// IsUp reports whether a sandbox was brought up and not yet brought down. It
+// reads only the state file, so it is cheap enough to guard every command
+// that must not pull /data out from under a running VM.
+func IsUp(name string) bool {
+	p, err := RunStatePath(name)
+	if err != nil {
+		return false
+	}
+	_, err = os.Stat(p)
+	return err == nil
+}
+
+// AgentDir holds the copy of the bluebox binary that running sandboxes mount
+// read-only and start as their agent.
+func AgentDir() (string, error) {
+	h, err := Home()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(h, "agent"), nil
+}
+
 // SnapshotsDir holds archived copies of a sandbox's /data.
 func SnapshotsDir(name string) (string, error) {
 	if err := ValidName(name); err != nil {

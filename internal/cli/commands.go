@@ -53,12 +53,23 @@ func buildCmd() *cobra.Command {
 			if err := runtime.Preflight(); err != nil {
 				return err
 			}
+			// Waiting VMs were booted from the image being replaced.
+			if err := runtime.Drain(args[0]); err != nil {
+				return err
+			}
 			if err := runtime.Build(args[0], s); err != nil {
 				return err
 			}
 			// Verify at build so a sandbox that is not really a VM never
 			// reaches first use.
-			return verify(args[0], s)
+			if err := verify(args[0], s); err != nil {
+				return err
+			}
+			if s.Warm > 0 {
+				runtime.SpawnTender(args[0])
+				fmt.Printf("warming %d VMs in the background\n", s.Warm)
+			}
+			return nil
 		},
 	}
 }
@@ -108,17 +119,26 @@ func runCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := runtime.Preflight(); err != nil {
-				return err
+			// A pooled VM was checked when it booted and its kernel is checked
+			// again before the command starts, so the warm path skips the
+			// toolchain checks below and costs a connection, not a boot.
+			warm := false
+			if s.Warm > 0 {
+				warm, err = runtime.RunWarm(name, s, argv)
 			}
-			// A run is where untrusted code executes, so confirm the kernel
-			// boundary still holds -- cheaply when the runtime is unchanged.
-			if fresh, err := runtime.EnsureIsolated(name, s); err != nil {
-				return err
-			} else if fresh {
-				fmt.Fprintln(os.Stderr, "bluebox: re-verified isolation (runtime changed since last check)")
+			if !warm {
+				if err := runtime.Preflight(); err != nil {
+					return err
+				}
+				// A run is where untrusted code executes, so confirm the kernel
+				// boundary still holds -- cheaply when the runtime is unchanged.
+				if fresh, err := runtime.EnsureIsolated(name, s); err != nil {
+					return err
+				} else if fresh {
+					fmt.Fprintln(os.Stderr, "bluebox: re-verified isolation (runtime changed since last check)")
+				}
+				err = runtime.Run(name, s, argv)
 			}
-			err = runtime.Run(name, s, argv)
 			switch {
 			case err == nil:
 				return nil
@@ -193,9 +213,14 @@ func resetCmd() *cobra.Command {
 					return err
 				}
 			}
+			// Waiting VMs hold the old /data mounted.
+			if err := runtime.Drain(name); err != nil {
+				return err
+			}
 			if err := sandbox.ResetData(name); err != nil {
 				return err
 			}
+			runtime.SpawnTender(name)
 			fmt.Printf("reset %s\n", name)
 			return nil
 		},
@@ -302,9 +327,13 @@ func restoreCmd() *cobra.Command {
 					return err
 				}
 			}
+			if err := runtime.Drain(name); err != nil {
+				return err
+			}
 			if err := sandbox.Restore(name, archive); err != nil {
 				return err
 			}
+			runtime.SpawnTender(name)
 			fmt.Printf("restored %s from %s\n", name, filepath.Base(archive))
 			return nil
 		},
@@ -392,10 +421,18 @@ func renameCmd() *cobra.Command {
 			if err := refuseWhileUp(args[0], "rename it"); err != nil {
 				return err
 			}
+			if err := sandbox.ValidName(args[1]); err != nil {
+				return err
+			}
+			if err := runtime.RemovePool(args[0]); err != nil {
+				return err
+			}
 			if err := sandbox.Rename(args[0], args[1]); err != nil {
+				runtime.SpawnTender(args[0])
 				return err
 			}
 			runtime.RetagImage(args[0], args[1])
+			runtime.SpawnTender(args[1])
 			fmt.Printf("%s -> %s\n", args[0], args[1])
 			return nil
 		},
@@ -425,6 +462,7 @@ func destroyCmd() *cobra.Command {
 				}
 			}
 			runtime.Down(name)
+			runtime.RemovePool(name)
 			runtime.RemoveImage(name)
 			if err := sandbox.Remove(name, withData); err != nil {
 				return err
@@ -466,6 +504,7 @@ func nukeCmd() *cobra.Command {
 			}
 			for _, n := range names {
 				runtime.Down(n)
+				runtime.RemovePool(n)
 				runtime.RemoveImage(n)
 				if err := sandbox.Remove(n, !noData); err != nil {
 					return fmt.Errorf("%s: %w", n, err)
@@ -490,7 +529,7 @@ func lsCmd() *cobra.Command {
 			if err != nil || len(names) == 0 {
 				return nil
 			}
-			fmt.Printf("%-14s %-5s %-5s %-7s %-7s %-6s %-8s %s\n",
+			fmt.Printf("%-14s %-12s %-5s %-7s %-7s %-6s %-8s %s\n",
 				"NAME", "STATE", "CPUS", "RAM", "NET", "RO", "TIMEOUT", "BASE")
 			for _, name := range names {
 				path, _ := sandbox.BluefilePath(name)
@@ -503,11 +542,18 @@ func lsCmd() *cobra.Command {
 				if s.TimeoutSeconds > 0 {
 					timeout = strconv.Itoa(s.TimeoutSeconds) + "s"
 				}
-				state := "-"
+				var states []string
 				if sandbox.IsUp(name) {
-					state = "up"
+					states = append(states, "up")
 				}
-				fmt.Printf("%-14s %-5s %-5d %-7s %-7s %-6t %-8s %s\n", name, state, s.CPUs,
+				if s.Warm > 0 {
+					states = append(states, fmt.Sprintf("warm %d/%d", runtime.Warm(name), s.Warm))
+				}
+				state := strings.Join(states, ",")
+				if state == "" {
+					state = "-"
+				}
+				fmt.Printf("%-14s %-12s %-5d %-7s %-7s %-6t %-8s %s\n", name, state, s.CPUs,
 					strconv.Itoa(s.RAMMiB)+"M", s.Network, s.ReadOnlyRootfs, timeout, s.Base)
 			}
 			return nil

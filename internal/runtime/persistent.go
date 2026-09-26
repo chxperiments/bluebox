@@ -176,27 +176,47 @@ func Up(name string, s bluefile.Spec) (time.Duration, error) {
 		}
 		Down(name) // stale: the VM died or the host rebooted
 	}
-	agentDir, err := installAgent()
+	started := time.Now()
+	st, err := boot(name, s, upContainer(name))
 	if err != nil {
 		return 0, err
+	}
+	if err := saveUp(name, st); err != nil {
+		removeContainer(st.Container)
+		return 0, err
+	}
+	return time.Since(started), nil
+}
+
+func removeContainer(ctr string) {
+	exec.Command("podman", "rm", "-f", "-t", "0", ctr).Run()
+}
+
+// boot starts a VM named ctr with the agent as its main process and waits
+// until the agent answers from a kernel that is not the host's. A VM that
+// never answers, or answers from the host kernel, is torn down rather than
+// left running.
+func boot(name string, s bluefile.Spec, ctr string, extra ...string) (upState, error) {
+	agentDir, err := installAgent()
+	if err != nil {
+		return upState{}, err
 	}
 	token, err := newToken()
 	if err != nil {
-		return 0, err
+		return upState{}, err
 	}
 	host, err := HostKernel()
 	if err != nil {
-		return 0, err
+		return upState{}, err
 	}
-
-	ctr := upContainer(name)
-	exec.Command("podman", "rm", "-f", "-t", "0", ctr).Run()
+	removeContainer(ctr)
 
 	base, err := vmArgs(name, s, false, true)
 	if err != nil {
-		return 0, err
+		return upState{}, err
 	}
-	args := append(base,
+	args := append(base, extra...)
+	args = append(args,
 		"-d", "--name", ctr,
 		"-p", fmt.Sprintf("127.0.0.1::%d", agent.Port),
 		"-v", agentDir+":"+agentMount+":ro",
@@ -208,15 +228,15 @@ func Up(name string, s bluefile.Spec) (time.Duration, error) {
 		sandbox.ImageTag(name), "__agent",
 	)
 	started := time.Now()
-	boot := exec.Command("podman", args...)
-	boot.Env = append(os.Environ(), agent.TokenEnv+"="+token)
-	if out, err := boot.CombinedOutput(); err != nil {
-		return 0, fmt.Errorf("podman: %s", strings.TrimSpace(string(out)))
+	cmd := exec.Command("podman", args...)
+	cmd.Env = append(os.Environ(), agent.TokenEnv+"="+token)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return upState{}, fmt.Errorf("podman: %s", strings.TrimSpace(string(out)))
 	}
 	out, err := exec.Command("podman", "port", ctr, fmt.Sprintf("%d/tcp", agent.Port)).Output()
 	if err != nil {
-		exec.Command("podman", "rm", "-f", "-t", "0", ctr).Run()
-		return 0, fmt.Errorf("could not find the agent's port: %w", err)
+		removeContainer(ctr)
+		return upState{}, fmt.Errorf("could not find the agent's port: %w", err)
 	}
 	st := upState{
 		Container: ctr,
@@ -225,32 +245,25 @@ func Up(name string, s bluefile.Spec) (time.Duration, error) {
 		Started:   started.UTC().Format(time.RFC3339),
 	}
 
-	// Poll until the agent answers. A VM that never does is torn down rather
-	// than left running unreachable.
 	deadline := started.Add(30 * time.Second)
 	for {
 		res, err := agent.Exec(st.Addr, agent.Request{Token: token}, kernelGate(host), nil, io.Discard, io.Discard)
 		if err == nil {
 			st.Kernel = res.Kernel
-			break
+			return st, nil
 		}
 		if errors.Is(err, errNotIsolated) {
-			exec.Command("podman", "rm", "-f", "-t", "0", ctr).Run()
-			return 0, err
+			removeContainer(ctr)
+			return upState{}, err
 		}
 		if time.Now().After(deadline) {
 			logs, _ := exec.Command("podman", "logs", ctr).CombinedOutput()
-			exec.Command("podman", "rm", "-f", "-t", "0", ctr).Run()
-			return 0, fmt.Errorf("the agent did not answer within 30s: %v\n%s", err,
+			removeContainer(ctr)
+			return upState{}, fmt.Errorf("the agent did not answer within 30s: %v\n%s", err,
 				strings.TrimSpace(string(logs)))
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	if err := saveUp(name, st); err != nil {
-		exec.Command("podman", "rm", "-f", "-t", "0", ctr).Run()
-		return 0, err
-	}
-	return time.Since(started), nil
 }
 
 func ping(st upState) error {
@@ -266,16 +279,29 @@ func Exec(name string, s bluefile.Spec, argv []string, stdin io.Reader) error {
 	if err != nil {
 		return err
 	}
+	err = execOn(name, st, s, "exec", argv, stdin)
+	if errors.Is(err, errLost) {
+		return fmt.Errorf("%s is not responding (%v); restart it: bluebox down %s && bluebox up %s",
+			name, err, name, name)
+	}
+	return err
+}
+
+// errLost marks an agent that could not be reached or dropped the session.
+var errLost = errors.New("agent unreachable")
+
+// execOn runs argv through the agent of a running VM, with output streamed
+// and logged the way Run does, and every command gated on the guest kernel.
+func execOn(name string, st upState, s bluefile.Spec, verb string, argv []string, stdin io.Reader) error {
 	host, err := HostKernel()
 	if err != nil {
 		return err
 	}
-
 	log := openLog(name)
 	if log != nil {
 		defer log.Close()
-		fmt.Fprintf(log, "\n=== %s exec: %s\n",
-			time.Now().UTC().Format(time.RFC3339), strings.Join(argv, " "))
+		fmt.Fprintf(log, "\n=== %s %s: %s\n",
+			time.Now().UTC().Format(time.RFC3339), verb, strings.Join(argv, " "))
 	}
 	out, errw := io.Writer(os.Stdout), io.Writer(os.Stderr)
 	if log != nil {
@@ -300,8 +326,7 @@ func Exec(name string, s bluefile.Spec, argv []string, stdin io.Reader) error {
 	case errors.Is(err, errNotIsolated):
 		return err
 	case err != nil:
-		return fmt.Errorf("%s is not responding (%v); restart it: bluebox down %s && bluebox up %s",
-			name, err, name, name)
+		return fmt.Errorf("%w: %v", errLost, err)
 	case res.TimedOut:
 		return ErrTimeout
 	case res.Code != 0:
@@ -317,7 +342,7 @@ func Down(name string) error {
 	if err != nil {
 		return err
 	}
-	exec.Command("podman", "rm", "-f", "-t", "0", upContainer(name)).Run()
+	removeContainer(upContainer(name))
 	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
 		return err
 	}

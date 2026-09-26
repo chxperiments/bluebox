@@ -111,6 +111,7 @@ ram_mib: 4096
 network: bridge        # bridge = internet access, none = offline
 readonly: true         # read-only root (/tmp and /data stay writable)
 timeout_seconds: 600   # per-run wall clock limit, 0 = unlimited
+warm: 2                # VMs kept booted so run starts in ms, 0 = boot per run
 
 packages:
   - python3
@@ -126,6 +127,27 @@ use `apt`, Fedora and RHEL-likes use `dnf`. For any other base, set `pkgmgr`
 explicitly to `apk`, `apt` or `dnf`.
 
 `cpus` maxes at 16 (a krun limit) and `ram_mib` is in MiB.
+
+### warm
+
+`warm: N` (0-8) keeps N microVMs booted and waiting, so `bluebox run` starts
+in about 20-30ms instead of about 1.5s, and every run still gets a fresh VM:
+
+```yaml
+warm: 2
+```
+
+Each waiting VM serves exactly one run and is then destroyed. After a run, a
+detached `bluebox` process removes it and boots a replacement in the
+background. If runs arrive faster than the pool refills (about 1.5s per VM),
+the extra ones boot cold as before, so a larger `warm` absorbs bursts.
+
+Every waiting VM holds its `ram_mib`, so size the pool to fit. `build`,
+`reset`, `restore`, `rename`, `destroy` and `nuke` drain the pool first, since a
+waiting VM holds the old image or `/data`, and a VM booted from an older
+Bluefile is discarded rather than used. `warm` needs `network: bridge` (see
+[up and exec](#running-sandboxes-up-and-exec)). A failed refill is recorded in
+`bluebox logs`.
 
 Field constraints, enforced at parse time so a bad value fails loudly instead
 of leaking into the generated Containerfile:
@@ -336,6 +358,7 @@ the VM holds `/data` mounted. `destroy` and `nuke` bring it down first.
   logs/<name>.log                  run history
   data/<name>/                     mounted at /data -- the only persistent part
   run/<name>.json                  agent address + token while a sandbox is up
+  pool/<name>/                     warm VMs waiting for a run (owner-only)
   agent/bluebox                    the agent binary running sandboxes mount
 ```
 

@@ -142,6 +142,18 @@ func IsUp(name string) bool {
 	return err == nil
 }
 
+// PoolDir holds the warm pool: one file per pre-booted VM waiting for a run.
+func PoolDir(name string) (string, error) {
+	if err := ValidName(name); err != nil {
+		return "", err
+	}
+	h, err := Home()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(h, "pool", name), nil
+}
+
 // AgentDir holds the copy of the bluebox binary that running sandboxes mount
 // read-only and start as their agent.
 func AgentDir() (string, error) {

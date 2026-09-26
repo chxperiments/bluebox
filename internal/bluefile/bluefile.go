@@ -44,6 +44,7 @@ type Spec struct {
 	Passt          bool              `yaml:"passt"`   // real in-guest interface + default route
 	ReadOnlyRootfs bool              `yaml:"readonly"`
 	TimeoutSeconds int               `yaml:"timeout_seconds"` // 0 = unlimited
+	Warm           int               `yaml:"warm"`            // VMs kept booted for run; 0 = boot per run
 	Seccomp        string            `yaml:"seccomp"`         // profile path, filters the VMM
 	PkgMgr         string            `yaml:"pkgmgr"`          // apk/apt/dnf; empty = infer from base
 	Packages       []string          `yaml:"packages"`
@@ -87,6 +88,9 @@ func (b Blueprint) empty() bool {
 	return len(b.Users) == 0 && len(b.WriteFiles) == 0 && len(b.RunCmd) == 0
 }
 
+// MaxWarm bounds the warm pool: every pooled VM holds its RAM while it waits.
+const MaxWarm = 8
+
 // Default supplies values a Bluefile omits.
 var Default = Spec{
 	Base:    "docker.io/library/alpine:latest",
@@ -107,6 +111,7 @@ network: bridge       # bridge = internet access, none = offline
 passt: false          # real NIC + default route in the guest (needed for k3s)
 readonly: false       # read-only guest root (/tmp and /data stay writable)
 timeout_seconds: 0    # per-run wall clock limit, 0 = unlimited
+warm: 0               # VMs kept booted so run starts in ms (each holds its RAM)
 
 # Tools baked into the image. Reset every run; keep work in /data.
 packages:
@@ -178,6 +183,14 @@ func (s Spec) validate() error {
 	}
 	if s.Network != "bridge" && s.Network != "none" {
 		return fmt.Errorf("network must be bridge or none, got %q", s.Network)
+	}
+	if s.Warm < 0 || s.Warm > MaxWarm {
+		return fmt.Errorf("warm must be 0-%d, got %d", MaxWarm, s.Warm)
+	}
+	if s.Warm > 0 && s.Network == "none" {
+		// A warm VM is reached through its agent's published port, and
+		// podman publishes no port on a sandbox without a network.
+		return errors.New("warm needs network: bridge; an offline sandbox boots per run")
 	}
 	if s.TimeoutSeconds < 0 {
 		return fmt.Errorf("timeout_seconds must be >= 0, got %d", s.TimeoutSeconds)

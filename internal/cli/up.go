@@ -123,6 +123,23 @@ func agentCmd() *cobra.Command {
 	}
 }
 
+// tendCmd tops up a sandbox's warm pool. It is started detached by run and
+// build, never by hand, and reports failures to the sandbox's log.
+func tendCmd() *cobra.Command {
+	return &cobra.Command{
+		Use: "__tend <name>", Hidden: true,
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeNothing,
+		RunE: func(_ *cobra.Command, args []string) error {
+			if err := runtime.Tend(args[0]); err != nil {
+				runtime.TendLog(args[0], err)
+				return err
+			}
+			return nil
+		},
+	}
+}
+
 // refuseWhileUp guards commands that swap /data wholesale: a running VM holds
 // the old directory mounted and would carry on writing to it unseen.
 func refuseWhileUp(name, what string) error {

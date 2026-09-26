@@ -62,7 +62,7 @@ func newRoot() *cobra.Command {
 		resetCmd(), snapshotCmd(), restoreCmd(),
 		envCmd(), logsCmd(), verifyCmd(),
 		renameCmd(), destroyCmd(), nukeCmd(),
-		agentCmd(),
+		agentCmd(), tendCmd(),
 	)
 	return root
 }

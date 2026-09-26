@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -31,6 +32,7 @@ import (
 	"syscall"
 	"time"
 
+	"bluebox/internal/agent"
 	"bluebox/internal/bluefile"
 	"bluebox/internal/sandbox"
 )
@@ -121,13 +123,14 @@ func claim(name string) (poolEntry, string, bool) {
 // RunWarm runs argv in a pooled VM, if one is waiting. It reports false when
 // none is, and the caller boots one the usual way; either way the pool is
 // topped up in the background for the next run.
-func RunWarm(name string, s bluefile.Spec, argv []string) (bool, error) {
+func RunWarm(name string, s bluefile.Spec, argv []string, streams Streams) (bool, error) {
 	e, claimed, ok := claim(name)
 	defer SpawnTender(name)
 	if !ok {
 		return false, nil
 	}
-	err := execOn(name, e.upState, s, "run", argv, nil)
+	streams.Stdin = nil // run never forwards stdin, warm or cold
+	err := execOn(name, e.upState, s, "run", argv, streams)
 	// One run per VM, whatever happened in it: that is what makes it fresh.
 	os.Rename(claimed, stalePath(claimed))
 	if errors.Is(err, errLost) {
@@ -252,6 +255,7 @@ func Tend(name string) error {
 		if err != nil {
 			return err
 		}
+		warmUp(st, s)
 		b, err := json.Marshal(poolEntry{upState: st, Fingerprint: fp})
 		if err != nil {
 			removeContainer(ctr)
@@ -270,6 +274,24 @@ func Tend(name string) error {
 		}
 	}
 	return nil
+}
+
+// warmUp runs a no-op, then the Bluefile's warmup lines, in a freshly booted
+// VM before it joins the pool. A VM's first command pays for loading the
+// shell, libc and the binary into the guest; left idle, that costs a run
+// ~30ms more than it should. warmup lines let a sandbox preload what its runs
+// actually use -- starting python3 once, say. They are the sandbox's own
+// Bluefile content, like run steps, and a failing one only leaves the VM
+// less warm.
+func warmUp(st upState, s bluefile.Spec) {
+	lines := append([]string{":"}, s.Warmup...)
+	for _, l := range lines {
+		agent.Exec(st.Addr, agent.Request{
+			Token:          st.Token,
+			Argv:           []string{"/bin/sh", "-c", l},
+			TimeoutSeconds: 60,
+		}, nil, nil, io.Discard, io.Discard)
+	}
 }
 
 // Drain removes every pooled VM of a sandbox, waiting for a running tender to

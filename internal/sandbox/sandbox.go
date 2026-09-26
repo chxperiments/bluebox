@@ -2,6 +2,8 @@
 package sandbox
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -140,6 +142,34 @@ func IsUp(name string) bool {
 	}
 	_, err = os.Stat(p)
 	return err == nil
+}
+
+// maxSocketPath is the longest Unix socket path every platform accepts
+// (sun_path is 108 bytes on Linux, 104 on macOS, and includes the NUL).
+const maxSocketPath = 103
+
+// SocketPath is where `bluebox serve` listens for SDK clients: in the bluebox
+// root, or -- when that path is too long for a socket -- in the per-user
+// runtime directory, named for the root so each BLUEBOX_HOME gets its own.
+// It never falls back to a shared directory like /tmp, where another user
+// could create the path first and receive every command an SDK sends.
+// The Python SDK computes the same path; keep the two in step.
+func SocketPath() (string, error) {
+	h, err := Home()
+	if err != nil {
+		return "", err
+	}
+	p := filepath.Join(h, "bluebox.sock")
+	if len(p) <= maxSocketPath {
+		return p, nil
+	}
+	run := os.Getenv("XDG_RUNTIME_DIR")
+	if run == "" {
+		return "", fmt.Errorf("socket path %s is too long for a Unix socket; "+
+			"shorten BLUEBOX_HOME or set XDG_RUNTIME_DIR", p)
+	}
+	sum := sha256.Sum256([]byte(h))
+	return filepath.Join(run, "bluebox-"+hex.EncodeToString(sum[:6])+".sock"), nil
 }
 
 // PoolDir holds the warm pool: one file per pre-booted VM waiting for a run.

@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -326,5 +327,27 @@ func TestSnapshotsOrderedByTimeNotName(t *testing.T) {
 	// So an unqualified restore rolls back to the one actually taken last.
 	if got, err := SnapshotPath("demo", ""); err != nil || got != newer {
 		t.Errorf("SnapshotPath(\"\") = %q %v, want %q", got, err, newer)
+	}
+}
+
+func TestSocketPathFallsBackForLongHomes(t *testing.T) {
+	short := t.TempDir()
+	t.Setenv("BLUEBOX_HOME", short)
+	if p, err := SocketPath(); err != nil || p != filepath.Join(short, "bluebox.sock") {
+		t.Fatalf("short home: %q, %v", p, err)
+	}
+
+	long := "/" + strings.Repeat("x", 120)
+	t.Setenv("BLUEBOX_HOME", long)
+	t.Setenv("XDG_RUNTIME_DIR", "/run/user/1000")
+	p, err := SocketPath()
+	if err != nil || !strings.HasPrefix(p, "/run/user/1000/bluebox-") || len(p) > maxSocketPath {
+		t.Fatalf("long home: %q, %v", p, err)
+	}
+
+	// Never a shared directory: without a private runtime dir, refuse.
+	t.Setenv("XDG_RUNTIME_DIR", "")
+	if _, err := SocketPath(); err == nil {
+		t.Fatal("long home without XDG_RUNTIME_DIR must be refused")
 	}
 }

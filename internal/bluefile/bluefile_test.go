@@ -327,3 +327,13 @@ func TestBlueprintValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestWarmupLinesMustBeNonEmpty(t *testing.T) {
+	for _, bad := range []string{"warmup: ['']", "warmup: ['   ']"} {
+		p := filepath.Join(t.TempDir(), "Bluefile")
+		os.WriteFile(p, []byte(bad+"\n"), 0o644)
+		if _, err := Parse(p); err == nil {
+			t.Errorf("%q parsed", bad)
+		}
+	}
+}

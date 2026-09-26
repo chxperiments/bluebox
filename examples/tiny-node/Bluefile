@@ -12,3 +12,6 @@ warm: 0                  # set 1-2 for ~50ms runs; each waiting VM holds its RAM
 packages:
   - nodejs
   - npm
+
+warmup:
+  - node -e 0

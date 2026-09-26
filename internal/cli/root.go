@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"bluebox/internal/bluefile"
-	"bluebox/internal/sandbox"
+	"bluebox/internal/runtime"
 )
 
 // exitCode lets a command choose the process status without cobra printing an
@@ -58,7 +58,7 @@ func newRoot() *cobra.Command {
 
 	root.AddCommand(
 		newCmd(), editCmd(), buildCmd(), lsCmd(),
-		runCmd(), shellCmd(), upCmd(), execCmd(), downCmd(),
+		runCmd(), shellCmd(), upCmd(), execCmd(), downCmd(), serveCmd(),
 		resetCmd(), snapshotCmd(), restoreCmd(),
 		envCmd(), logsCmd(), verifyCmd(),
 		renameCmd(), destroyCmd(), nukeCmd(),
@@ -80,16 +80,11 @@ func Execute() int {
 }
 
 // loadSpec reads a sandbox's Bluefile.
-func loadSpec(name string) (bluefile.Spec, error) {
-	if !sandbox.Exists(name) {
-		return bluefile.Spec{}, fmt.Errorf("no sandbox %q (create it: bluebox new %s)", name, name)
-	}
-	path, err := sandbox.BluefilePath(name)
-	if err != nil {
-		return bluefile.Spec{}, err
-	}
-	return bluefile.Parse(path)
-}
+func loadSpec(name string) (bluefile.Spec, error) { return runtime.LoadSpec(name) }
+
+// notice reports a slow path on stderr, so it never mixes into a command's
+// stdout.
+func notice(msg string) { fmt.Fprintln(os.Stderr, "bluebox: "+msg) }
 
 // confirm asks before destroying something. Without a terminal it refuses
 // rather than assuming yes, so a script cannot delete data by accident.

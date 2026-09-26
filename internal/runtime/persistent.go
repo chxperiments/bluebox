@@ -274,12 +274,12 @@ func ping(st upState) error {
 // Exec runs argv in the sandbox's running VM. Unlike Run nothing is booted, so
 // state -- files outside /data, background processes -- carries from one
 // command to the next, exactly as in a shell session.
-func Exec(name string, s bluefile.Spec, argv []string, stdin io.Reader) error {
+func Exec(name string, s bluefile.Spec, argv []string, streams Streams) error {
 	st, err := loadUp(name)
 	if err != nil {
 		return err
 	}
-	err = execOn(name, st, s, "exec", argv, stdin)
+	err = execOn(name, st, s, "exec", argv, streams)
 	if errors.Is(err, errLost) {
 		return fmt.Errorf("%s is not responding (%v); restart it: bluebox down %s && bluebox up %s",
 			name, err, name, name)
@@ -292,7 +292,7 @@ var errLost = errors.New("agent unreachable")
 
 // execOn runs argv through the agent of a running VM, with output streamed
 // and logged the way Run does, and every command gated on the guest kernel.
-func execOn(name string, st upState, s bluefile.Spec, verb string, argv []string, stdin io.Reader) error {
+func execOn(name string, st upState, s bluefile.Spec, verb string, argv []string, streams Streams) error {
 	host, err := HostKernel()
 	if err != nil {
 		return err
@@ -303,18 +303,14 @@ func execOn(name string, st upState, s bluefile.Spec, verb string, argv []string
 		fmt.Fprintf(log, "\n=== %s %s: %s\n",
 			time.Now().UTC().Format(time.RFC3339), verb, strings.Join(argv, " "))
 	}
-	out, errw := io.Writer(os.Stdout), io.Writer(os.Stderr)
-	if log != nil {
-		out = io.MultiWriter(os.Stdout, log)
-		errw = io.MultiWriter(os.Stderr, log)
-	}
+	out, errw := tee(streams, log)
 
 	started := time.Now()
 	res, err := agent.Exec(st.Addr, agent.Request{
 		Token:          st.Token,
 		Argv:           argv,
 		TimeoutSeconds: s.TimeoutSeconds,
-	}, kernelGate(host), stdin, out, errw)
+	}, kernelGate(host), streams.Stdin, out, errw)
 	if log != nil {
 		code := res.Code
 		if err != nil {

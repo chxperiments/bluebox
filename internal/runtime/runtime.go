@@ -105,6 +105,59 @@ func vmArgs(name string, s bluefile.Spec, interactive, useKrun bool) ([]string, 
 	return args, nil
 }
 
+// LoadSpec reads a sandbox's Bluefile.
+func LoadSpec(name string) (bluefile.Spec, error) {
+	if !sandbox.Exists(name) {
+		return bluefile.Spec{}, fmt.Errorf("%w %q (create it: bluebox new %s)", ErrNoSandbox, name, name)
+	}
+	return parseSpec(name)
+}
+
+// ErrNoSandbox is returned for a name with no Bluefile.
+var ErrNoSandbox = errors.New("no sandbox")
+
+// RunFresh runs argv in a fresh microVM: a pooled one when the sandbox keeps
+// a warm pool and one is waiting, otherwise one booted now. notice, if not
+// nil, hears about slow paths such as a re-verification.
+func RunFresh(name string, s bluefile.Spec, argv []string, streams Streams, notice func(string)) error {
+	// A pooled VM was checked when it booted and its kernel is checked again
+	// before the command starts, so the warm path skips the toolchain checks
+	// below and costs a connection, not a boot.
+	if s.Warm > 0 {
+		if ran, err := RunWarm(name, s, argv, streams); ran {
+			return err
+		}
+	}
+	if err := checked(name, s, notice); err != nil {
+		return err
+	}
+	return Run(name, s, argv, streams)
+}
+
+// UpChecked is Up behind the same checks a run gets.
+func UpChecked(name string, s bluefile.Spec, notice func(string)) (time.Duration, error) {
+	if err := checked(name, s, notice); err != nil {
+		return 0, err
+	}
+	return Up(name, s)
+}
+
+// checked confirms the toolchain is present and the kernel boundary still
+// holds -- cheaply when the runtime is unchanged -- before untrusted code runs.
+func checked(name string, s bluefile.Spec, notice func(string)) error {
+	if err := Preflight(); err != nil {
+		return err
+	}
+	fresh, err := EnsureIsolated(name, s)
+	if err != nil {
+		return err
+	}
+	if fresh && notice != nil {
+		notice("re-verified isolation (runtime changed since last check)")
+	}
+	return nil
+}
+
 // Build renders the Containerfile from the spec, writes it, and builds the image.
 func Build(name string, s bluefile.Spec) error {
 	cfPath, err := sandbox.ContainerfilePath(name)
@@ -139,9 +192,19 @@ func RetagImage(from, to string) {
 	}
 }
 
+// Streams is where a command's input comes from and its output goes. The CLI
+// passes its own terminal; the SDK server passes buffers.
+type Streams struct {
+	Stdin          io.Reader // nil: the command sees a closed stdin
+	Stdout, Stderr io.Writer
+}
+
+// Terminal is this process's own stdout and stderr, with no stdin.
+func Terminal() Streams { return Streams{Stdout: os.Stdout, Stderr: os.Stderr} }
+
 // Run executes argv in a fresh microVM. A timed-out run is reaped explicitly:
 // killing the podman CLI does not stop the VM it started, so --rm never fires.
-func Run(name string, s bluefile.Spec, argv []string) error {
+func Run(name string, s bluefile.Spec, argv []string, streams Streams) error {
 	base, err := vmArgs(name, s, false, true)
 	if err != nil {
 		return err
@@ -165,7 +228,7 @@ func Run(name string, s bluefile.Spec, argv []string) error {
 	}
 	started := time.Now()
 	cmd := exec.CommandContext(ctx, "podman", args...)
-	err = streamTee(cmd, log)
+	err = streamTee(cmd, streams, log)
 	if log != nil {
 		code := 0
 		if err != nil {
@@ -239,18 +302,22 @@ func HostKernel() (string, error) { return agent.KernelRelease() }
 
 // stream runs cmd with its stdout/stderr wired to the process. Any timeout is
 // bound into the command via exec.CommandContext before it reaches here.
-func stream(cmd *exec.Cmd) error { return streamTee(cmd, nil) }
+func stream(cmd *exec.Cmd) error { return streamTee(cmd, Terminal(), nil) }
 
 // streamTee is stream, additionally copying output to log when non-nil.
-func streamTee(cmd *exec.Cmd, log io.Writer) error {
-	out, errw := io.Writer(os.Stdout), io.Writer(os.Stderr)
-	if log != nil {
-		out = io.MultiWriter(os.Stdout, log)
-		errw = io.MultiWriter(os.Stderr, log)
-	}
+func streamTee(cmd *exec.Cmd, s Streams, log io.Writer) error {
+	out, errw := tee(s, log)
 	cmd.Stdout = out
 	cmd.Stderr = errw
 	return cmd.Run()
+}
+
+// tee adds log, when non-nil, to a command's output streams.
+func tee(s Streams, log io.Writer) (out, errw io.Writer) {
+	if log == nil {
+		return s.Stdout, s.Stderr
+	}
+	return io.MultiWriter(s.Stdout, log), io.MultiWriter(s.Stderr, log)
 }
 
 // ExitCode extracts a child process exit code from a Run/Shell error, or -1.

@@ -149,26 +149,7 @@ func runCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// A pooled VM was checked when it booted and its kernel is checked
-			// again before the command starts, so the warm path skips the
-			// toolchain checks below and costs a connection, not a boot.
-			warm := false
-			if s.Warm > 0 {
-				warm, err = runtime.RunWarm(name, s, argv)
-			}
-			if !warm {
-				if err := runtime.Preflight(); err != nil {
-					return err
-				}
-				// A run is where untrusted code executes, so confirm the kernel
-				// boundary still holds -- cheaply when the runtime is unchanged.
-				if fresh, err := runtime.EnsureIsolated(name, s); err != nil {
-					return err
-				} else if fresh {
-					fmt.Fprintln(os.Stderr, "bluebox: re-verified isolation (runtime changed since last check)")
-				}
-				err = runtime.Run(name, s, argv)
-			}
+			err = runtime.RunFresh(name, s, argv, runtime.Terminal(), notice)
 			switch {
 			case err == nil:
 				return nil

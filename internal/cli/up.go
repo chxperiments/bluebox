@@ -3,14 +3,15 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"bluebox/internal/agent"
 	"bluebox/internal/runtime"
 	"bluebox/internal/sandbox"
+	"bluebox/internal/server"
 )
 
 func upCmd() *cobra.Command {
@@ -27,15 +28,7 @@ func upCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := runtime.Preflight(); err != nil {
-				return err
-			}
-			if fresh, err := runtime.EnsureIsolated(name, s); err != nil {
-				return err
-			} else if fresh {
-				fmt.Fprintln(os.Stderr, "bluebox: re-verified isolation (runtime changed since last check)")
-			}
-			took, err := runtime.Up(name, s)
+			took, err := runtime.UpChecked(name, s, notice)
 			if err != nil {
 				return err
 			}
@@ -67,11 +60,11 @@ func execCmd() *cobra.Command {
 			}
 			// Forwarding a terminal would swallow what the user types next
 			// for a command that never reads it, so a tty needs -i.
-			var stdin io.Reader
+			streams := runtime.Terminal()
 			if fi, err := os.Stdin.Stat(); interactive || (err == nil && fi.Mode()&os.ModeCharDevice == 0) {
-				stdin = os.Stdin
+				streams.Stdin = os.Stdin
 			}
-			err = runtime.Exec(name, s, argv, stdin)
+			err = runtime.Exec(name, s, argv, streams)
 			switch {
 			case err == nil:
 				return nil
@@ -121,6 +114,32 @@ func agentCmd() *cobra.Command {
 		Args: cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error { return agent.Serve() },
 	}
+}
+
+func serveCmd() *cobra.Command {
+	var sock string
+	var idle time.Duration
+	c := &cobra.Command{
+		Use: "serve", Short: "local API for the SDKs", GroupID: groupRun,
+		Long: "Serves the bluebox API on a Unix socket only you can open, for the\n" +
+			"Python and Go SDKs. The SDKs start it themselves when it is not\n" +
+			"running, with an idle limit so it exits once unused.",
+		Args:              cobra.NoArgs,
+		ValidArgsFunction: completeNothing,
+		RunE: func(*cobra.Command, []string) error {
+			if sock == "" {
+				p, err := sandbox.SocketPath()
+				if err != nil {
+					return err
+				}
+				sock = p
+			}
+			return server.Serve(sock, Version, idle)
+		},
+	}
+	c.Flags().StringVar(&sock, "socket", "", "socket path (default ~/.bluebox/bluebox.sock)")
+	c.Flags().DurationVar(&idle, "idle", 0, "exit after this long without a request (0 = never)")
+	return c
 }
 
 // tendCmd tops up a sandbox's warm pool. It is started detached by run and

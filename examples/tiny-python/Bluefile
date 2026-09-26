@@ -17,6 +17,11 @@ packages:
   - python3
   - py3-pip
 
+# Started once in each warm VM before it serves a run, so the first python3
+# in a pooled run does not pay to load the interpreter.
+warmup:
+  - python3 -c "import json, re, os"
+
 env:
   PYTHONDONTWRITEBYTECODE: "1"
   PYTHONUNBUFFERED: "1"

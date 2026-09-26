@@ -48,7 +48,8 @@ type Spec struct {
 	Seccomp        string            `yaml:"seccomp"`         // profile path, filters the VMM
 	PkgMgr         string            `yaml:"pkgmgr"`          // apk/apt/dnf; empty = infer from base
 	Packages       []string          `yaml:"packages"`
-	Run            []string          `yaml:"run"` // extra Containerfile RUN steps, in order
+	Run            []string          `yaml:"run"`    // extra Containerfile RUN steps, in order
+	Warmup         []string          `yaml:"warmup"` // shell lines run in each warm VM before its first run
 	Env            map[string]string `yaml:"env"`
 	Mounts         []Mount           `yaml:"mounts"` // explicit host shares, on top of /data
 	Blueprint      Blueprint         `yaml:"blueprint"`
@@ -186,6 +187,11 @@ func (s Spec) validate() error {
 	}
 	if s.Warm < 0 || s.Warm > MaxWarm {
 		return fmt.Errorf("warm must be 0-%d, got %d", MaxWarm, s.Warm)
+	}
+	for i, w := range s.Warmup {
+		if strings.TrimSpace(w) == "" || strings.ContainsRune(w, 0) {
+			return fmt.Errorf("warmup[%d] must be a non-empty shell line", i)
+		}
 	}
 	if s.Warm > 0 && s.Network == "none" {
 		// A warm VM is reached through its agent's published port, and

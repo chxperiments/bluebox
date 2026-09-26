@@ -117,6 +117,8 @@ network: bridge        # bridge = internet access, none = offline
 readonly: true         # read-only root (/tmp and /data stay writable)
 timeout_seconds: 600   # per-run wall clock limit, 0 = unlimited
 warm: 2                # VMs kept booted so run starts in ms, 0 = boot per run
+warmup:                # run once in each warm VM, before it serves a run
+  - python3 -c "import json"
 
 packages:
   - python3
@@ -146,6 +148,11 @@ Each waiting VM serves exactly one run and is then destroyed. After a run, a
 detached `bluebox` process removes it and boots a replacement in the
 background. If runs arrive faster than the pool refills (about 1.5s per VM),
 the extra ones boot cold as before, so a larger `warm` absorbs bursts.
+
+Before a pooled VM serves a run, bluebox runs a no-op in it, followed by any
+`warmup:` lines. A VM's first command pays to load the shell and the program
+into the guest, so preloading what your runs use (for example, starting
+`python3` once) takes that cost off the run itself.
 
 Every waiting VM holds its `ram_mib`, so size the pool to fit. `build`,
 `reset`, `restore`, `rename`, `destroy` and `nuke` drain the pool first, since a
@@ -229,6 +236,7 @@ construction, so nothing a sandbox does with its name can reach outside
 | `bluebox up <name>` | boot the microVM once and keep it running |
 | `bluebox exec <name> -- <cmd>` | run one command in the running microVM |
 | `bluebox down <name>` | stop the running microVM |
+| `bluebox serve` | local API for the SDKs |
 | `bluebox verify <name>` | re-check that the sandbox has its own kernel |
 | `bluebox ls` | list sandboxes |
 | `bluebox env <name>` | print effective settings as `KEY=VALUE` |
@@ -353,6 +361,26 @@ Limits for now:
 While a sandbox is up, `reset`, `restore` and `rename` refuse to run, because
 the VM holds `/data` mounted. `destroy` and `nuke` bring it down first.
 
+## SDKs
+
+Drive sandboxes from code: [Python](sdk/python/) (standard library only) and
+[Go](sdk/go/).
+
+```python
+from bluebox import Sandbox
+
+with Sandbox("agent") as sb:                       # up on enter, down on exit
+    sb.write_file("/data/task.py", "print(6 * 7)")
+    print(sb.exec(["python3", "/data/task.py"]).stdout_text)   # ~10ms
+
+print(Sandbox("agent").run("uname -r").stdout_text)            # fresh VM each call
+```
+
+The SDKs talk to `bluebox serve`, a local API on a Unix socket that only your
+user can open (`~/.bluebox/bluebox.sock`). They start it when it is not
+running. It exits after 15 minutes unused, and steps aside when bluebox is
+upgraded.
+
 ## Where things live
 
 ```
@@ -364,6 +392,7 @@ the VM holds `/data` mounted. `destroy` and `nuke` bring it down first.
   data/<name>/                     mounted at /data -- the only persistent part
   run/<name>.json                  agent address + token while a sandbox is up
   pool/<name>/                     warm VMs waiting for a run (owner-only)
+  bluebox.sock                     the SDK server's socket (owner-only)
   agent/bluebox                    the agent binary running sandboxes mount
 ```
 
@@ -390,6 +419,9 @@ internal/bluefile/  Bluefile parser + Containerfile generator
 internal/sandbox/   on-disk layout
 internal/runtime/   podman + krun driver -- the only backend-aware code
 internal/agent/     in-guest agent and its wire protocol (up/exec)
+internal/server/    `bluebox serve`, the local API the SDKs use
+sdk/python, sdk/go  client SDKs
+examples/           example Bluefiles, embedded for `new --from`
 internal/cli/       cobra commands (root.go, commands.go)
 ```
 

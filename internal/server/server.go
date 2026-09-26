@@ -78,6 +78,7 @@ func Serve(sock, version string, idle time.Duration) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	self := exeIdentity()
 	go func() {
 		tick := time.NewTicker(time.Second)
 		defer tick.Stop()
@@ -85,7 +86,14 @@ func Serve(sock, version string, idle time.Duration) error {
 			select {
 			case <-ctx.Done():
 			case <-tick.C:
-				if idle == 0 || s.inflight.Load() > 0 || time.Since(s.lastActive()) < idle {
+				if s.inflight.Load() > 0 {
+					continue
+				}
+				// An upgraded bluebox must not be shadowed by the old one still
+				// serving: once idle, step aside and let the next SDK call
+				// start the new binary.
+				replaced := self != "" && exeIdentity() != self
+				if !replaced && (idle == 0 || time.Since(s.lastActive()) < idle) {
 					continue
 				}
 			}
@@ -99,6 +107,24 @@ func Serve(sock, version string, idle time.Duration) error {
 		return err
 	}
 	return nil
+}
+
+// exeIdentity fingerprints this process's executable on disk, or "" if it
+// cannot be read. A rebuild or upgrade replaces the file and changes it.
+func exeIdentity() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	fi, err := os.Stat(exe)
+	if err != nil {
+		return "gone" // deleted or replaced mid-rename: not this binary
+	}
+	var ino uint64
+	if st, ok := fi.Sys().(*syscall.Stat_t); ok {
+		ino = uint64(st.Ino)
+	}
+	return fmt.Sprintf("%d:%d:%d", ino, fi.Size(), fi.ModTime().UnixNano())
 }
 
 func (s *server) lastActive() time.Time {

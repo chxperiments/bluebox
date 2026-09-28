@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -310,10 +309,13 @@ func restoreCmd() *cobra.Command {
 func envCmd() *cobra.Command {
 	return &cobra.Command{
 		Use: "env <name>", Short: "settings as KEY=VALUE", GroupID: groupInspect,
-		Long:              "Shell-consumable settings, for: eval $(bluebox env <name>)",
+		Long: "Shell-consumable settings, for: eval \"$(bluebox env <name>)\"\n\n" +
+			"Every value is single-quoted, so evaluating the output only assigns\n" +
+			"variables. The Bluefile's env entries are printed as BLUEBOX_ENV_<KEY>,\n" +
+			"so a Bluefile cannot overwrite PATH or anything else in your shell.",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completeName,
-		Example:           "  eval $(bluebox env devbox)",
+		Example:           "  eval \"$(bluebox env devbox)\"",
 		RunE: func(_ *cobra.Command, args []string) error {
 			name := args[0]
 			s, err := loadSpec(name)
@@ -321,27 +323,45 @@ func envCmd() *cobra.Command {
 				return err
 			}
 			data, _ := sandbox.DataDir(name)
-			fmt.Printf("BLUEBOX_NAME=%s\n", name)
-			fmt.Printf("BLUEBOX_IMAGE=%s\n", sandbox.ImageTag(name))
-			fmt.Printf("BLUEBOX_DATA=%s\n", data)
-			fmt.Printf("BLUEBOX_BASE=%s\n", s.Base)
-			fmt.Printf("BLUEBOX_CPUS=%d\n", s.CPUs)
-			fmt.Printf("BLUEBOX_RAM_MIB=%d\n", s.RAMMiB)
-			fmt.Printf("BLUEBOX_NETWORK=%s\n", s.Network)
-			fmt.Printf("BLUEBOX_PASST=%t\n", s.Passt)
-			fmt.Printf("BLUEBOX_READONLY=%t\n", s.ReadOnlyRootfs)
-			fmt.Printf("BLUEBOX_TIMEOUT_SECONDS=%d\n", s.TimeoutSeconds)
-			keys := make([]string, 0, len(s.Env))
-			for k := range s.Env {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			for _, k := range keys {
-				fmt.Printf("%s=%s\n", k, s.Env[k])
+			for _, l := range envLines(name, data, s) {
+				fmt.Println(l)
 			}
 			return nil
 		},
 	}
+}
+
+// envLines renders the settings printed by `bluebox env`. The output is
+// documented for eval, and base and env come from a Bluefile that may have
+// been written by someone else, so every value is quoted and the Bluefile's
+// keys are namespaced: evaluating the output assigns BLUEBOX_* variables and
+// nothing else.
+func envLines(name, data string, s bluefile.Spec) []string {
+	lines := []string{
+		"BLUEBOX_NAME=" + shellQuote(name),
+		"BLUEBOX_IMAGE=" + shellQuote(sandbox.ImageTag(name)),
+		"BLUEBOX_DATA=" + shellQuote(data),
+		"BLUEBOX_BASE=" + shellQuote(s.Base),
+		fmt.Sprintf("BLUEBOX_CPUS=%d", s.CPUs),
+		fmt.Sprintf("BLUEBOX_RAM_MIB=%d", s.RAMMiB),
+		"BLUEBOX_NETWORK=" + shellQuote(s.Network),
+		fmt.Sprintf("BLUEBOX_PASST=%t", s.Passt),
+		fmt.Sprintf("BLUEBOX_READONLY=%t", s.ReadOnlyRootfs),
+		fmt.Sprintf("BLUEBOX_TIMEOUT_SECONDS=%d", s.TimeoutSeconds),
+	}
+	// EnvKeys is sorted, and validate() has already held each key to an
+	// identifier, so the prefixed name is a valid shell variable.
+	for _, k := range s.EnvKeys() {
+		lines = append(lines, "BLUEBOX_ENV_"+k+"="+shellQuote(s.Env[k]))
+	}
+	return lines
+}
+
+// shellQuote makes s a single POSIX shell word that expands to exactly s.
+// Inside single quotes nothing is special, so the only character to handle is
+// the single quote itself: close the quote, emit an escaped one, reopen.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
 func logsCmd() *cobra.Command {

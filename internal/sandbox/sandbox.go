@@ -380,7 +380,10 @@ func Remove(name string, withData bool) error {
 	return nil
 }
 
-// Rename moves a sandbox's definition, data and log to a new name.
+// Rename moves a sandbox's definition, data, log and snapshots to a new name.
+// Snapshots move too: left behind, they would escape `destroy --data` on the
+// new name and be restored, without a prompt, into any later sandbox that
+// reuses the old one.
 func Rename(from, to string) error {
 	if !Exists(from) {
 		return fmt.Errorf("no sandbox %q", from)
@@ -388,18 +391,31 @@ func Rename(from, to string) error {
 	if Exists(to) {
 		return fmt.Errorf("sandbox %q already exists", to)
 	}
-	type pair struct{ src, dst func(string) (string, error) }
-	for _, p := range []pair{{Dir, Dir}, {DataDir, DataDir}, {LogPath, LogPath}} {
-		src, err := p.src(from)
+	paths := []func(string) (string, error){Dir, DataDir, LogPath, SnapshotsDir}
+	// Exists only looks for a Bluefile, so data or snapshots left by an
+	// earlier sandbox of the target name (destroy keeps /data by default)
+	// would otherwise be silently adopted, or make a rename fail halfway.
+	// Refuse before anything moves.
+	for _, path := range paths {
+		dst, err := path(to)
 		if err != nil {
 			return err
 		}
-		dst, err := p.dst(to)
+		if _, err := os.Lstat(dst); err == nil {
+			return fmt.Errorf("%s already exists (left by an earlier %q?); remove it before renaming", dst, to)
+		}
+	}
+	for _, path := range paths {
+		src, err := path(from)
+		if err != nil {
+			return err
+		}
+		dst, err := path(to)
 		if err != nil {
 			return err
 		}
 		if _, err := os.Stat(src); os.IsNotExist(err) {
-			continue // data or log may not exist yet
+			continue // data, log or snapshots may not exist yet
 		}
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 			return err

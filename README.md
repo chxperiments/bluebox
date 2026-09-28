@@ -209,7 +209,7 @@ construction, so nothing a sandbox does with its name can reach outside
 | `bluebox reset <name>` | empty `/data`, keeping the sandbox |
 | `bluebox snapshot <name> [label]` | archive `/data` under a name; `-l` lists archives |
 | `bluebox restore <name> [snap]` | replace `/data` from a snapshot (newest by default) |
-| `bluebox rename <old> <new>` | rename, keeping data, logs and the built image |
+| `bluebox rename <old> <new>` | rename, keeping data, logs, snapshots and the built image |
 | `bluebox destroy <name> [--data]` | remove a sandbox; `--data` also deletes `/data` |
 | `bluebox nuke [--no-data]` | remove every sandbox; `--no-data` keeps data |
 
@@ -219,7 +219,11 @@ so a mistake surfaces immediately rather than at the next build. The
 Containerfile is generated, so edits to it are replaced by the next build —
 bluebox says so before opening it.
 
-`bluebox env` is shell-consumable: `eval $(bluebox env devbox)`.
+`bluebox env` is shell-consumable: `eval "$(bluebox env devbox)"`. Every value
+is single-quoted, and the Bluefile's own `env` entries are printed as
+`BLUEBOX_ENV_<KEY>` (e.g. `BLUEBOX_ENV_LANG`), so evaluating the output of a
+Bluefile you did not write only ever assigns `BLUEBOX_*` variables — it cannot
+run a command or replace `PATH` in your shell.
 
 Anything that deletes data asks first, and `-y` skips the prompt. `destroy`
 keeps `/data` unless you pass `--data`; `nuke` deletes it unless you pass

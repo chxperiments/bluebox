@@ -328,3 +328,73 @@ func TestSnapshotsOrderedByTimeNotName(t *testing.T) {
 		t.Errorf("SnapshotPath(\"\") = %q %v, want %q", got, err, newer)
 	}
 }
+
+// writeBluefile makes setup's sandbox a defined one, which Rename requires.
+func writeBluefile(t *testing.T, name string) {
+	t.Helper()
+	p, err := BluefilePath(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Snapshots follow a renamed sandbox, as the rename help promises. Left under
+// the old name they would escape `destroy --data` and be restored into any
+// later sandbox that reuses that name.
+func TestRenameMovesSnapshots(t *testing.T) {
+	setup(t, "work")
+	writeBluefile(t, "work")
+	if _, err := Snapshot("work", "before"); err != nil {
+		t.Fatal(err)
+	}
+	if err := Rename("work", "proj"); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := SnapshotPath("proj", "before"); err != nil {
+		t.Errorf("snapshot did not move with the sandbox: %v", err)
+	} else if filepath.Base(got) != "before.tar.gz" {
+		t.Errorf("SnapshotPath resolved to %q", got)
+	}
+	old, err := SnapshotsDir("work")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(old); !os.IsNotExist(err) {
+		t.Errorf("snapshots left behind under the old name at %s", old)
+	}
+
+	// A new sandbox that reuses the old name starts with nothing to restore.
+	if _, err := Create("work"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SnapshotPath("work", ""); err == nil {
+		t.Error("a reused name should not inherit the renamed sandbox's snapshots")
+	}
+}
+
+// Data or snapshots left under the target name by an earlier sandbox (destroy
+// keeps /data by default) are neither adopted nor allowed to break a rename
+// halfway: the rename is refused before anything moves.
+func TestRenameRefusesLeftoverDestination(t *testing.T) {
+	data := setup(t, "work")
+	writeBluefile(t, "work")
+	leftover, err := SnapshotsDir("proj")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(leftover, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := Rename("work", "proj"); err == nil {
+		t.Fatal("rename onto leftover snapshots should be refused")
+	}
+	if !Exists("work") {
+		t.Error("a refused rename must leave the source definition in place")
+	}
+	if b, _ := os.ReadFile(filepath.Join(data, "keep.txt")); string(b) != "original" {
+		t.Error("a refused rename must leave the source data in place")
+	}
+}

@@ -63,7 +63,13 @@ func vmArgs(name string, s bluefile.Spec, interactive, useKrun bool) ([]string, 
 	if err != nil {
 		return nil, err
 	}
-	args := []string{"run", "--rm"}
+	if err := checkMountSources(name, s); err != nil {
+		return nil, err
+	}
+	// The sandbox image is always built locally. --pull=never makes a missing
+	// image an error rather than a registry pull, so the only image that can
+	// boot here is the one `bluebox build` produced.
+	args := []string{"run", "--rm", "--pull=never"}
 	if useKrun {
 		args = append(args, "--runtime", "krun")
 	}

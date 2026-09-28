@@ -154,6 +154,13 @@ read-only. What a sandbox can touch on the host is now visible in the spec
 rather than implicit. Note that a writable mount still exposes that directory
 fully: the guest writes through virtiofs with your user's permissions.
 
+Mounts cannot nest inside anything the guest can write. A mount whose host
+path is inside an `rw` mount (`~/proj` rw plus `~/proj/config` ro), inside any
+sandbox's `/data` under `~/.bluebox/data`, or an `rw` mount that contains this
+sandbox's `/data`, is refused at every boot. Otherwise the guest could replace
+part of that path with a symlink, and the next run would mount whatever it
+points at — `~/.ssh`, say — in the declared place.
+
 ### blueprint
 
 For cloud-init-style provisioning — users, files and commands:

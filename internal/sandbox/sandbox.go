@@ -103,7 +103,13 @@ func LogPath(name string) (string, error) {
 // ImageTag formats the podman image tag. The name is not re-validated here:
 // every call site reaches this through a path builder that already ran
 // ValidName, and podman itself rejects malformed refs loudly.
-func ImageTag(name string) string { return "bluebox/" + name + ":latest" }
+//
+// The tag is fully qualified with localhost/, which is where podman stores a
+// locally built image anyway. A short name like bluebox/<name> would go
+// through registries.conf short-name resolution whenever the local image is
+// missing (never built, pruned, failed build), and could pull and run
+// someone else's bluebox/<name> image with /data and the rw mounts attached.
+func ImageTag(name string) string { return "localhost/bluebox/" + name + ":latest" }
 
 // VerifyCachePath holds the last successful isolation check, keyed on the
 // runtime's identity. It is not per-sandbox: isolation is a property of the

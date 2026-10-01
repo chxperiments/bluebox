@@ -133,6 +133,84 @@ footer .wrap{
 footer a{color:var(--dim);text-decoration:none;border-bottom:1px solid transparent}
 footer a:hover,footer a:focus-visible{color:var(--white);border-bottom-color:var(--white)}
 
+/* ── Sections shared ───────────────────────────────────────────────── */
+.sec{padding:clamp(2rem,5vw,3.25rem) 0 clamp(2.5rem,6vw,4rem);border-top:1px solid var(--line-soft)}
+.sec h2{
+  margin:0 0 .5rem;font-size:.74rem;font-weight:600;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--dim);
+}
+.sec .lede{margin:0 0 1.6rem;font-size:clamp(1.05rem,2.4vw,1.35rem);font-weight:500;max-width:40ch;line-height:1.4}
+.sec .lede em{font-style:normal;border-bottom:1px solid var(--white)}
+.sec .note{margin:1rem 0 0;font-size:.74rem;color:var(--dim)}
+.sec .note a{color:var(--dim)}
+.panel{border:1px solid var(--line)}
+.panel-bar{
+  display:flex;align-items:center;gap:.75rem;min-height:2.3rem;
+  padding:0 .75rem;border-bottom:1px solid var(--line-soft);
+  font-size:.74rem;letter-spacing:.1em;color:var(--dim);
+}
+.panel-bar .grow{flex:1}
+
+/* ── Speed ─────────────────────────────────────────────────────────── */
+.bars{display:grid;gap:.55rem;padding:1rem;overflow-x:auto}
+.bar{display:grid;grid-template-columns:minmax(9.5rem,13rem) 1fr 5.2rem;align-items:center;gap:.9rem;font-size:.82rem}
+.bar .name{color:var(--dim);white-space:nowrap}
+.bar .ink{white-space:pre;color:var(--dim);overflow:hidden;font-size:.78rem;letter-spacing:-.02em}
+.bar .ms{text-align:right;font-variant-numeric:tabular-nums;color:var(--dim)}
+.bar.us .name,.bar.us .ink,.bar.us .ms{color:var(--white)}
+.bar.us .name b{font-weight:600}
+.bar .tag{display:block;font-size:.66rem;letter-spacing:.08em;color:var(--dim)}
+@media (max-width:34rem){
+  .bar{grid-template-columns:1fr 4.6rem;gap:.1rem .6rem}
+  .bar .ink{grid-column:1 / -1;grid-row:2}
+}
+.big{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--line-soft);margin-bottom:1.25rem}
+.big div{background:var(--blue);padding:1rem}
+.big b{display:block;font-size:clamp(1.6rem,4.5vw,2.3rem);font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.big span{font-size:.76rem;color:var(--dim)}
+
+/* ── Bluefile ──────────────────────────────────────────────────────── */
+.bf-grid{display:grid;gap:1rem}
+@media (min-width:52rem){.bf-grid{grid-template-columns:1.15fr 1fr}}
+.bf-code{padding:.8rem 0;overflow-x:auto;font-size:clamp(.74rem,1.5vw,.86rem);line-height:1.75}
+.ln{display:block;padding:0 1rem;white-space:pre;color:var(--dim);border-left:2px solid transparent;cursor:default;outline:none}
+.ln[data-note]{color:var(--white);cursor:pointer}
+.ln[data-note]:hover,.ln[data-note]:focus-visible,.ln.on{background:rgba(255,255,255,.08);border-left-color:var(--white)}
+.ln .c{color:var(--dim)}
+.explain{display:flex;flex-direction:column}
+.explain .body{padding:1rem;flex:1;min-height:12rem}
+.explain .key{font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:0 0 .6rem}
+.explain .what{margin:0 0 .9rem;font-size:.95rem;line-height:1.55}
+.explain .becomes{margin:0;font-size:.78rem;color:var(--dim);white-space:pre-wrap;border-top:1px solid var(--line-soft);padding-top:.7rem}
+.explain .becomes::before{content:"becomes  ";color:var(--white)}
+.steps{display:flex;flex-wrap:wrap;gap:.4rem 1.2rem;padding:.7rem 1rem;border-top:1px solid var(--line-soft);font-size:.74rem;color:var(--dim)}
+.steps b{color:var(--white);font-weight:500}
+
+/* ── SDK ───────────────────────────────────────────────────────────── */
+.sdk-grid{display:grid;gap:1rem}
+@media (min-width:52rem){.sdk-grid{grid-template-columns:1.2fr 1fr}}
+.tabs{display:flex;gap:0;align-self:stretch}
+.tab{
+  background:transparent;border:0;border-right:1px solid var(--line-soft);color:var(--dim);
+  font-family:inherit;font-size:.74rem;letter-spacing:.1em;padding:0 .9rem;cursor:pointer;
+}
+.tab:first-child{border-left:1px solid var(--line-soft)}
+.tab[aria-selected="true"]{color:var(--blue);background:var(--white)}
+.tab:hover:not([aria-selected="true"]){color:var(--white)}
+.code{padding:.95rem 1rem;overflow-x:auto;margin:0;font-family:inherit;font-weight:500;font-size:clamp(.72rem,1.45vw,.84rem);line-height:1.7;white-space:pre}
+.code .c{color:var(--dim)}
+.code[hidden]{display:none}
+.replay{padding:.95rem 1rem;margin:0;min-height:15.5rem;font-family:inherit;font-size:clamp(.72rem,1.45vw,.82rem);line-height:1.7;white-space:pre-wrap;word-break:break-word}
+.replay .p{color:var(--dim)}
+.replay .r{color:var(--dim)}
+.replay .t{border:1px solid var(--line);padding:0 .3rem;margin-left:.4rem;font-size:.7rem;color:var(--white)}
+.cursor{display:inline-block;width:.55em;height:1.05em;vertical-align:-.15em;background:var(--white);animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.cursor{animation:none}}
+.chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}
+.chip{border:1px solid var(--line);padding:.25rem .6rem;font-size:.72rem;letter-spacing:.06em;color:var(--dim)}
+.chip b{color:var(--white);font-weight:500}
+
 :where(a,button,[tabindex]):focus-visible{outline:1px solid var(--white);outline-offset:3px}
 </style>
 </head>
@@ -141,6 +219,9 @@ footer a:hover,footer a:focus-visible{color:var(--white);border-bottom-color:var
   <div class="wrap">
     <a class="brand" href="#top">bluebox</a>
     <div class="links">
+      <a href="#speed">speed</a>
+      <a href="#bluefile">bluefile</a>
+      <a href="#sdk">sdk</a>
       <a href="#about">about</a>
       <a href="https://github.com/chxperiments/bluebox">github</a>
     </div>
@@ -169,6 +250,138 @@ footer a:hover,footer a:focus-visible{color:var(--white);border-bottom-color:var
     </div>
   </section>
 
+
+  <section class="sec" id="speed">
+    <div class="wrap">
+      <h2>Speed</h2>
+      <p class="lede">A fresh microVM in <em>tens of milliseconds</em>. Its own kernel, every time.</p>
+
+      <div class="big" aria-label="Headline numbers">
+        <div><b data-count="15">15</b><span>ms · exec in a running VM</span></div>
+        <div><b data-count="44">44</b><span>ms · run in a fresh VM, warm pool</span></div>
+        <div><b data-count="31">31</b><span>× faster than a cold boot</span></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-bar"><span class="grow">latency · median of 20 · no-op command</span><span>lower is better</span></div>
+        <div class="bars" id="bars" role="list"></div>
+      </div>
+      <p class="note">
+        Measured with <a href="https://github.com/chxperiments/bluebox/tree/main/bench">bench/bench.py</a>
+        on one Linux machine (KVM, libkrun 1.19), wall clock from the host.
+        Reproduce it: <code>python3 bench/bench.py</code>.
+      </p>
+    </div>
+  </section>
+
+  <section class="sec" id="bluefile">
+    <div class="wrap">
+      <h2>Bluefile</h2>
+      <p class="lede">The whole sandbox is <em>one file</em>. Declare it; bluebox builds it.</p>
+
+      <div class="bf-grid">
+        <div class="panel">
+          <div class="panel-bar"><span class="grow">~/.bluebox/sandboxes/agent/Bluefile</span><span>point at a line</span></div>
+          <div class="bf-code" id="bf">
+<span class="ln"><span class="c"># agent -- everything the sandbox is</span></span>
+<span class="ln" tabindex="0" data-k="base" data-note="The image every microVM of this sandbox boots from. The package manager is inferred from it: apk here, apt on Debian, dnf on Fedora." data-becomes="FROM docker.io/library/alpine:latest">base: docker.io/library/alpine:latest</span>
+<span class="ln" tabindex="0" data-k="cpus · ram_mib" data-note="The size of the VM. These are real vCPUs and guest RAM, not cgroup quotas on a shared kernel." data-becomes="--annotation krun.cpus=2 --annotation krun.ram_mib=1024">cpus: 2</span>
+<span class="ln" tabindex="0" data-k="cpus · ram_mib" data-note="The size of the VM. These are real vCPUs and guest RAM, not cgroup quotas on a shared kernel." data-becomes="--annotation krun.cpus=2 --annotation krun.ram_mib=1024">ram_mib: 1024</span>
+<span class="ln" tabindex="0" data-k="network" data-note="bridge gives the guest internet access; none cuts it off entirely." data-becomes="--network=bridge">network: bridge</span>
+<span class="ln" tabindex="0" data-k="readonly" data-note="The guest can't modify its own image. /tmp and /data stay writable." data-becomes="--read-only">readonly: true</span>
+<span class="ln" tabindex="0" data-k="timeout_seconds" data-note="A wall-clock limit per command. When it's hit, every process the command started is killed and it exits 124, like timeout(1)." data-becomes="exit 124 after 60s">timeout_seconds: 60</span>
+<span class="ln" tabindex="0" data-k="warm" data-note="Keep two microVMs booted and waiting. Each run takes one, uses it once and destroys it, then a replacement boots in the background. Every run is still a fresh VM." data-becomes="bluebox run in ~45ms instead of ~1.4s">warm: 2</span>
+<span class="ln" tabindex="0" data-k="warmup" data-note="Run once in each waiting VM before it serves anyone, so the first python3 of a run doesn't pay to load the interpreter." data-becomes="python3 preloaded in every pooled VM">warmup:</span>
+<span class="ln" tabindex="0" data-k="warmup" data-note="Run once in each waiting VM before it serves anyone, so the first python3 of a run doesn't pay to load the interpreter." data-becomes="python3 preloaded in every pooled VM">  - python3 -c "import json"</span>
+<span class="ln" tabindex="0" data-k="packages" data-note="Baked into the image at build time. Package names are checked when the Bluefile is parsed, so one can't smuggle a second command into the build." data-becomes="RUN apk add --no-cache python3 py3-pip">packages: [python3, py3-pip]</span>
+<span class="ln" tabindex="0" data-k="mounts" data-note="Exactly which host directories the sandbox sees, and whether it can write them. Read-only unless you say rw." data-becomes="-v ~/projects/demo:/work:ro">mounts:</span>
+<span class="ln" tabindex="0" data-k="mounts" data-note="Exactly which host directories the sandbox sees, and whether it can write them. Read-only unless you say rw." data-becomes="-v ~/projects/demo:/work:ro">  - {host: ~/projects/demo, guest: /work}</span>
+<span class="ln" tabindex="0" data-k="env" data-note="Environment for every command. Keys must be identifiers and values single-line, so the generated build file can't be restructured." data-becomes="ENV PYTHONUNBUFFERED=1">env: {PYTHONUNBUFFERED: "1"}</span>
+</div>
+        </div>
+        <div class="panel explain" aria-live="polite">
+          <div class="panel-bar"><span class="grow">what it declares</span></div>
+          <div class="body">
+            <p class="key" id="bf-key">base</p>
+            <p class="what" id="bf-what"></p>
+            <p class="becomes" id="bf-becomes"></p>
+          </div>
+          <div class="steps">
+            <span><b>01</b> parse · unknown keys rejected</span>
+            <span><b>02</b> build the image</span>
+            <span><b>03</b> prove it has its own kernel</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="sdk">
+    <div class="wrap">
+      <h2>SDK</h2>
+      <p class="lede">Sandboxes as a <em>function call</em>. From Python or Go.</p>
+
+      <div class="sdk-grid">
+        <div class="panel">
+          <div class="panel-bar" style="padding-right:0">
+            <div class="tabs" role="tablist" aria-label="SDK language">
+              <button class="tab" role="tab" id="t-py" aria-controls="c-py" aria-selected="true">python</button>
+              <button class="tab" role="tab" id="t-go" aria-controls="c-go" aria-selected="false" tabindex="-1">go</button>
+              <button class="tab" role="tab" id="t-cli" aria-controls="c-cli" aria-selected="false" tabindex="-1">cli</button>
+            </div>
+            <span class="grow"></span>
+            <button class="copy" id="copy-sdk" type="button" style="margin-right:.75rem">copy</button>
+          </div>
+<pre class="code" id="c-py" role="tabpanel" aria-labelledby="t-py">from bluebox import Sandbox
+
+<span class="c"># a persistent microVM: up on enter, down on exit</span>
+with Sandbox("agent") as sb:
+    sb.write_file("/data/task.py", code)
+    r = sb.exec(["python3", "/data/task.py"])
+    print(r.stdout_text, r.exit_code, r.duration_ms)
+
+<span class="c"># a fresh microVM per call, from the warm pool</span>
+r = Sandbox("agent").run("pytest -q")
+r.check()   <span class="c"># raises on a non-zero exit</span></pre>
+<pre class="code" id="c-go" role="tabpanel" aria-labelledby="t-go" hidden>sb := bluebox.New().Sandbox("agent")
+if err := sb.Up(ctx); err != nil {
+	return err
+}
+defer sb.Down(ctx)
+
+r, err := sb.Exec(ctx, bluebox.Cmd("python3", "task.py"))
+fmt.Println(string(r.Stdout), r.ExitCode, r.Duration)
+
+<span class="c">// a fresh microVM per call, from the warm pool</span>
+r, err = sb.Run(ctx, bluebox.Sh("pytest -q"))</pre>
+<pre class="code" id="c-cli" role="tabpanel" aria-labelledby="t-cli" hidden>bluebox new agent --from tiny-python
+bluebox build agent               <span class="c"># verifies its own kernel</span>
+
+bluebox up agent                  <span class="c"># boot once</span>
+bluebox exec agent -- python3 task.py
+echo 'print(6*7)' | bluebox exec agent -- python3 -
+bluebox down agent
+
+bluebox run agent -- pytest -q    <span class="c"># fresh VM, then gone</span></pre>
+        </div>
+
+        <div class="panel">
+          <div class="panel-bar"><span class="grow">agent loop · replay</span><span id="replay-state">live</span></div>
+          <pre class="replay" id="replay" aria-label="A replay of an agent running commands in a sandbox"></pre>
+        </div>
+      </div>
+
+      <div class="chips">
+        <span class="chip"><b>0</b> dependencies</span>
+        <span class="chip">owner-only <b>unix socket</b></span>
+        <span class="chip">starts the server <b>on demand</b></span>
+        <span class="chip">file I/O <b>inside the guest</b></span>
+        <span class="chip">binary-safe <b>stdin / stdout</b></span>
+        <span class="chip">escape-tested: <b>security/escape-test.sh</b></span>
+      </div>
+    </div>
+  </section>
+
   <section id="about">
     <div class="wrap">
       <h2>About</h2>
@@ -176,8 +389,8 @@ footer a:hover,footer a:focus-visible{color:var(--white);border-bottom-color:var
         <div>
           <p>
             bluebox gives you a sandbox with its own kernel. Not a container
-            sharing yours — a real microVM, booting in about a second, built
-            from one file you can read.
+            sharing yours — a real microVM, ready in tens of milliseconds from a
+            warm pool, built from one file you can read.
           </p>
           <p>
             Install anything into it. Break it, fill it with junk, delete half
@@ -192,9 +405,12 @@ footer a:hover,footer a:focus-visible{color:var(--white);border-bottom-color:var
         </div>
         <div class="facts">
           <div class="fact"><b>isolation</b><span>its own kernel, via KVM</span></div>
-          <div class="fact"><b>boot</b><span>about one second, cold</span></div>
+          <div class="fact"><b>confined</b><span>VMM: no new privs, 6 caps, own UID</span></div>
+          <div class="fact"><b>start</b><span>~44ms warm, ~1.4s cold</span></div>
+          <div class="fact"><b>exec</b><span>~15ms in a running VM</span></div>
           <div class="fact"><b>persists</b><span>/data, and nothing else</span></div>
           <div class="fact"><b>config</b><span>one YAML Bluefile</span></div>
+          <div class="fact"><b>sdk</b><span>python, go</span></div>
           <div class="fact"><b>platform</b><span>linux, macos</span></div>
         </div>
       </div>
@@ -359,6 +575,184 @@ footer a:hover,footer a:focus-visible{color:var(--white);border-bottom-color:var
     draw();
     requestAnimationFrame(tick);
   })();
+})();
+
+const CALM = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// Run fn once when el scrolls into view (or at once without observers).
+function onView(el, fn) {
+  if (!el) return;
+  if (!("IntersectionObserver" in window)) { fn(); return; }
+  const io = new IntersectionObserver((es) => {
+    if (es.some((e) => e.isIntersecting)) { io.disconnect(); fn(); }
+  }, { threshold: 0.35 });
+  io.observe(el);
+}
+
+// ── Speed: ASCII bars, drawn in as they scroll into view ────────────
+(function () {
+  const host = document.getElementById("bars");
+  if (!host) return;
+  // Median, no-op command, from bench/RESULTS.md. us marks bluebox's own paths.
+  const DATA = [{"name": "podman + krun", "tag": "microVM, booted per command", "ms": 1488, "us": false}, {"name": "bluebox run \u00b7 cold", "tag": "microVM, booted per command", "ms": 1357, "us": true}, {"name": "podman + runc", "tag": "container, shares your kernel", "ms": 448, "us": false}, {"name": "bluebox run \u00b7 warm", "tag": "fresh microVM from the pool", "ms": 44, "us": true}, {"name": "bluebox exec", "tag": "running microVM", "ms": 15, "us": true}];
+  const max = Math.max(...DATA.map((d) => d.ms));
+  const rows = DATA.map((d) => {
+    const row = document.createElement("div");
+    row.className = "bar" + (d.us ? " us" : "");
+    row.setAttribute("role", "listitem");
+    row.innerHTML =
+      `<span class="name">${d.us ? "<b>" + d.name + "</b>" : d.name}<span class="tag">${d.tag}</span></span>` +
+      `<span class="ink" aria-hidden="true"></span><span class="ms">${d.ms.toLocaleString()} ms</span>`;
+    host.appendChild(row);
+    return { d, ink: row.querySelector(".ink") };
+  });
+  // Width in cells tracks the column, so the longest bar always fills it.
+  function cells() {
+    const ink = rows[0].ink;
+    const w = ink.getBoundingClientRect().width;
+    const ch = parseFloat(getComputedStyle(ink).fontSize) * 0.6;
+    return Math.max(8, Math.floor(w / ch));
+  }
+  function paint(t) {
+    const n = cells();
+    for (const { d, ink } of rows) {
+      const exact = (d.ms / max) * n * t;
+      const full = Math.floor(exact);
+      // Anything that ran at all gets a sliver, so the fast rows still read.
+      ink.textContent = full > 0 ? "█".repeat(full) : "▏";
+    }
+  }
+  paint(CALM ? 1 : 0);
+  window.addEventListener("resize", () => paint(1));
+  if (CALM) return;
+  onView(host, () => {
+    const t0 = performance.now(), dur = 1400;
+    (function step(now) {
+      const t = Math.min(1, (now - t0) / dur);
+      paint(1 - Math.pow(1 - t, 3));
+      if (t < 1) requestAnimationFrame(step);
+    })(t0);
+  });
+})();
+
+// ── Headline numbers count up ───────────────────────────────────────
+(function () {
+  const els = document.querySelectorAll("[data-count]");
+  if (CALM || !els.length) return;
+  els.forEach((el) => {
+    const target = parseFloat(el.dataset.count);
+    el.textContent = "0";
+    onView(el, () => {
+      const t0 = performance.now(), dur = 900;
+      (function step(now) {
+        const t = Math.min(1, (now - t0) / dur);
+        el.textContent = Math.round(target * (1 - Math.pow(1 - t, 3)));
+        if (t < 1) requestAnimationFrame(step);
+      })(t0);
+    });
+  });
+})();
+
+// ── Bluefile: point at a line to see what it declares ───────────────
+(function () {
+  const lines = [...document.querySelectorAll("#bf .ln[data-note]")];
+  const key = document.getElementById("bf-key");
+  const what = document.getElementById("bf-what");
+  const becomes = document.getElementById("bf-becomes");
+  if (!lines.length || !key) return;
+  function show(ln) {
+    lines.forEach((l) => l.classList.toggle("on", l.dataset.k === ln.dataset.k));
+    key.textContent = ln.dataset.k;
+    what.textContent = ln.dataset.note;
+    becomes.textContent = ln.dataset.becomes;
+  }
+  lines.forEach((ln) => {
+    ln.addEventListener("mouseenter", () => show(ln));
+    ln.addEventListener("focus", () => show(ln));
+    ln.addEventListener("click", () => show(ln));
+  });
+  show(lines.find((l) => l.dataset.k === "warm") || lines[0]);
+})();
+
+// ── SDK tabs (arrow keys move between them, as tablists should) ─────
+(function () {
+  const tabs = [...document.querySelectorAll('[role="tab"]')];
+  if (!tabs.length) return;
+  function select(tab) {
+    tabs.forEach((t) => {
+      const on = t === tab;
+      t.setAttribute("aria-selected", on);
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+    });
+  }
+  tabs.forEach((t, i) => {
+    t.addEventListener("click", () => select(t));
+    t.addEventListener("keydown", (e) => {
+      const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+      if (!d) return;
+      const next = tabs[(i + d + tabs.length) % tabs.length];
+      select(next); next.focus(); e.preventDefault();
+    });
+  });
+  const btn = document.getElementById("copy-sdk");
+  btn?.addEventListener("click", async () => {
+    const panel = document.querySelector(".code:not([hidden])");
+    try { await navigator.clipboard.writeText(panel.textContent); btn.textContent = "copied"; }
+    catch { btn.textContent = "select it"; }
+    setTimeout(() => { btn.textContent = "copy"; }, 1700);
+  });
+})();
+
+// ── Agent loop replay ────────────────────────────────────────────────
+// A scripted replay, not a live call: the timings are the medians measured
+// by bench/bench.py, so it shows what a real loop feels like.
+(function () {
+  const out = document.getElementById("replay");
+  const state = document.getElementById("replay-state");
+  if (!out) return;
+  const STEPS = [
+    ["p", ">>> sb = Sandbox(\"agent\"); sb.up()"],
+    ["r", "up · ready", "~1.3s once"],
+    ["p", ">>> sb.exec(\"python3 -c 'print(6*7)'\")"],
+    ["r", "42  · exit 0", "56ms"],
+    ["p", ">>> sb.exec(\"echo draft > /tmp/notes\")"],
+    ["r", "exit 0", "15ms"],
+    ["p", ">>> sb.exec(\"cat /tmp/notes\")"],
+    ["r", "draft  · state kept between calls", "15ms"],
+    ["p", ">>> sb.exec(\"mount -t tmpfs x /mnt && echo ok\")"],
+    ["r", "ok  · a real kernel, just not yours", "root in the guest"],
+    ["p", ">>> Sandbox(\"agent\").run(\"uname -r\")"],
+    ["r", "6.12.91  · fresh VM, own kernel", "44ms"],
+  ];
+  const esc = (t) => t.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  const line = ([k, text, tag], typed) => k === "p"
+    ? `<span class="p">${esc(typed ?? text)}</span>`
+    : `<span class="r">${esc(text)}</span><span class="t">${esc(tag)}</span>`;
+
+  if (CALM) {
+    out.innerHTML = STEPS.map((s) => line(s)).join("\n");
+    state.textContent = "replay";
+    return;
+  }
+  let done = [];
+  const render = (tail) => { out.innerHTML = done.concat(tail ?? []).join("\n") + '<span class="cursor"></span>'; };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function play() {
+    for (;;) {
+      done = [];
+      for (const s of STEPS) {
+        if (s[0] === "p") {
+          for (let i = 1; i <= s[1].length; i += 2) { render([line(s, s[1].slice(0, i))]); await sleep(18); }
+          done.push(line(s)); render(); await sleep(260);
+        } else {
+          done.push(line(s)); render(); await sleep(520);
+        }
+      }
+      await sleep(3200);
+    }
+  }
+  onView(out, play);
 })();
 
 // ── Copy the install line ───────────────────────────────────────────

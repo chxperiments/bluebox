@@ -18,7 +18,7 @@ with Sandbox("agent") as sb:
     print(r.stdout_text, r.exit_code, r.duration_ms)
 
 # A fresh microVM per call, destroyed afterwards. With `warm: 2` in the
-# Bluefile it comes from a pool of booted VMs and starts in ~20-30ms.
+# Bluefile it comes from a pool of booted VMs and starts in ~20-45ms.
 r = Sandbox("agent").run("python3 -c 'print(6 * 7)'")
 r.check()   # raises CommandFailed on a non-zero exit
 ```

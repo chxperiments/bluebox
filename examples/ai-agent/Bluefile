@@ -9,6 +9,7 @@ cpus: 4
 ram_mib: 4096
 network: bridge          # the agent installs deps and clones repos
 readonly: true           # root is fixed; work goes in /data
+isolation: strict        # the VMM runs as a UID that is not yours
 timeout_seconds: 1800    # 30 min ceiling per command; exits 124 if hit
 
 packages:

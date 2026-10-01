@@ -45,6 +45,7 @@ type Spec struct {
 	ReadOnlyRootfs bool              `yaml:"readonly"`
 	TimeoutSeconds int               `yaml:"timeout_seconds"` // 0 = unlimited
 	Warm           int               `yaml:"warm"`            // VMs kept booted for run; 0 = boot per run
+	Isolation      string            `yaml:"isolation"`       // "standard" or "strict": VMM under its own host UID
 	Seccomp        string            `yaml:"seccomp"`         // profile path, filters the VMM
 	PkgMgr         string            `yaml:"pkgmgr"`          // apk/apt/dnf; empty = infer from base
 	Packages       []string          `yaml:"packages"`
@@ -94,10 +95,11 @@ const MaxWarm = 8
 
 // Default supplies values a Bluefile omits.
 var Default = Spec{
-	Base:    "docker.io/library/alpine:latest",
-	CPUs:    2,
-	RAMMiB:  2048,
-	Network: "bridge",
+	Base:      "docker.io/library/alpine:latest",
+	CPUs:      2,
+	RAMMiB:    2048,
+	Network:   "bridge",
+	Isolation: "standard",
 }
 
 // Template is written by `bluebox new`.
@@ -111,6 +113,7 @@ ram_mib: 2048
 network: bridge       # bridge = internet access, none = offline
 passt: false          # real NIC + default route in the guest (needed for k3s)
 readonly: false       # read-only guest root (/tmp and /data stay writable)
+isolation: standard   # strict: VMM runs as a UID that is not yours (use for agents)
 timeout_seconds: 0    # per-run wall clock limit, 0 = unlimited
 warm: 0               # VMs kept booted so run starts in ms (each holds its RAM)
 
@@ -184,6 +187,9 @@ func (s Spec) validate() error {
 	}
 	if s.Network != "bridge" && s.Network != "none" {
 		return fmt.Errorf("network must be bridge or none, got %q", s.Network)
+	}
+	if s.Isolation != "standard" && s.Isolation != "strict" {
+		return fmt.Errorf("isolation must be standard or strict, got %q", s.Isolation)
 	}
 	if s.Warm < 0 || s.Warm > MaxWarm {
 		return fmt.Errorf("warm must be 0-%d, got %d", MaxWarm, s.Warm)
@@ -279,6 +285,13 @@ func (s Spec) validate() error {
 		}
 		if m.Mode != "ro" && m.Mode != "rw" {
 			return fmt.Errorf("mounts[%d]: mode must be ro or rw, got %q", i, m.Mode)
+		}
+		if m.Mode == "rw" && s.Isolation == "strict" {
+			// Under strict isolation the VMM runs as a UID that is not yours,
+			// so it could only write your directory if that directory were
+			// re-owned to it -- which would take it away from you.
+			return fmt.Errorf("mounts[%d]: isolation: strict allows read-only mounts only; "+
+				"exchange files through /data instead", i)
 		}
 		if seen[m.Guest] {
 			return fmt.Errorf("mounts[%d]: guest path %q is mounted more than once", i, m.Guest)

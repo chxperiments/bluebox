@@ -337,3 +337,28 @@ func TestWarmupLinesMustBeNonEmpty(t *testing.T) {
 		}
 	}
 }
+
+func TestIsolation(t *testing.T) {
+	cases := []struct {
+		yaml string
+		ok   bool
+	}{
+		{"", true}, // defaults to standard
+		{"isolation: strict", true},
+		{"isolation: strict\nmounts:\n  - {host: /tmp, guest: /in}", true},
+		{"isolation: strict\nmounts:\n  - {host: /tmp, guest: /out, mode: rw}", false},
+		{"isolation: standard\nmounts:\n  - {host: /tmp, guest: /out, mode: rw}", true},
+		{"isolation: paranoid", false},
+	}
+	for _, c := range cases {
+		p := filepath.Join(t.TempDir(), "Bluefile")
+		os.WriteFile(p, []byte(c.yaml+"\n"), 0o644)
+		s, err := Parse(p)
+		if (err == nil) != c.ok {
+			t.Errorf("%q: err = %v, want ok=%v", c.yaml, err, c.ok)
+		}
+		if err == nil && s.Isolation == "" {
+			t.Errorf("%q: isolation left empty", c.yaml)
+		}
+	}
+}

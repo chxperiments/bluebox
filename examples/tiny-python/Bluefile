@@ -10,6 +10,7 @@ cpus: 1
 ram_mib: 512
 network: bridge
 readonly: true           # agent code writes to /data or /tmp, not the image
+isolation: strict        # the VMM runs as a UID that is not yours
 timeout_seconds: 60
 warm: 0                  # set 1-2 for ~50ms runs; each waiting VM holds its RAM
 

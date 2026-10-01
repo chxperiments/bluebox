@@ -210,6 +210,9 @@ func boot(name string, s bluefile.Spec, ctr string, extra ...string) (upState, e
 		return upState{}, err
 	}
 	removeContainer(ctr)
+	if err := prepareData(name, s); err != nil {
+		return upState{}, err
+	}
 
 	base, err := vmArgs(name, s, false, true)
 	if err != nil {

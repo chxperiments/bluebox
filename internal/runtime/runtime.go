@@ -68,6 +68,7 @@ func vmArgs(name string, s bluefile.Spec, interactive, useKrun bool) ([]string, 
 	if useKrun {
 		args = append(args, "--runtime", "krun")
 	}
+	args = append(args, hardening(s)...)
 	args = append(args,
 		"--network="+s.Network,
 		"--annotation", "krun.cpus="+strconv.Itoa(s.CPUs),
@@ -158,6 +159,81 @@ func checked(name string, s bluefile.Spec, notice func(string)) error {
 	return nil
 }
 
+// vmmCaps are the only capabilities the VMM keeps. libkrun's own security
+// model puts the guest and the VMM in one security context -- whatever the
+// VMM may do, the guest can reach through it -- so the VMM gets no more than
+// the guest's file sharing needs. virtiofs acts for guest users, which takes
+// CHOWN, DAC_OVERRIDE, FOWNER, SETUID and SETGID; without any of them guest
+// root cannot create a directory. NET_BIND_SERVICE lets a guest server take
+// a port below 1024 in the sandbox's own network namespace. Everything else
+// podman grants by default (KILL, SETPCAP, SETFCAP, SYS_CHROOT, FSETID) goes.
+const vmmCaps = "CHOWN,DAC_OVERRIDE,FOWNER,SETUID,SETGID,NET_BIND_SERVICE"
+
+// vmmOverheadMiB is memory the VMM may use beyond the guest's RAM. A guest
+// filling all 512 MiB of its RAM ran within 64 MiB of overhead; this leaves
+// room for device buffers without letting the VMM grow unbounded.
+const vmmOverheadMiB = 256
+
+// vmmPidsLimit bounds the VMM's host-side threads (about 25 at rest). Guest
+// processes live in the guest kernel and do not count against it.
+const vmmPidsLimit = 512
+
+// hardening confines the VMM process on the host. It is the boundary between
+// a guest that has broken out of libkrun and the rest of the machine.
+func hardening(s bluefile.Spec) []string {
+	args := []string{
+		"--security-opt", "no-new-privileges",
+		"--cap-drop=all", "--cap-add=" + vmmCaps,
+		"--pids-limit=" + strconv.Itoa(vmmPidsLimit),
+		"--memory=" + strconv.Itoa(s.RAMMiB+vmmOverheadMiB) + "m",
+	}
+	if s.Isolation == "strict" {
+		// Rootless podman maps the sandbox's root to your own UID, so a guest
+		// that escaped libkrun would land in your account. Strict maps it to
+		// the first UID of your subordinate range instead and leaves your UID
+		// out of the mapping entirely: an escape lands in an account that owns
+		// nothing of yours. The range is the same for every strict sandbox, so
+		// it separates sandboxes from you, not from each other.
+		args = append(args, "--uidmap", strictMap, "--gidmap", strictMap)
+	}
+	return args
+}
+
+// strictMap maps sandbox IDs 0-65535 onto IDs 1-65536 of the rootless user
+// namespace, i.e. onto your subordinate UIDs and never onto you (ID 0 there).
+const strictMap = "0:1:65536"
+
+// prepareData gives /data to whoever the sandbox's root is on the host: you
+// under standard isolation, the first subordinate UID under strict. Ownership
+// only changes when a sandbox switches between the two, so this is a stat on
+// every boot and a chown once.
+func prepareData(name string, s bluefile.Spec) error {
+	data, err := sandbox.DataDir(name)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(data, 0o755); err != nil {
+		return err
+	}
+	mine, err := sandbox.OwnedByMe(data)
+	if err != nil {
+		return err
+	}
+	strict := s.Isolation == "strict"
+	if mine != strict {
+		return nil // already owned by the sandbox's root
+	}
+	// Inside podman unshare, ID 0 is you and ID 1 the first subordinate UID.
+	owner := "0:0"
+	if strict {
+		owner = "1:1"
+	}
+	if out, err := exec.Command("podman", "unshare", "chown", "-R", owner, data).CombinedOutput(); err != nil {
+		return fmt.Errorf("re-owning /data for isolation %s: %s", s.Isolation, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 // Build renders the Containerfile from the spec, writes it, and builds the image.
 func Build(name string, s bluefile.Spec) error {
 	cfPath, err := sandbox.ContainerfilePath(name)
@@ -205,6 +281,9 @@ func Terminal() Streams { return Streams{Stdout: os.Stdout, Stderr: os.Stderr} }
 // Run executes argv in a fresh microVM. A timed-out run is reaped explicitly:
 // killing the podman CLI does not stop the VM it started, so --rm never fires.
 func Run(name string, s bluefile.Spec, argv []string, streams Streams) error {
+	if err := prepareData(name, s); err != nil {
+		return err
+	}
 	base, err := vmArgs(name, s, false, true)
 	if err != nil {
 		return err
@@ -263,6 +342,9 @@ func openLog(name string) *os.File {
 
 // Shell opens an interactive session in one microVM. No timeout: the user is it.
 func Shell(name string, s bluefile.Spec) error {
+	if err := prepareData(name, s); err != nil {
+		return err
+	}
 	base, err := vmArgs(name, s, true, true)
 	if err != nil {
 		return err
@@ -288,6 +370,9 @@ func BaselineKernel(name string, s bluefile.Spec) (string, error) {
 }
 
 func kernelOf(name string, s bluefile.Spec, useKrun bool) (string, error) {
+	if err := prepareData(name, s); err != nil {
+		return "", err
+	}
 	base, err := vmArgs(name, s, false, useKrun)
 	if err != nil {
 		return "", err

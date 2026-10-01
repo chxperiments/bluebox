@@ -115,6 +115,7 @@ cpus: 4
 ram_mib: 4096
 network: bridge        # bridge = internet access, none = offline
 readonly: true         # read-only root (/tmp and /data stay writable)
+isolation: strict      # VMM runs as a UID that is not yours (see Security model)
 timeout_seconds: 600   # per-run wall clock limit, 0 = unlimited
 warm: 2                # VMs kept booted so run starts in ms, 0 = boot per run
 warmup:                # run once in each warm VM, before it serves a run
@@ -138,7 +139,8 @@ explicitly to `apk`, `apt` or `dnf`.
 ### warm
 
 `warm: N` (0-8) keeps N microVMs booted and waiting, so `bluebox run` starts
-in about 20-30ms instead of about 1.5s, and every run still gets a fresh VM:
+in about 20-45ms instead of about 1.4s, and every run still gets a fresh VM
+(see [bench/RESULTS.md](bench/RESULTS.md)):
 
 ```yaml
 warm: 2
@@ -398,13 +400,66 @@ upgraded.
 
 Override the root with `BLUEBOX_HOME`.
 
-## Notes
+## Security model
 
-`readonly` and `seccomp` apply on the host side. The workload inside the guest
-runs unconfined against its own throwaway kernel, which is the point — but it
-means a seccomp profile filters the VMM process, not the guest. Operations the
-VMM performs on the host (file I/O, which goes through virtiofs) are filterable;
-operations the guest kernel answers alone are not.
+A sandbox has two layers, and both matter.
+
+**1. The microVM.** The guest runs on its own kernel under KVM, so a guest
+kernel exploit takes over the guest, not your host.
+
+**2. The confinement around the VMM.** libkrun's own documentation says the
+guest and its VMM "pertain to the same security context": the VMM, a process
+on your host, does the guest's file I/O (virtiofs) and opens its network
+connections. Anything the VMM may do, a guest that has broken out of libkrun
+may do too. So bluebox confines the VMM:
+
+| | every sandbox | `isolation: strict` |
+|---|---|---|
+| own network namespace (no host loopback) | yes | yes |
+| seccomp filter | podman's default | podman's default |
+| `no_new_privs` | yes | yes |
+| capabilities | 6 of podman's 11: what virtiofs and low ports need | same |
+| pids limit / memory limit | 512 / `ram_mib` + 256 MiB | same |
+| host UID of the VMM | **yours** | **a subordinate UID, not yours** |
+| writable host mounts | allowed | refused |
+
+Under standard isolation the VMM runs as you, so escaping both the VM and
+libkrun lands in your account. **Use `isolation: strict` for agents and any
+untrusted code.** The VMM then runs as the first UID of your subordinate range
+(see `/etc/subuid`), which owns nothing of yours. The agent examples use
+strict.
+
+What strict changes:
+
+- `/data` is owned by that UID. You can read it from your account. bluebox's
+  own `snapshot`, `restore`, `reset` and `destroy` handle it through
+  `podman unshare`. Switching a sandbox between modes re-owns `/data` once.
+- Mounts must be read-only, and readable by other users (`o+rx`), because the
+  sandbox is no longer you. Exchange files through `/data` or the SDK's
+  `write_file`.
+- Every strict sandbox shares one subordinate UID, so strict separates
+  sandboxes from you, not from each other.
+
+`security/escape-test.sh` runs what a hostile agent would try from inside a
+sandbox (reaching services on host loopback, reading host files, symlink and
+`..` traversal out of shared directories, writing through read-only mounts,
+reading the agent token, a fork bomb) and checks the VMM's confinement:
+
+```sh
+security/escape-test.sh "$(command -v bluebox)" strict
+```
+
+Limits worth knowing:
+
+- The per-command kernel check catches a runtime that fell back to a plain
+  container. It cannot catch a guest that lies about its kernel.
+- A sandbox can plant symlinks in `/data` that point anywhere. They are
+  harmless inside the guest, but host-side tools must not follow them; bluebox's
+  own `restore` checks archive entries before unpacking.
+- `seccomp:` in the Bluefile filters the VMM process, not the guest: the guest
+  runs unconfined against its own kernel, which is the point.
+- For hostile multi-tenant workloads, a Firecracker backend with its jailer is
+  the planned next step (see the ROADMAP).
 
 ## Development
 

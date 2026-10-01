@@ -55,3 +55,33 @@ func TestVmArgsWithoutMounts(t *testing.T) {
 		t.Errorf("expected exactly the /data mount, got %q", data)
 	}
 }
+
+// Every VM, krun or the plain-container baseline, starts confined: libkrun
+// gives the guest whatever its VMM can do, so these flags are the boundary
+// behind a libkrun escape and must never silently drop out of vmArgs.
+func TestVmArgsConfineTheVMM(t *testing.T) {
+	t.Setenv("BLUEBOX_HOME", t.TempDir())
+	s := bluefile.Default
+	s.RAMMiB = 1024
+	for _, krun := range []bool{true, false} {
+		args, err := vmArgs("devbox", s, false, krun)
+		if err != nil {
+			t.Fatal(err)
+		}
+		joined := " " + strings.Join(args, " ") + " "
+		for _, want := range []string{
+			" no-new-privileges ",
+			" --cap-drop=all ",
+			" --cap-add=CHOWN,DAC_OVERRIDE,FOWNER,SETUID,SETGID,NET_BIND_SERVICE ",
+			" --pids-limit=512 ",
+			" --memory=1280m ",
+		} {
+			if !strings.Contains(joined, want) {
+				t.Errorf("krun=%v: missing %q in %v", krun, strings.TrimSpace(want), args)
+			}
+		}
+		if strings.Contains(joined, "--privileged") {
+			t.Errorf("krun=%v: --privileged must never be passed", krun)
+		}
+	}
+}

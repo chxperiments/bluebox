@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -206,6 +207,43 @@ func SnapshotsDir(name string) (string, error) {
 	return filepath.Join(h, "snapshots", name), nil
 }
 
+// OwnedByMe reports whether path belongs to this user. A strict sandbox's
+// /data belongs to a subordinate UID instead, and host-side operations on it
+// go through podman unshare, where both IDs are reachable.
+func OwnedByMe(path string) (bool, error) {
+	fi, err := os.Lstat(path)
+	if err != nil {
+		return false, err
+	}
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return true, nil
+	}
+	return int(st.Uid) == os.Getuid(), nil
+}
+
+// asOwner prefixes argv with podman unshare when path is not ours, so a
+// strict sandbox's files can be archived and removed from the host.
+func asOwner(path string, argv ...string) *exec.Cmd {
+	if mine, err := OwnedByMe(path); err == nil && !mine {
+		argv = append([]string{"podman", "unshare"}, argv...)
+	}
+	return exec.Command(argv[0], argv[1:]...)
+}
+
+// removeTree deletes a directory tree, falling back to podman unshare for
+// files a strict sandbox's guest created under its own UIDs.
+func removeTree(path string) error {
+	err := os.RemoveAll(path)
+	if err == nil {
+		return nil
+	}
+	if out, uerr := exec.Command("podman", "unshare", "rm", "-rf", "--", path).CombinedOutput(); uerr != nil {
+		return fmt.Errorf("%v (and via podman unshare: %s)", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 // DataEmpty reports whether a sandbox has nothing worth losing.
 func DataEmpty(name string) (bool, error) {
 	d, err := DataDir(name)
@@ -215,6 +253,13 @@ func DataEmpty(name string) (bool, error) {
 	entries, err := os.ReadDir(d)
 	if os.IsNotExist(err) {
 		return true, nil
+	}
+	if os.IsPermission(err) {
+		out, err := asOwner(d, "ls", "-A", d).Output()
+		if err != nil {
+			return false, err
+		}
+		return len(strings.TrimSpace(string(out))) == 0, nil
 	}
 	if err != nil {
 		return false, err
@@ -228,7 +273,7 @@ func ResetData(name string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.RemoveAll(d); err != nil {
+	if err := removeTree(d); err != nil {
 		return err
 	}
 	return os.MkdirAll(d, 0o755)
@@ -259,7 +304,7 @@ func Snapshot(name, label string) (string, error) {
 	// snapshot leaves no half-written archive -- and, when a label is being
 	// reused, does not destroy the archive it was going to replace.
 	tmp := out + ".partial"
-	cmd := exec.Command("tar", "-czf", tmp, "-C", data, ".")
+	cmd := asOwner(data, "tar", "-czf", tmp, "-C", data, ".")
 	if msg, err := cmd.CombinedOutput(); err != nil {
 		os.Remove(tmp)
 		return "", fmt.Errorf("tar: %s", strings.TrimSpace(string(msg)))
@@ -398,8 +443,8 @@ func Restore(name, archive string) error {
 		return err
 	}
 	staged, replaced := data+".restoring", data+".replaced"
-	os.RemoveAll(staged)
-	os.RemoveAll(replaced)
+	removeTree(staged)
+	removeTree(replaced)
 	if err := os.MkdirAll(staged, 0o755); err != nil {
 		return err
 	}
@@ -419,7 +464,7 @@ func Restore(name, archive string) error {
 		os.RemoveAll(staged)
 		return err
 	}
-	os.RemoveAll(replaced)
+	removeTree(replaced)
 	return nil
 }
 
@@ -441,7 +486,7 @@ func Remove(name string, withData bool) error {
 		if err != nil {
 			return err
 		}
-		if err := os.RemoveAll(data); err != nil {
+		if err := removeTree(data); err != nil {
 			return err
 		}
 		// Snapshots are copies of that same data, so they go with it.

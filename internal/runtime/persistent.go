@@ -3,7 +3,6 @@ package runtime
 import (
 	"bytes"
 	"crypto/rand"
-	"debug/elf"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -96,19 +95,15 @@ func installAgent() (string, error) {
 	if real, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = real
 	}
-	f, err := elf.Open(exe)
+	dyn, err := dynamicallyLinked(exe)
 	if err != nil {
 		return "", fmt.Errorf("cannot inspect %s: %w", exe, err)
 	}
-	for _, p := range f.Progs {
-		if p.Type == elf.PT_INTERP {
-			f.Close()
-			return "", fmt.Errorf("this bluebox is dynamically linked, so it cannot run inside the guest.\n" +
-				"Rebuild it static (release binaries already are):\n" +
-				"  CGO_ENABLED=0 go build -o bluebox ./cmd/bluebox")
-		}
+	if dyn {
+		return "", fmt.Errorf("this bluebox is dynamically linked, so it cannot run inside the guest.\n" +
+			"Rebuild it static (release binaries already are):\n" +
+			"  CGO_ENABLED=0 go build -o bluebox ./cmd/bluebox")
 	}
-	f.Close()
 
 	src, err := os.ReadFile(exe)
 	if err != nil {

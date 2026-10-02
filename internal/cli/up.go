@@ -116,6 +116,40 @@ func agentCmd() *cobra.Command {
 	}
 }
 
+func doctorCmd() *cobra.Command {
+	return &cobra.Command{
+		Use: "doctor", Short: "check the host setup", GroupID: groupInspect,
+		Long: "Runs every environment check and prints the fix for each failure:\n" +
+			"podman, KVM, the krun symlink and its libkrun support, subordinate\n" +
+			"UIDs for isolation: strict, and whether this binary can serve as the\n" +
+			"guest agent. Exits 1 if anything is broken.",
+		Args:              cobra.NoArgs,
+		ValidArgsFunction: completeNothing,
+		RunE: func(*cobra.Command, []string) error {
+			broken := 0
+			for _, c := range runtime.Doctor() {
+				mark := "ok  "
+				switch {
+				case c.Warn:
+					mark = "warn"
+				case !c.OK:
+					mark = "FAIL"
+					broken++
+				}
+				fmt.Printf("  %s  %-17s %s\n", mark, c.Name, c.Detail)
+				if c.Fix != "" && (!c.OK || c.Warn) {
+					fmt.Printf("        %-17s fix: %s\n", "", c.Fix)
+				}
+			}
+			if broken > 0 {
+				exitCode = 1
+				return fmt.Errorf("%s broken", plural(broken, "check", "checks"))
+			}
+			return nil
+		},
+	}
+}
+
 func serveCmd() *cobra.Command {
 	var sock string
 	var idle time.Duration

@@ -60,7 +60,7 @@ func newRoot() *cobra.Command {
 		newCmd(), editCmd(), buildCmd(), lsCmd(),
 		runCmd(), shellCmd(), upCmd(), execCmd(), downCmd(), serveCmd(),
 		resetCmd(), snapshotCmd(), restoreCmd(),
-		envCmd(), logsCmd(), verifyCmd(),
+		envCmd(), logsCmd(), verifyCmd(), doctorCmd(),
 		renameCmd(), destroyCmd(), nukeCmd(),
 		agentCmd(), tendCmd(),
 	)

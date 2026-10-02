@@ -1,0 +1,39 @@
+name: Security
+
+# The escape tests boot real microVMs, which needs KVM and libkrun: neither
+# exists on the hosted runners. This runs on a self-hosted Linux runner
+# labelled `kvm` (Fedora with podman, crun +LIBKRUN and the krun symlink), on
+# demand and nightly, and fails if any escape succeeds under either
+# isolation mode.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  escape:
+    runs-on: [self-hosted, linux, kvm]
+    strategy:
+      fail-fast: false
+      matrix:
+        isolation: [strict, standard]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: build (static, so it can serve as the guest agent)
+        run: CGO_ENABLED=0 go build -o bluebox ./cmd/bluebox
+
+      - name: doctor
+        run: ./bluebox doctor
+
+      - name: escape tests (${{ matrix.isolation }})
+        run: security/escape-test.sh ./bluebox ${{ matrix.isolation }}

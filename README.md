@@ -62,9 +62,13 @@ Make sure `~/.local/bin` is on your `PATH`.
 **5. Verify**
 
 ```sh
+bluebox doctor
 bluebox new demo
 bluebox build demo
 ```
+
+`doctor` checks every piece above at once and prints the fix for whatever is
+missing.
 
 The build ends by comparing kernels. Two different versions means real
 isolation:
@@ -240,6 +244,7 @@ construction, so nothing a sandbox does with its name can reach outside
 | `bluebox down <name>` | stop the running microVM |
 | `bluebox serve` | local API for the SDKs |
 | `bluebox verify <name>` | re-check that the sandbox has its own kernel |
+| `bluebox doctor` | check the host setup, with a fix for each failure |
 | `bluebox ls` | list sandboxes |
 | `bluebox env <name>` | print effective settings as `KEY=VALUE` |
 | `bluebox logs <name> [-n]` | show recent runs (default 200 lines) |
@@ -440,7 +445,8 @@ What strict changes:
 - Every strict sandbox shares one subordinate UID, so strict separates
   sandboxes from you, not from each other.
 
-`security/escape-test.sh` runs what a hostile agent would try from inside a
+The full threat model, including what the boundary is not, is in
+[SECURITY.md](SECURITY.md). `security/escape-test.sh` runs what a hostile agent would try from inside a
 sandbox (reaching services on host loopback, reading host files, symlink and
 `..` traversal out of shared directories, writing through read-only mounts,
 reading the agent token, a fork bomb) and checks the VMM's confinement:

@@ -98,7 +98,10 @@ with pydantic_monty.Monty(min_processes=2) as m:
         ts[w] = {{"fresh": fresh, "same": same}}
 print(json.dumps(ts))
 """
-    r = subprocess.run([python, "-c", code], capture_output=True, text=True, timeout=300)
+    try:
+        r = subprocess.run([python, "-c", code], capture_output=True, text=True, timeout=300)
+    except (OSError, subprocess.TimeoutExpired):
+        return None  # no such interpreter, or a hung one: skip Monty
     if r.returncode != 0:
         return None
     return json.loads(r.stdout)

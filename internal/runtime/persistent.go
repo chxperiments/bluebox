@@ -226,7 +226,7 @@ func boot(name string, s bluefile.Spec, ctr string, extra ...string) (upState, e
 		sandbox.ImageTag(name), "__agent",
 	)
 	started := time.Now()
-	cmd := exec.Command("podman", args...)
+	cmd := podmanCmd(name, args...)
 	cmd.Env = append(os.Environ(), agent.TokenEnv+"="+token)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return upState{}, fmt.Errorf("podman: %s", strings.TrimSpace(string(out)))

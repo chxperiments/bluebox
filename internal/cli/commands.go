@@ -214,6 +214,12 @@ func resetCmd() *cobra.Command {
 			if err := refuseWhileUp(name, "reset it"); err != nil {
 				return err
 			}
+			if sandbox.IsFork(name) {
+				return fmt.Errorf("%s is a fork; drop its changes with: bluebox discard %s", name, name)
+			}
+			if err := refuseWithForks(name, "reset it"); err != nil {
+				return err
+			}
 			// Only ask when there is actually something to lose.
 			empty, err := sandbox.DataEmpty(name)
 			if err != nil {
@@ -258,6 +264,9 @@ func snapshotCmd() *cobra.Command {
 			name := args[0]
 			if !sandbox.Exists(name) {
 				return fmt.Errorf("no sandbox %q", name)
+			}
+			if sandbox.IsFork(name) {
+				return fmt.Errorf("%s is a fork; apply it, then snapshot its parent", name)
 			}
 			if list {
 				snaps, err := sandbox.Snapshots(name)
@@ -321,6 +330,12 @@ func restoreCmd() *cobra.Command {
 				ref = args[1]
 			}
 			if err := refuseWhileUp(name, "restore it"); err != nil {
+				return err
+			}
+			if sandbox.IsFork(name) {
+				return fmt.Errorf("%s is a fork; restore its parent instead", name)
+			}
+			if err := refuseWithForks(name, "restore it"); err != nil {
 				return err
 			}
 			archive, err := sandbox.SnapshotPath(name, ref)
@@ -432,6 +447,12 @@ func renameCmd() *cobra.Command {
 			if err := refuseWhileUp(args[0], "rename it"); err != nil {
 				return err
 			}
+			if sandbox.IsFork(args[0]) {
+				return fmt.Errorf("%s is a fork; apply or discard it, destroy it, and fork again under the new name", args[0])
+			}
+			if err := refuseWithForks(args[0], "rename it"); err != nil {
+				return err
+			}
 			if err := sandbox.ValidName(args[1]); err != nil {
 				return err
 			}
@@ -472,9 +493,17 @@ func destroyCmd() *cobra.Command {
 					}
 				}
 			}
+			if err := refuseWithForks(name, "destroy it"); err != nil {
+				return err
+			}
 			runtime.Down(name)
 			runtime.RemovePool(name)
 			runtime.RemoveImage(name)
+			if sandbox.IsFork(name) {
+				if err := sandbox.RemoveFork(name); err != nil {
+					return err
+				}
+			}
 			if err := sandbox.Remove(name, withData); err != nil {
 				return err
 			}
@@ -517,6 +546,7 @@ func nukeCmd() *cobra.Command {
 				runtime.Down(n)
 				runtime.RemovePool(n)
 				runtime.RemoveImage(n)
+				sandbox.RemoveFork(n)
 				if err := sandbox.Remove(n, !noData); err != nil {
 					return fmt.Errorf("%s: %w", n, err)
 				}
@@ -564,8 +594,12 @@ func lsCmd() *cobra.Command {
 				if state == "" {
 					state = "-"
 				}
+				base := s.Base
+				if parent, err := sandbox.Parent(name); err == nil {
+					base += "  (fork of " + parent + ")"
+				}
 				fmt.Printf("%-14s %-12s %-5d %-7s %-7s %-6t %-8s %s\n", name, state, s.CPUs,
-					strconv.Itoa(s.RAMMiB)+"M", s.Network, s.ReadOnlyRootfs, timeout, s.Base)
+					strconv.Itoa(s.RAMMiB)+"M", s.Network, s.ReadOnlyRootfs, timeout, base)
 			}
 			return nil
 		},

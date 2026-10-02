@@ -4,6 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -176,6 +179,29 @@ func serveCmd() *cobra.Command {
 	return c
 }
 
+// overlayCmd mounts a fork's overlay, then runs the command that follows
+// "--". It is run under podman unshare by the runtime, never by hand.
+func overlayCmd() *cobra.Command {
+	return &cobra.Command{
+		Use: "__overlay <fork> -- <command...>", Hidden: true,
+		Args:              cobra.MinimumNArgs(2),
+		ValidArgsFunction: completeNothing,
+		RunE: func(_ *cobra.Command, args []string) error {
+			if err := runtime.MountOverlay(args[0]); err != nil {
+				return err
+			}
+			argv := args[1:]
+			path, err := exec.LookPath(argv[0])
+			if err != nil {
+				return err
+			}
+			// Replace this process, so stdio and the exit status are the
+			// command's own.
+			return syscall.Exec(path, argv, os.Environ())
+		},
+	}
+}
+
 // tendCmd tops up a sandbox's warm pool. It is started detached by run and
 // build, never by hand, and reports failures to the sandbox's log.
 func tendCmd() *cobra.Command {
@@ -191,6 +217,20 @@ func tendCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// refuseWithForks guards what would change a sandbox's /data or identity
+// while forks still overlay it.
+func refuseWithForks(name, what string) error {
+	forks, err := sandbox.Forks(name)
+	if err != nil {
+		return err
+	}
+	if len(forks) > 0 {
+		return fmt.Errorf("%s has forks (%s); apply or destroy them before you %s",
+			name, strings.Join(forks, ", "), what)
+	}
+	return nil
 }
 
 // refuseWhileUp guards commands that swap /data wholesale: a running VM holds

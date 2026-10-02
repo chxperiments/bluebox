@@ -251,6 +251,10 @@ construction, so nothing a sandbox does with its name can reach outside
 | `bluebox reset <name>` | empty `/data`, keeping the sandbox |
 | `bluebox snapshot <name> [label]` | archive `/data` under a name; `-l` lists archives |
 | `bluebox restore <name> [snap]` | replace `/data` from a snapshot (newest by default) |
+| `bluebox fork <name> <fork>` | branch a sandbox: same image, `/data` overlaid |
+| `bluebox diff <fork>` | list what a fork changed in `/data` |
+| `bluebox apply <fork>` | merge a fork's changes into its parent |
+| `bluebox discard <fork>` | drop a fork's changes |
 | `bluebox rename <old> <new>` | rename, keeping data, logs and the built image |
 | `bluebox destroy <name> [--data]` | remove a sandbox; `--data` also deletes `/data` |
 | `bluebox nuke [--no-data]` | remove every sandbox; `--no-data` keeps data |
@@ -290,6 +294,45 @@ Labels are reusable — `bluebox snapshot devbox nightly` replaces the previous
 `-y` skips the prompt. The new archive is written beside the old one and
 renamed into place, so an interrupted snapshot never destroys the one it was
 replacing.
+
+### fork, diff, apply
+
+A fork is a sandbox whose `/data` is an overlay on another's: the parent's
+`/data` underneath, read-only, and the fork's own changes in a layer of their
+own. Running a fork never touches the parent, so you can try several things
+side by side and keep one:
+
+```sh
+bluebox fork devbox try-a               # same Bluefile and image, branched /data
+bluebox fork devbox try-b
+bluebox run try-a -- make test
+bluebox run try-b -- make test
+bluebox diff try-a                      # A added, M modified, D deleted
+bluebox apply try-a                     # merge into devbox's /data, asks first
+bluebox discard try-b                   # or throw the changes away
+```
+
+This is how an agent's work reaches your real `/data` only after you have
+seen it: point the agent at a fork, `diff`, then `apply` or `discard`. It is
+also cheap: a fork is created in milliseconds, holds only what it changes,
+and boots nothing to diff.
+
+Only `/data` is branched; everything else resets per run anyway, so a fork
+cannot carry a running process or installed packages from its parent. The
+overlay is an unprivileged overlayfs mounted inside rootless podman's own
+user namespace, so it needs no root and is invisible on the host: the
+layers live under `~/.bluebox/forks/<name>/`, and `merge/` there looks empty
+from outside. Forks work under both isolation modes, and a fork may use the
+warm pool and `up`/`exec` like any sandbox. Forks need a Linux host.
+
+`apply` treats the parent's `/data` as guest-written, which it is. A sandbox
+can plant a symlink there pointing anywhere on the host, exactly where a
+fork then writes a file; `apply` never follows one, replaces it with what the
+fork has, and skips device nodes, fifos and sockets. setuid and setgid bits
+are dropped. While a sandbox has forks, `reset`, `restore`, `rename` and
+`destroy` on it are refused, since a fork's lower layer is its `/data`; a
+fork cannot be snapshotted or forked again (apply it first). A fork's
+`isolation` must match its parent's, as the two share files.
 
 `restore` names a snapshot by its label or stamp, or takes a path to an archive
 kept elsewhere. Entries are checked before anything is unpacked — an archive
@@ -395,6 +438,7 @@ upgraded.
   sandboxes/<name>/Bluefile        the spec you edit
   sandboxes/<name>/Containerfile   generated on build
   snapshots/<name>/                /data archives
+  forks/<name>/upper               a fork's changes to its parent's /data
   logs/<name>.log                  run history
   data/<name>/                     mounted at /data -- the only persistent part
   run/<name>.json                  agent address + token while a sandbox is up
@@ -471,7 +515,9 @@ Limits worth knowing:
 
 ```sh
 CGO_ENABLED=0 go build -o bluebox ./cmd/bluebox   # static, so `up` can use it
-go test ./...        # covers the Bluefile parser and Containerfile generator
+go test ./...                 # unit tests; no VM needed
+security/escape-test.sh ./bluebox strict   # escape attempts, needs KVM
+test/fork-e2e.sh ./bluebox strict          # fork lifecycle, needs KVM
 ```
 
 ```

@@ -60,7 +60,8 @@ func Preflight() error {
 // vmArgs builds the podman invocation. All isolation lives in these flags, so
 // they are constructed in exactly one place.
 func vmArgs(name string, s bluefile.Spec, interactive, useKrun bool) ([]string, error) {
-	data, err := sandbox.DataDir(name)
+	// /data itself, or for a fork an overlay on the parent's /data.
+	data, err := sandbox.DataMount(name)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +74,7 @@ func vmArgs(name string, s bluefile.Spec, interactive, useKrun bool) ([]string, 
 		"--network="+s.Network,
 		"--annotation", "krun.cpus="+strconv.Itoa(s.CPUs),
 		"--annotation", "krun.ram_mib="+strconv.Itoa(s.RAMMiB),
-		"-v", data+":/data",
+		"-v", data,
 	)
 	// Declarative mounts from the Bluefile. Mode was normalized at parse
 	// time, but stay defensive: an empty mode means read-only.
@@ -208,10 +209,36 @@ const strictMap = "0:1:65536"
 // only changes when a sandbox switches between the two, so this is a stat on
 // every boot and a chown once.
 func prepareData(name string, s bluefile.Spec) error {
+	if parent, err := sandbox.Parent(name); err == nil {
+		// A fork's /data is the parent's, overlaid. The lower layer is
+		// prepared for the parent's isolation, so the fork must use the same
+		// one: the two share the files, and files have one owner.
+		ps, err := parseSpec(parent)
+		if err != nil {
+			return err
+		}
+		if ps.Isolation != s.Isolation {
+			return fmt.Errorf("%s is a fork of %s, whose isolation is %s; set the same in the fork's Bluefile",
+				name, parent, ps.Isolation)
+		}
+		if err := prepareData(parent, ps); err != nil {
+			return err
+		}
+		upper, err := sandbox.UpperDir(name)
+		if err != nil {
+			return err
+		}
+		return ownData(upper, s)
+	}
 	data, err := sandbox.DataDir(name)
 	if err != nil {
 		return err
 	}
+	return ownData(data, s)
+}
+
+// ownData gives a data directory to whoever the sandbox's root is on the host.
+func ownData(data string, s bluefile.Spec) error {
 	if err := os.MkdirAll(data, 0o755); err != nil {
 		return err
 	}
@@ -232,6 +259,22 @@ func prepareData(name string, s bluefile.Spec) error {
 		return fmt.Errorf("re-owning /data for isolation %s: %s", s.Isolation, strings.TrimSpace(string(out)))
 	}
 	return nil
+}
+
+// podmanCmd is how every VM is launched. For a fork, podman runs inside
+// podman's own user namespace, after `bluebox __overlay` has mounted the
+// fork's overlay there: a fork's /data exists only in that namespace, and
+// a VM launched from outside it would see an empty directory.
+func podmanCmd(name string, args ...string) *exec.Cmd {
+	if !sandbox.IsFork(name) {
+		return exec.Command("podman", args...)
+	}
+	self, err := os.Executable()
+	if err != nil {
+		self = "bluebox"
+	}
+	wrapped := append([]string{"unshare", self, "__overlay", name, "--", "podman"}, args...)
+	return exec.Command("podman", wrapped...)
 }
 
 // Build renders the Containerfile from the spec, writes it, and builds the image.
@@ -257,6 +300,12 @@ func Build(name string, s bluefile.Spec) error {
 // RemoveImage deletes a sandbox's built image, if there is one.
 func RemoveImage(name string) {
 	exec.Command("podman", "rmi", "-f", sandbox.ImageTag(name)).Run()
+}
+
+// CopyImage gives a fork its parent's image under its own tag, so it needs
+// no build of its own. A parent that never built has no image to copy.
+func CopyImage(from, to string) {
+	exec.Command("podman", "tag", sandbox.ImageTag(from), sandbox.ImageTag(to)).Run()
 }
 
 // RetagImage moves a built image to a new name so a rename does not force a
@@ -306,7 +355,16 @@ func Run(name string, s bluefile.Spec, argv []string, streams Streams) error {
 			time.Now().UTC().Format(time.RFC3339), strings.Join(argv, " "))
 	}
 	started := time.Now()
-	cmd := exec.CommandContext(ctx, "podman", args...)
+	cmd := podmanCmd(name, args...)
+	// Bound to ctx by hand: podmanCmd chooses the argv.
+	if ctx.Done() != nil {
+		stop := context.AfterFunc(ctx, func() {
+			if cmd.Process != nil {
+				cmd.Process.Kill()
+			}
+		})
+		defer stop()
+	}
 	err = streamTee(cmd, streams, log)
 	if log != nil {
 		code := 0
@@ -350,7 +408,7 @@ func Shell(name string, s bluefile.Spec) error {
 		return err
 	}
 	args := append(base, sandbox.ImageTag(name), "/bin/sh", "-l")
-	cmd := exec.Command("podman", args...)
+	cmd := podmanCmd(name, args...)
 	cmd.Stdin = os.Stdin
 	return stream(cmd)
 }
@@ -378,7 +436,7 @@ func kernelOf(name string, s bluefile.Spec, useKrun bool) (string, error) {
 		return "", err
 	}
 	args := append(base, sandbox.ImageTag(name), "uname", "-r")
-	out, err := exec.Command("podman", args...).Output()
+	out, err := podmanCmd(name, args...).Output()
 	return strings.TrimSpace(string(out)), err
 }
 

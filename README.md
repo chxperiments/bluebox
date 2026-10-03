@@ -424,8 +424,8 @@ the VM holds `/data` mounted. `destroy` and `nuke` bring it down first.
 
 ## SDKs
 
-Drive sandboxes from code: [Python](sdk/python/) (standard library only) and
-[Go](sdk/go/).
+Drive sandboxes from code: [Python](sdk/python/), [TypeScript](sdk/typescript/)
+and [Go](sdk/go/), all without dependencies.
 
 ```python
 from bluebox import Sandbox
@@ -538,7 +538,7 @@ internal/sandbox/   on-disk layout
 internal/runtime/   podman + krun driver -- the only backend-aware code
 internal/agent/     in-guest agent and its wire protocol (up/exec)
 internal/server/    `bluebox serve`, the local API the SDKs use
-sdk/python, sdk/go  client SDKs
+sdk/{python,typescript,go}  client SDKs
 examples/           example Bluefiles, embedded for `new --from`
 internal/cli/       cobra commands (root.go, commands.go)
 ```

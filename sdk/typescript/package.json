@@ -1,0 +1,18 @@
+{
+  "name": "bluebox-sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for bluebox: microVM sandboxes that start in milliseconds",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "files": ["dist", "README.md"],
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test test/*.test.mjs"
+  },
+  "repository": { "type": "git", "url": "https://github.com/chxperiments/bluebox", "directory": "sdk/typescript" },
+  "devDependencies": { "typescript": "^5.6.0", "@types/node": "^22.0.0" }
+}

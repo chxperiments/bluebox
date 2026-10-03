@@ -423,3 +423,30 @@ pre.code .k { color: var(--accent); }
 .hero-art-wide .art text.hl { font-size: 22px; }
 .hero-art-narrow { display: none; }
 @media (max-width: 640px) { .hero-art-wide { display: none; } .hero-art-narrow { display: block; } }
+
+/* Install line: the whole command fits where there is room, and scrolls
+   without a visible scrollbar where there is not. */
+.install code { scrollbar-width: none; }
+.install code::-webkit-scrollbar { display: none; }
+.hero-center .install { max-width: min(44rem, 100%); }
+.footer .install { max-width: 44rem; }
+
+/* Figures set in the site's faces rather than monospace. */
+.art.sans text { font-family: var(--sans); font-size: 15px; font-weight: 500; letter-spacing: 0; }
+.fork-loop.sans text { font-size: 14px; }
+.art.sans text.big { font-family: var(--display); font-size: 21px; font-weight: 700; letter-spacing: -0.02em; }
+.art.sans text.dim { font-weight: 400; }
+
+/* The outlined wordmark: the stroke is painted first and the fill, in the
+   ground colour, over it. That hides the strokes where a letter's own
+   contours overlap (the e's bar), leaving only the clean outer edge. */
+/* The wordmark is SVG text so the outline can be painted under a fill in the
+   ground colour: strokes along the font's overlapping contours (the e's bar)
+   are covered, leaving only the clean outer edge. It rises in as one piece. */
+.wordmark { display: block; -webkit-text-stroke: 0; color: inherit; overflow: hidden; }
+.wordmark svg { display: block; width: 100%; height: auto; overflow: visible; }
+.wordmark text { font: 700 270px var(--display); letter-spacing: -0.02em; fill: var(--bg); stroke: var(--ink); stroke-width: 7px; paint-order: stroke fill; stroke-linejoin: round; }
+@media (prefers-reduced-motion: no-preference) {
+  .wordmark svg { transform: translateY(105%); transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s; }
+  .footer.in .wordmark svg { transform: none; }
+}

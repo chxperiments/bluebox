@@ -193,7 +193,7 @@ overview = f"""
   </div>
 </section>
 
-<section class="section invert wipe" id="engines">
+<section class="section invert wipe dots dots-tr" id="engines">
   <div class="wrap">
     <h2>One interface, three engines.</h2>
     <p class="lead">Every call goes through bluebox. The Bluefile's <code>backend:</code> decides what boots the microVM, and each one gives the sandbox its own kernel.</p>
@@ -217,14 +217,24 @@ overview = f"""
   <div class="opart-text"><div class="wrap"><p>Every run, a new machine.</p></div></div>
 </section>
 
+<section class="section" id="fork">
+  <div class="wrap split">
+    <div class="prose">
+      <h2 style="margin-bottom:1rem">Branch, review, apply.</h2>
+      <p><b>Fork</b> a sandbox and its <code>/data</code> branches in milliseconds, so an agent can try several approaches side by side without touching the original.</p>
+      <p><b>Diff</b> shows exactly what a trial changed. Its work reaches your data only when you <b>apply</b> it; the rest you <b>discard</b>. Agents on MCP can fork and diff, but applying stays with you.</p>
+      <p><a href="docs.html#sdk-fork">Forks in the docs</a></p>
+    </div>
+    <div class="art-frame">{art.fork()}</div>
+  </div>
+</section>
+
 <section class="section dots dots-bl" id="sdk">
   <div class="wrap split">
     <div class="prose">
       <h2 style="margin-bottom:1rem">Sandboxes as a function call.</h2>
       <p>SDKs for Python, TypeScript, Go and Rust. They talk to a local server over a Unix socket only you can open, and start it when needed. For agents, <code>bluebox mcp</code> serves the same tools over the Model Context Protocol.</p>
-      <p><b>Fork</b> branches a sandbox's <code>/data</code>, so an agent can try several approaches side by side. <b>Diff</b> shows what one changed, and its work reaches your data only when you <b>apply</b> it.</p>
       <p><a href="docs.html#sdk">SDK reference</a></p>
-      <div style="margin-top:2rem">{art.fork()}</div>
     </div>
     {codebox("overview-sdk", SDK_SHORT, "SDK language")}
   </div>

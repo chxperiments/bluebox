@@ -146,7 +146,7 @@ def fork():
     b2 = "M190,120 H430"
     b3 = "M190,120 C260,120 270,200 340,200 H430"
     merge = "M430,120 C500,120 520,120 580,120 H700"
-    return f"""<svg class="art fork-loop" viewBox="0 0 720 240" role="img" aria-labelledby="fork-art-t">
+    return f"""<svg class="art fork-loop sans" viewBox="0 0 720 240" role="img" aria-labelledby="fork-art-t">
   <title id="fork-art-t">A sandbox forks into three trials. Two are discarded; one is applied back.</title>
   <path class="s" d="{trunk}"/>
   <circle class="f" cx="20" cy="120" r="5"/>
@@ -226,7 +226,7 @@ def workflow():
         out.append(f'<path class="s" pathLength="1" style="--i:6" d="{iso_cube(cx, cy, 26)}"/>'
                    f'<path class="f pulse" d="{iso_cube(cx, cy, 8).split(" M")[0]}"/>')
     out.append('<text class="dim lbl" style="--i:6" x="1062" y="490" text-anchor="middle">own kernel</text>')
-    return f"""<svg class="art draw workflow" viewBox="0 0 {W} 500" role="img" aria-labelledby="wf-t">
+    return f"""<svg class="art draw workflow sans" viewBox="0 0 {W} 500" role="img" aria-labelledby="wf-t">
   <title id="wf-t">Calls from the CLI, the SDKs and MCP go to bluebox, which reads the Bluefile's backend and boots the sandbox with podman, krun or Firecracker, each a microVM with its own kernel.</title>
   {''.join(out)}
 </svg>"""

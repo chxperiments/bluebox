@@ -416,3 +416,10 @@ pre.code .k { color: var(--accent); }
 .art .node-strong { fill: var(--ink); }
 .art text.on-strong { fill: var(--bg); }
 .art text.big { font-size: 19px; }
+
+/* The hero box names its layers where there is room; narrow screens get the
+   box alone. */
+.hero-center .hero-art-wide { max-width: min(44rem, 92vw, 74dvh); }
+.hero-art-wide .art text.hl { font-size: 22px; }
+.hero-art-narrow { display: none; }
+@media (max-width: 640px) { .hero-art-wide { display: none; } .hero-art-narrow { display: block; } }

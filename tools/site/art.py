@@ -73,6 +73,39 @@ def hero_minimal():
 </svg>"""
 
 
+def hero_labelled():
+    """The centred hero box with its layers named, alternating left and
+    right so the composition stays centred on the box."""
+    cx, cy = 300, 300
+    layers = [(250, "your machine", "l"), (190, "VMM, confined", "r"), (130, "KVM", "l"), (70, "guest kernel", "r")]
+    paths, labels = [], []
+    for i, (s_, name, side) in enumerate(layers):
+        paths.append(f'<path class="s{" dash" if i == 0 else ""}" pathLength="1" style="--i:{i}" d="{iso_cube(cx, cy, s_)}"/>')
+        y = cy - s_ / 2 + 4 + i * 22
+        if side == "r":
+            x0, x1 = cx + 0.866 * s_, 640
+            labels.append(f'<g class="lbl" style="--i:{i}"><path class="s thin" d="M{x0:.0f},{y:.0f} H{x1}"/>'
+                          f'<circle class="f" cx="{x0:.0f}" cy="{y:.0f}" r="3"/><text class="hl" x="{x1 + 12}" y="{y + 7:.0f}">{name}</text></g>')
+        else:
+            x0, x1 = cx - 0.866 * s_, -40
+            labels.append(f'<g class="lbl" style="--i:{i}"><path class="s thin" d="M{x0:.0f},{y:.0f} H{x1}"/>'
+                          f'<circle class="f" cx="{x0:.0f}" cy="{y:.0f}" r="3"/><text class="hl" x="{x1 - 12}" y="{y + 7:.0f}" text-anchor="end">{name}</text></g>')
+    route = f"M40,60 C150,60 190,160 {cx},{cy}"
+    return f"""<svg class="art draw" viewBox="-260 30 1120 540" role="img" aria-labelledby="hero-art-l">
+  <title id="hero-art-l">Nested boxes: your machine, the confined VMM, KVM and the guest kernel. A command travels inward and runs in the guest.</title>
+  <g class="float">
+    {''.join(paths)}
+    <path class="s thin" d="{route}" stroke-dasharray="2 6"/>
+    <rect class="f" x="-5" y="-5" width="10" height="10" opacity="0">
+      <animateMotion dur="3.6s" repeatCount="indefinite" path="{route}" keyPoints="0;1;1" keyTimes="0;0.55;1" calcMode="spline" keySplines="0.65 0 0.35 1;0 0 1 1"/>
+      <animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.08;0.55;0.62;1" dur="3.6s" repeatCount="indefinite"/>
+    </rect>
+    <path class="f pulse" d="{iso_cube(cx, cy, 22).split(' M')[0]}"/>
+  </g>
+  {''.join(labels)}
+</svg>"""
+
+
 def architecture():
     cols = [("podman", 300), ("krun", 600), ("firecracker", 900)]
     rows = [

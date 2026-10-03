@@ -161,7 +161,8 @@ def bluefile_explorer():
 overview = f"""
 <section class="hero hero-center dots dots-center">
   <div class="wrap">
-    <div class="hero-art">{art.hero_minimal()}</div>
+    <div class="hero-art hero-art-wide">{art.hero_labelled()}</div>
+    <div class="hero-art hero-art-narrow">{art.hero_minimal()}</div>
     <h1>Disposable microVMs for AI agents.</h1>
     <p class="lead">Every command in its own virtual machine, with its own kernel.</p>
     <div class="install">

@@ -2,7 +2,7 @@
 # Escape tests: run the things a hostile agent would try from inside a
 # sandbox, and check that each one fails.
 #
-#   security/escape-test.sh [path/to/bluebox] [standard|strict]
+#   security/escape-test.sh [path/to/bluebox] [standard|strict] [podman|krun]
 #
 # The second argument picks the Bluefile's isolation (default strict). Under
 # standard the VMM runs as your own UID by design, which is reported but not
@@ -15,6 +15,7 @@ set -u
 
 BB=${1:-$(command -v bluebox)}
 ISOLATION=${2:-strict}
+BACKEND=${3:-podman}
 [ -x "$BB" ] || { echo "no bluebox binary: $BB" >&2; exit 2; }
 
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/bb-escape.XXXXXX")
@@ -60,6 +61,7 @@ ram_mib: 512
 network: bridge
 readonly: true
 isolation: $ISOLATION
+backend: $BACKEND
 mounts:
   - host: $WORK/ro
     guest: /ro
@@ -133,7 +135,11 @@ got=$(guest "ls -la / /run /tmp 2>/dev/null | grep -c bluebox.sock")
 echo
 echo "devices and privileges"
 guest '[ -e /dev/kvm ]' >/dev/null && fail "/dev/kvm is exposed to the guest (nested VMs)" || pass "no /dev/kvm in the guest"
-vmm=$(podman inspect "bluebox-up-$NAME" --format '{{.State.Pid}}' 2>/dev/null)
+if [ "$BACKEND" = krun ]; then
+  vmm=$(krun --root "${XDG_RUNTIME_DIR:-/tmp}/bluebox/krun" state "bluebox-up-$NAME" 2>/dev/null | sed -n 's/.*"pid": *\([0-9]*\).*/\1/p')
+else
+  vmm=$(podman inspect "bluebox-up-$NAME" --format '{{.State.Pid}}' 2>/dev/null)
+fi
 if [ -n "$vmm" ] && [ -r "/proc/$vmm/status" ]; then
   nnp=$(awk '/NoNewPrivs/{print $2}' "/proc/$vmm/status")
   sec=$(awk '/^Seccomp:/{print $2}' "/proc/$vmm/status")
@@ -160,8 +166,14 @@ fi
 
 echo
 echo "resource limits"
-pids=$(podman inspect "bluebox-up-$NAME" --format '{{.HostConfig.PidsLimit}}' 2>/dev/null)
-mem=$(podman inspect "bluebox-up-$NAME" --format '{{.HostConfig.Memory}}' 2>/dev/null)
+if [ "$BACKEND" = krun ] && [ -n "$vmm" ]; then
+  cg=/sys/fs/cgroup$(sed -n 's/^0:://p' "/proc/$vmm/cgroup")
+  pids=$(cat "$cg/pids.max" 2>/dev/null); mem=$(cat "$cg/memory.max" 2>/dev/null)
+  [ "$pids" = max ] && pids=0; [ "$mem" = max ] && mem=0
+else
+  pids=$(podman inspect "bluebox-up-$NAME" --format '{{.HostConfig.PidsLimit}}' 2>/dev/null)
+  mem=$(podman inspect "bluebox-up-$NAME" --format '{{.HostConfig.Memory}}' 2>/dev/null)
+fi
 [ "${pids:-0}" -gt 0 ] && pass "VMM has a pids limit ($pids)" || fail "VMM has no pids limit"
 [ "${mem:-0}" -gt 0 ] && pass "VMM has a memory limit ($((mem / 1048576)) MiB)" || fail "VMM has no memory limit"
 # A fork bomb saturates the guest's own kernel; the host must not notice.

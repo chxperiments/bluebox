@@ -125,6 +125,5 @@ func podmanCmd(name string, args ...string) *exec.Cmd {
 	if err != nil {
 		self = "bluebox"
 	}
-	wrapped := append([]string{"unshare", self, "__overlay", name, "--", "podman"}, args...)
-	return exec.Command("podman", wrapped...)
+	return inPodmanNS(append([]string{self, "__overlay", name, "--", "podman"}, args...)...)
 }

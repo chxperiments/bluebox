@@ -162,22 +162,24 @@ func Forks(parent string) ([]string, error) {
 // directory itself, or for a fork the overlay's mountpoint, which is only
 // populated inside podman's namespace (see Overlay in the runtime package).
 func DataMount(name string) (string, error) {
+	src, err := DataSource(name)
+	if err != nil {
+		return "", err
+	}
+	return src + ":/data", nil
+}
+
+// DataSource is the host directory that becomes /data: the data directory,
+// or for a fork its overlay's mountpoint.
+func DataSource(name string) (string, error) {
 	_, err := Parent(name)
 	if errors.Is(err, ErrNotFork) {
-		d, err := DataDir(name)
-		if err != nil {
-			return "", err
-		}
-		return d + ":/data", nil
+		return DataDir(name)
 	}
 	if err != nil {
 		return "", err
 	}
-	merge, err := MergeDir(name)
-	if err != nil {
-		return "", err
-	}
-	return merge + ":/data", nil
+	return MergeDir(name)
 }
 
 // CreateFork makes name a fork of parent: the parent's Bluefile is copied,

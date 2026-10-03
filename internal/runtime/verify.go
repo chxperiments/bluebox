@@ -24,11 +24,17 @@ import (
 // the Darwin host whether or not a microVM is involved.
 func CheckIsolation(name string, s bluefile.Spec) (guest, baseline string, err error) {
 	guest, err = GuestKernel(name, s)
-	if err != nil || guest == "" {
+	if err != nil {
+		return "", "", fmt.Errorf("could not start the sandbox (is the image built?): %w", err)
+	}
+	if guest == "" {
 		return "", "", fmt.Errorf("could not start the sandbox; is the image built?")
 	}
 	baseline, err = BaselineKernel(name, s)
-	if err != nil || baseline == "" {
+	if err != nil {
+		return "", "", fmt.Errorf("could not read the baseline kernel: %w", err)
+	}
+	if baseline == "" {
 		return "", "", fmt.Errorf("could not read the baseline kernel")
 	}
 	if guest == baseline {

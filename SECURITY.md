@@ -54,6 +54,13 @@ agents and any untrusted code.
   code as a service needs a jailer-class boundary (Firecracker's, for example)
   that bluebox does not have.
 
+## Backends
+
+The confinement above is the same on the `podman` and `krun` backends: the
+krun backend writes it into the OCI spec directly instead of asking podman
+for it, and the escape suite runs against both. The krun backend refuses
+`isolation: strict` for now rather than run the VMM as you.
+
 ## The agent channel (`up`, `exec`, the SDK)
 
 A running sandbox has bluebox itself as the guest's main process, reached

@@ -258,7 +258,11 @@ func Build(name string, s bluefile.Spec) error {
 	if err := os.WriteFile(cfPath, []byte(cf), 0o644); err != nil {
 		return err
 	}
-	return stream(exec.Command("podman", "build", "-t", sandbox.ImageTag(name), dir))
+	if err := stream(exec.Command("podman", "build", "-t", sandbox.ImageTag(name), dir)); err != nil {
+		return err
+	}
+	_, err = RecordImageID(name)
+	return err
 }
 
 // RemoveImage deletes a sandbox's built image, if there is one.
@@ -269,7 +273,11 @@ func RemoveImage(name string) {
 // CopyImage gives a fork its parent's image under its own tag, so it needs
 // no build of its own. A parent that never built has no image to copy.
 func CopyImage(from, to string) {
-	exec.Command("podman", "tag", sandbox.ImageTag(from), sandbox.ImageTag(to)).Run()
+	if exec.Command("podman", "tag", sandbox.ImageTag(from), sandbox.ImageTag(to)).Run() == nil {
+		if id, err := os.ReadFile(imageIDPath(from)); err == nil {
+			os.WriteFile(imageIDPath(to), id, 0o644)
+		}
+	}
 }
 
 // RetagImage moves a built image to a new name so a rename does not force a
@@ -406,7 +414,12 @@ func kernelOf(name string, s bluefile.Spec, useKrun bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
 	out, err := cmd.Output()
+	if err != nil && stderr.Len() > 0 {
+		err = fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String()))
+	}
 	return strings.TrimSpace(string(out)), err
 }
 

@@ -179,6 +179,27 @@ func SocketPath() (string, error) {
 	return filepath.Join(run, "bluebox-"+hex.EncodeToString(sum[:6])+".sock"), nil
 }
 
+// RootfsDir holds the krun backend's exported copies of a sandbox's image.
+func RootfsDir(name string) (string, error) {
+	if err := ValidName(name); err != nil {
+		return "", err
+	}
+	h, err := Home()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(h, "rootfs", name), nil
+}
+
+// VMsDir holds the krun backend's per-VM state: one directory per VM.
+func VMsDir() (string, error) {
+	h, err := Home()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(h, "vms"), nil
+}
+
 // PoolDir holds the warm pool: one file per pre-booted VM waiting for a run.
 func PoolDir(name string) (string, error) {
 	if err := ValidName(name); err != nil {

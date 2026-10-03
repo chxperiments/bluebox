@@ -211,12 +211,15 @@ func boot(name string, s bluefile.Spec, ctr string, labels map[string]string) (u
 	started := time.Now()
 	cmd, err := b.Launch(name, s, Launch{
 		VM: ctr, Detach: true, Labels: labels,
-		Agent: true, AgentDir: agentDir, TokenEnv: agent.TokenEnv,
+		Agent: true, AgentDir: agentDir, TokenEnv: agent.TokenEnv, Token: token,
 	})
 	if err != nil {
 		return upState{}, err
 	}
-	cmd.Env = append(os.Environ(), agent.TokenEnv+"="+token)
+	if cmd.Env == nil {
+		cmd.Env = os.Environ()
+	}
+	cmd.Env = append(cmd.Env, agent.TokenEnv+"="+token)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return upState{}, fmt.Errorf("%s: %s", b.Name(), strings.TrimSpace(string(out)))
 	}

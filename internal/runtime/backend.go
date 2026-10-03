@@ -44,7 +44,8 @@ type Launch struct {
 	Interactive bool              // forward stdin; a TTY too if there is one
 	Agent       bool              // run the guest agent as the main process and publish its port
 	AgentDir    string            // host directory holding the agent binary
-	TokenEnv    string            // environment variable carrying the agent token (value from this process's environment)
+	TokenEnv    string            // environment variable carrying the agent token
+	Token       string            // its value; backends that write a spec file put it there (owner-only)
 	Labels      map[string]string // attached to the VM, for RemoveLabelled
 	Baseline    bool              // a plain container instead of a microVM: the isolation check's reference
 }

@@ -27,17 +27,26 @@ func MountOverlay(name string) error {
 			return fmt.Errorf("fork paths cannot contain ',' or ':' (BLUEBOX_HOME is %q)", p)
 		}
 	}
-	if mounted(merge) {
-		return nil
-	}
 	if err := os.MkdirAll(lower, 0o755); err != nil {
 		return err
+	}
+	if err := mountOverlay(lower, upper, work, merge); err != nil {
+		return fmt.Errorf("%s: %w", name, err)
+	}
+	return nil
+}
+
+// mountOverlay mounts lower+upper at merge, unless it already is. It needs
+// the caller to be root in a user namespace (podman unshare).
+func mountOverlay(lower, upper, work, merge string) error {
+	if mounted(merge) {
+		return nil
 	}
 	// userxattr: an unprivileged overlay keeps its marks (opaque, whiteout
 	// redirects) in user.overlay.*; Diff reads the same names.
 	opts := "userxattr,lowerdir=" + lower + ",upperdir=" + upper + ",workdir=" + work
 	if err := syscall.Mount("overlay", merge, "overlay", 0, opts); err != nil {
-		return fmt.Errorf("mounting %s's overlay: %w (is this inside podman unshare?)", name, err)
+		return fmt.Errorf("mounting overlay at %s: %w (is this inside podman unshare?)", merge, err)
 	}
 	return nil
 }

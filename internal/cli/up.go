@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -200,6 +201,53 @@ func overlayCmd() *cobra.Command {
 			return syscall.Exec(path, argv, os.Environ())
 		},
 	}
+}
+
+// krunCmd, exportCmd and netnsCmd are the krun backend's helpers. They are
+// run by the runtime -- under podman unshare, or as an OCI hook -- never by
+// hand.
+func krunCmd() *cobra.Command {
+	var dir, rootfs, fork string
+	var detach, baseline, interactive bool
+	c := &cobra.Command{
+		Use: "__krun", Hidden: true, Args: cobra.NoArgs, ValidArgsFunction: completeNothing,
+		RunE: func(*cobra.Command, []string) error {
+			return runtime.RunKrun(dir, rootfs, fork, detach, baseline, interactive)
+		},
+	}
+	c.Flags().StringVar(&dir, "dir", "", "VM directory")
+	c.Flags().StringVar(&rootfs, "rootfs", "", "exported image to overlay")
+	c.Flags().StringVar(&fork, "fork", "", "fork whose /data overlay to mount")
+	c.Flags().BoolVar(&detach, "detach", false, "return once running")
+	c.Flags().BoolVar(&baseline, "baseline", false, "run with crun, not krun")
+	c.Flags().BoolVar(&interactive, "interactive", false, "a terminal is attached")
+	return c
+}
+
+func exportCmd() *cobra.Command {
+	return &cobra.Command{
+		Use: "__export <image> <dest> <shift>", Hidden: true,
+		Args: cobra.ExactArgs(3), ValidArgsFunction: completeNothing,
+		RunE: func(_ *cobra.Command, args []string) error {
+			shift, err := strconv.Atoi(args[2])
+			if err != nil {
+				return err
+			}
+			return runtime.ExportRootfs(args[0], args[1], shift)
+		},
+	}
+}
+
+func netnsCmd() *cobra.Command {
+	var forward int
+	var log string
+	c := &cobra.Command{
+		Use: "__netns", Hidden: true, Args: cobra.NoArgs, ValidArgsFunction: completeNothing,
+		RunE: func(*cobra.Command, []string) error { return runtime.AttachNetwork(forward, log) },
+	}
+	c.Flags().IntVar(&forward, "forward", 0, "host loopback port to forward to the agent")
+	c.Flags().StringVar(&log, "log", "", "file to report a failure to")
+	return c
 }
 
 // tendCmd tops up a sandbox's warm pool. It is started detached by run and

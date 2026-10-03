@@ -422,6 +422,31 @@ Limits for now:
 While a sandbox is up, `reset`, `restore` and `rename` refuse to run, because
 the VM holds `/data` mounted. `destroy` and `nuke` bring it down first.
 
+## Backends
+
+What boots a sandbox's VM is a per-sandbox choice, `backend:` in the Bluefile
+(or `BLUEBOX_BACKEND` to try one without editing). Images are always built by
+podman; the warm pool, `up`/`exec`, forks, the isolation check and the VMM's
+confinement are the same on every backend.
+
+| `backend:` | How it boots | Cold `run` (bridge / none) | `up` | Status |
+|---|---|---|---|---|
+| `podman` (default) | `podman run --runtime krun` | ~1.5 s / ~1.2 s | ~1.6 s | all features |
+| `krun` | crun's libkrun handler driven directly, no podman in the path | ~1.1 s / ~0.7 s | ~1.0 s | `isolation: standard` only, for now |
+| `firecracker` | Firecracker VMM | | | planned; refused until it lands |
+
+The `krun` backend exports the image once to `~/.bluebox/rootfs/`, overlays
+it per VM, and writes the OCI spec itself with the same confinement the
+podman backend asks podman for: no new privileges, the same 6 capabilities,
+podman's default seccomp filter, pids and memory limits, an empty network
+namespace that a `pasta` hook connects with the host gateway unmapped, and
+the agent's port on `127.0.0.1` only. It passes the same escape suite
+(`security/escape-test.sh ./bluebox standard krun`). It refuses
+`isolation: strict` rather than fall back to running the VMM as you: libkrun
+does not start inside the nested user namespace that strict needs here, which
+is the next thing to fix. Warm runs and `exec` are milliseconds on both
+backends; the difference is cold boots and how fast the pool refills.
+
 ## SDKs
 
 Drive sandboxes from code: [Python](sdk/python/), [TypeScript](sdk/typescript/)
@@ -528,6 +553,7 @@ Limits worth knowing:
 CGO_ENABLED=0 go build -o bluebox ./cmd/bluebox   # static, so `up` can use it
 go test ./...                 # unit tests; no VM needed
 security/escape-test.sh ./bluebox strict   # escape attempts, needs KVM
+security/escape-test.sh ./bluebox standard krun   # the same, krun backend
 test/fork-e2e.sh ./bluebox strict          # fork lifecycle, needs KVM
 ```
 

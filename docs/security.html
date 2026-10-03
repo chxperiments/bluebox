@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#002fa7">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
@@ -42,8 +42,16 @@
       <p><b>The guest kernel.</b> Every sandbox is a microVM under KVM. A kernel exploit inside takes over a guest that is thrown away. bluebox proves the guest has its own kernel at build and checks it again before every command.</p>
       <p><b>The VMM's confinement.</b> A guest that breaks its VMM gets whatever the VMM has. So the VMM gets as little as possible: dropped capabilities, no new privileges, seccomp, its own namespaces, resource limits, only the files the Bluefile declares, and under <code>isolation: strict</code> a host UID that owns nothing of yours.</p>
     </div>
-    <div class="note prose">
+    <div>
+      <svg class="art draw" viewBox="0 0 760 420" role="img" aria-labelledby="sec-art-t" style="--scan:180px">
+  <title id="sec-art-t">Four nested layers between a workload and your machine, with the escape suite's checks passing.</title>
+  <rect class="s dash" pathLength="1" style="--i:0" x="40" y="40" width="680" height="340" rx="4"/><text class="lbl dim" style="--i:0" x="54" y="64">your machine</text><rect class="s" pathLength="1" style="--i:1" x="90" y="90" width="580" height="240" rx="4"/><text class="lbl" style="--i:1" x="104" y="114">VMM: few or no capabilities, seccomp, own namespaces</text><rect class="s" pathLength="1" style="--i:2" x="140" y="140" width="480" height="140" rx="4"/><text class="lbl" style="--i:2" x="154" y="164">KVM</text><rect class="s" pathLength="1" style="--i:3" x="190" y="190" width="380" height="40" rx="4"/><text class="lbl" style="--i:3" x="204" y="214">guest: root here, only here</text>
+  <path class="s scan" d="M200,232 H560"/>
+  <g class="tick" style="--i:0"><path class="s" d="M250,248 l6,7 l12,-14"/></g><g class="tick" style="--i:1"><path class="s" d="M302,248 l6,7 l12,-14"/></g><g class="tick" style="--i:2"><path class="s" d="M354,248 l6,7 l12,-14"/></g><g class="tick" style="--i:3"><path class="s" d="M406,248 l6,7 l12,-14"/></g><g class="tick" style="--i:4"><path class="s" d="M458,248 l6,7 l12,-14"/></g><g class="tick" style="--i:5"><path class="s" d="M510,248 l6,7 l12,-14"/></g>
+</svg>
+      <div class="note prose">
       <p><b>Use <code>isolation: strict</code> for agents.</b> Under standard isolation the VMM runs as your user, so escaping both the guest kernel and the VMM lands in your account. Strict maps it to your first subordinate UID instead.</p>
+      </div>
     </div>
   </div>
 </section>

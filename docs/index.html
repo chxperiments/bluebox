@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#002fa7">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
@@ -42,9 +42,25 @@
         <a class="btn btn-ghost" href="architecture.html">How it works</a>
       </div>
     </div>
-    <div class="cube-stage" id="cube-stage" role="img" aria-label="A rotating box drawn in ASCII characters. Drag to turn it.">
-      <pre id="cube" aria-hidden="true"></pre>
-    </div>
+    <div class="hero-art"><svg class="art draw" viewBox="0 0 720 600" role="img" aria-labelledby="hero-art-t">
+  <title id="hero-art-t">Nested boxes: your machine, the confined VMM, KVM and the guest kernel. A command travels inward and runs in the guest.</title>
+  <g class="float">
+    <path class="s dash" pathLength="1" style="--i:0" d="M300.0,50.0 L516.5,175.0 516.5,425.0 300.0,550.0 83.5,425.0 83.5,175.0 Z M83.5,175.0 L300.0,300.0 516.5,175.0 M300.0,300.0 L300.0,550.0"/><path class="s " pathLength="1" style="--i:1" d="M300.0,110.0 L464.5,205.0 464.5,395.0 300.0,490.0 135.5,395.0 135.5,205.0 Z M135.5,205.0 L300.0,300.0 464.5,205.0 M300.0,300.0 L300.0,490.0"/><path class="s " pathLength="1" style="--i:2" d="M300.0,170.0 L412.6,235.0 412.6,365.0 300.0,430.0 187.4,365.0 187.4,235.0 Z M187.4,235.0 L300.0,300.0 412.6,235.0 M300.0,300.0 L300.0,430.0"/><path class="s " pathLength="1" style="--i:3" d="M300.0,230.0 L360.6,265.0 360.6,335.0 300.0,370.0 239.4,335.0 239.4,265.0 Z M239.4,265.0 L300.0,300.0 360.6,265.0 M300.0,300.0 L300.0,370.0"/>
+    <path class="s thin" d="M40,60 C150,60 190,160 300,300" stroke-dasharray="2 6"/>
+    <rect class="f" x="-5" y="-5" width="10" height="10" opacity="0">
+      <animateMotion dur="3.6s" repeatCount="indefinite" path="M40,60 C150,60 190,160 300,300" keyPoints="0;1;1" keyTimes="0;0.55;1" calcMode="spline" keySplines="0.65 0 0.35 1;0 0 1 1"/>
+      <animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.08;0.55;0.62;1" dur="3.6s" repeatCount="indefinite"/>
+    </rect>
+    <path class="f pulse" d="M300.0,278.0 L319.1,289.0 319.1,311.0 300.0,322.0 280.9,311.0 280.9,289.0 Z"/>
+  </g>
+  <g class="lbl" style="--i:0"><path class="s thin" d="M516,181 H560"/><text x="568" y="185">your machine</text></g><g class="lbl" style="--i:1"><path class="s thin" d="M465,211 H560"/><text x="568" y="215">VMM, confined</text></g><g class="lbl" style="--i:2"><path class="s thin" d="M413,241 H560"/><text x="568" y="245">KVM</text></g><g class="lbl" style="--i:3"><path class="s thin" d="M361,271 H560"/><text x="568" y="275">guest kernel</text></g>
+</svg></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <p class="statement">A container shares your kernel. <span>A bluebox sandbox brings its own, boots it in milliseconds, and throws it away.</span></p>
   </div>
 </section>
 
@@ -109,6 +125,21 @@
       <p>Python, TypeScript and Go SDKs, none with dependencies. They talk to a local server over a Unix socket only you can open, and start it when needed.</p>
       <p><b>Fork</b> branches a sandbox's <code>/data</code>, so an agent can try several approaches side by side. <b>Diff</b> shows what one changed, and its work reaches your data only when you <b>apply</b> it.</p>
       <p><a href="docs.html#sdk">SDK reference</a></p>
+      <div style="margin-top:2rem"><svg class="art fork-loop" viewBox="0 0 720 240" role="img" aria-labelledby="fork-art-t">
+  <title id="fork-art-t">A sandbox forks into three trials. Two are discarded; one is applied back.</title>
+  <path class="s" d="M20,120 H190"/>
+  <circle class="f" cx="20" cy="120" r="5"/>
+  <text x="20" y="100">agent</text>
+  <text x="196" y="100" class="dim">fork</text>
+  <g class="drop"><path class="s branch" pathLength="1" d="M190,120 C260,120 270,40 340,40 H430"/><text x="440" y="44">trial-a</text></g>
+  <path class="s branch b2" pathLength="1" d="M190,120 H430"/><text x="440" y="110" class="dim">trial-b</text>
+  <g class="drop"><path class="s branch b3" pathLength="1" d="M190,120 C260,120 270,200 340,200 H430"/><text x="440" y="204">trial-c</text></g>
+  <path class="s merge" pathLength="1" d="M430,120 C500,120 520,120 580,120 H700"/>
+  <text x="560" y="100">apply</text>
+  <text x="440" y="70" class="dim">discard</text>
+  <text x="440" y="234" class="dim">discard</text>
+  <circle class="f" cx="700" cy="120" r="5"/>
+</svg></div>
     </div>
     <div class="codebox" data-lang-group="overview-sdk">
   <div class="codebox-bar" role="tablist" aria-label="SDK language"><button class="tab" role="tab" data-lang="py" aria-selected="true" tabindex="0">Python</button><button class="tab" role="tab" data-lang="ts" aria-selected="false" tabindex="-1">TypeScript</button><button class="tab" role="tab" data-lang="go" aria-selected="false" tabindex="-1">Go</button><button class="copy" type="button" data-copy-from>Copy</button></div>

@@ -12,6 +12,11 @@
     io.observe(el);
   }
 
+  // SMIL motion in the figures stops under reduced motion.
+  if (calm) document.querySelectorAll("svg.art").forEach(function (svg) {
+    if (svg.pauseAnimations) { svg.pauseAnimations(); svg.setCurrentTime(0); }
+  });
+
   // Reveal sections as they enter, in reading order.
   document.querySelectorAll(".reveal").forEach(function (el) {
     if (calm) { el.classList.add("in"); return; }

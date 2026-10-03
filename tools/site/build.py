@@ -6,6 +6,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 from common import page, codebox, esc, GH  # noqa: E402
+import art  # noqa: E402
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "docs")
 
@@ -159,9 +160,13 @@ overview = f"""
         <a class="btn btn-ghost" href="architecture.html">How it works</a>
       </div>
     </div>
-    <div class="cube-stage" id="cube-stage" role="img" aria-label="A rotating box drawn in ASCII characters. Drag to turn it.">
-      <pre id="cube" aria-hidden="true"></pre>
-    </div>
+    <div class="hero-art">{art.hero()}</div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <p class="statement">A container shares your kernel. <span>A bluebox sandbox brings its own, boots it in milliseconds, and throws it away.</span></p>
   </div>
 </section>
 
@@ -219,6 +224,7 @@ overview = f"""
       <p>Python, TypeScript and Go SDKs, none with dependencies. They talk to a local server over a Unix socket only you can open, and start it when needed.</p>
       <p><b>Fork</b> branches a sandbox's <code>/data</code>, so an agent can try several approaches side by side. <b>Diff</b> shows what one changed, and its work reaches your data only when you <b>apply</b> it.</p>
       <p><a href="docs.html#sdk">SDK reference</a></p>
+      <div style="margin-top:2rem">{art.fork()}</div>
     </div>
     {codebox("overview-sdk", SDK_SHORT, "SDK language")}
   </div>
@@ -306,9 +312,13 @@ architecture = f"""
 
 <section class="section" style="border-top:0;padding-top:0">
   <div class="wrap">
+    <figure class="figure" style="margin-bottom:2rem">
+      <div class="figure-body">{art.architecture()}</div>
+      <figcaption><b>Figure 1.</b> A command's path on each backend, from the interface to the guest.</figcaption>
+    </figure>
     <figure class="figure">
       <div class="figure-body">{stack}</div>
-      <figcaption><b>Figure 1.</b> The layers of a sandbox on each backend, from the interface you call to the guest that runs your command. Images are always built by podman.</figcaption>
+      <figcaption><b>Figure 2.</b> The layers of a sandbox on each backend, from the interface you call to the guest that runs your command. Images are always built by podman.</figcaption>
     </figure>
   </div>
 </section>
@@ -357,6 +367,7 @@ architecture = f"""
   <div class="wrap">
     <h2>Data and forks</h2>
     <p class="lead">Everything in a sandbox resets per run except <code>/data</code>, so state is a filesystem problem, and filesystem problems are cheap.</p>
+    <div class="art-frame" style="margin-bottom:2rem">{art.fork()}</div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Operation</th><th>What happens</th><th>Cost</th></tr></thead>
@@ -432,8 +443,11 @@ security = f"""
       <p><b>The guest kernel.</b> Every sandbox is a microVM under KVM. A kernel exploit inside takes over a guest that is thrown away. bluebox proves the guest has its own kernel at build and checks it again before every command.</p>
       <p><b>The VMM's confinement.</b> A guest that breaks its VMM gets whatever the VMM has. So the VMM gets as little as possible: dropped capabilities, no new privileges, seccomp, its own namespaces, resource limits, only the files the Bluefile declares, and under <code>isolation: strict</code> a host UID that owns nothing of yours.</p>
     </div>
-    <div class="note prose">
+    <div>
+      {art.security()}
+      <div class="note prose">
       <p><b>Use <code>isolation: strict</code> for agents.</b> Under standard isolation the VMM runs as your user, so escaping both the guest kernel and the VMM lands in your account. Strict maps it to your first subordinate UID instead.</p>
+      </div>
     </div>
   </div>
 </section>

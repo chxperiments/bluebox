@@ -1,0 +1,17 @@
+[package]
+name = "bluebox-sdk"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+description = "Rust SDK for bluebox: microVM sandboxes that start in milliseconds"
+license = "MIT"
+repository = "https://github.com/chxperiments/bluebox"
+readme = "README.md"
+
+[lib]
+name = "bluebox"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"

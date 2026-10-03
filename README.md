@@ -519,8 +519,9 @@ want that anyway.
 
 ## SDKs
 
-Drive sandboxes from code: [Python](sdk/python/), [TypeScript](sdk/typescript/)
-and [Go](sdk/go/), all without dependencies.
+Drive sandboxes from code: [Python](sdk/python/), [TypeScript](sdk/typescript/),
+[Go](sdk/go/) and [Rust](sdk/rust/). Python, TypeScript and Go have no
+dependencies; Rust uses only serde and sha2.
 
 ```python
 from bluebox import Sandbox
@@ -635,7 +636,7 @@ internal/sandbox/   on-disk layout
 internal/runtime/   podman + krun driver -- the only backend-aware code
 internal/agent/     in-guest agent and its wire protocol (up/exec)
 internal/server/    `bluebox serve`, the local API the SDKs use
-sdk/{python,typescript,go}  client SDKs
+sdk/{python,typescript,go,rust}  client SDKs
 examples/           example Bluefiles, embedded for `new --from`
 internal/cli/       cobra commands (root.go, commands.go)
 ```

@@ -43,7 +43,7 @@ Egress today is all-or-nothing (`bridge` or `none`). Move to per-sandbox policy.
 Close the guest-kernel gaps found running Kubernetes.
 
 - A fuller guest kernel (via libkrun's external-kernel support) with VXLAN and
-  `nf_conntrack`, so overlay CNI and Services work and CKA/CKS clusters are
+  `nf_conntrack`, so overlay CNI and Services work and the `k8s` example's clusters are
   fully networked rather than host-gw + `hostNetwork` pods.
 - Resource limits the VM knob does not cover: pid limits (in-guest) and a disk
   quota for `/data` (host-side).

@@ -1,11 +1,11 @@
-# Sample SAA stack, pointed at Floci (a local AWS emulator on port 4566).
+# Sample AWS stack, pointed at Floci (a local AWS emulator on port 4566).
 # Copy into /data and run there so terraform state persists:
 #
 #   cp main.tf /data && cd /data
 #   terraform init
 #   terraform apply
 #
-# Covers the core SAA building blocks: a VPC with a public subnet and an
+# Covers the core building blocks: a VPC with a public subnet and an
 # internet gateway, a security group, an EC2 instance, and an S3 bucket.
 # All are services Floci emulates.
 

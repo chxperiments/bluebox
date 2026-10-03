@@ -40,19 +40,11 @@ more in any of them to get runs that start in ~50ms.
 | [`offline`](offline/Bluefile) | `network: none` — no egress at all |
 | [`os-lab`](os-lab/Bluefile) | a real kernel: `mount`, `sysctl`, `modprobe` work |
 
-### Certification prep
-
-| Example | For | What it shows |
-|---|---|---|
-| [`cert-rhcsa`](cert-rhcsa/Bluefile) | RHCSA (EX200) | AlmaLinux 9, storage/SELinux/podman toolset |
-| [`cert-rhce`](cert-rhce/Bluefile) | RHCE 9 (EX294) | Ansible automation environment |
-| [`cert-cka`](cert-cka/Bluefile) | CKA | a real k3s cluster you start with `start-cluster` |
-| [`cert-cks`](cert-cks/Bluefile) | CKS | k3s + trivy/kube-bench, AppArmor & seccomp on a real kernel |
-
 ### Labs
 
 | Example | What it shows |
 |---|---|
+| [`k8s`](k8s/Bluefile) | a real single-node k3s cluster you start with `start-cluster`, plus kubectl and Helm |
 | [`lab-aws`](lab-aws/) | AWS CLI + Terraform against [Floci](https://floci.io/), a local AWS emulator; see [`main.tf`](lab-aws/main.tf) |
 
 **lab-aws**, verified end to end from inside the microVM: S3 (create/put/get), a
@@ -78,24 +70,21 @@ aws s3 ls
 The sandbox ships AWS CLI v2 and Terraform, with `AWS_ENDPOINT_URL` preset, so
 tools talk to Floci with no flags.
 
-Three things about the cert sandboxes worth knowing, because they are honest
+Three things about the lab sandboxes worth knowing, because they are honest
 limits rather than bugs:
 
 - **State is ephemeral.** Each `bluebox run` is a fresh VM. Start a cluster or
   a service inside `bluebox shell`, and keep anything you want to keep in
   `/data`. A k3s cluster's own state resets with the VM.
 - **bluebox runs a command, not a full boot.** systemd is not PID 1, so live
-  `systemctl start/enable` on services is limited. The many topics that do not
-  need a running init — users, permissions, LVM/storage, SELinux contexts,
-  networking config, containers, kernel features — all work, and work *because*
-  the sandbox has its own kernel.
-- **Kubernetes runs, with a networking caveat.** `cert-cka`/`cert-cks` boot a
+  `systemctl start/enable` on services is limited. Start what you need by hand
+  inside `bluebox shell`, as `start-cluster` does for k3s.
+- **Kubernetes runs, with a networking caveat.** `k8s` boots a
   real k3s cluster (verified: node Ready, pods scheduled and serving). The
   minimal guest kernel has no VXLAN or nf_conntrack, so overlay CNI and
   Services do not work; `start-cluster` uses host-gw with kube-proxy off, and
   pods should run with `hostNetwork: true`. The API, scheduling, RBAC, kubectl,
-  running containers, and the security tooling all work — which covers most of
-  the exam objectives. Full overlay networking would need a fuller guest kernel
+  running containers and Helm all work. Full overlay networking would need a fuller guest kernel
   (a possible future via libkrun's external-kernel support).
 
 For `lab-aws`, run Floci separately (it serves AWS APIs on port 4566), then

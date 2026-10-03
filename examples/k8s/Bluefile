@@ -1,9 +1,9 @@
-# CKA practice: a real single-node Kubernetes cluster.
+# A real single-node Kubernetes cluster, in a microVM.
 # This runs a genuine k3s control plane with a scheduled, running pod inside
 # the microVM -- verified end to end. Getting there needs a few settings the
 # minimal guest kernel forces, all handled by the baked-in `start-cluster`:
 #
-#   bluebox shell cka
+#   bluebox shell k8s
 #   start-cluster &          # k3s comes up in ~15s
 #   k3s kubectl get nodes
 #   k3s kubectl run web --image=nginx:alpine --overrides='{"spec":{"hostNetwork":true}}'
@@ -14,8 +14,8 @@
 # and pods should use hostNetwork. Everything else -- the API, scheduling,
 # RBAC, kubectl, running containers -- works.
 #
-# For kubeadm-specific objectives (bootstrap, upgrades, etcd) layer kubeadm
-# on top; those are exercises against the API and tooling, which are all here.
+# Helm is baked in. The cluster's state lives in the VM, so it resets when the
+# VM goes; keep manifests and charts in /data.
 
 base: docker.io/library/ubuntu:24.04
 

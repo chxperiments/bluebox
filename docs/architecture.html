@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture | bluebox</title>
+<meta name="description" content="How bluebox boots, confines and reaches a microVM on podman, krun and Firecracker.">
+<meta property="og:title" content="Architecture | bluebox">
+<meta property="og:description" content="How bluebox boots, confines and reaches a microVM on podman, krun and Firecracker.">
+<meta name="theme-color" content="#002fa7">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>bluebox</a>
+    <nav class="nav-links" aria-label="Site">
+        <a href="architecture.html" aria-current="page">Architecture</a>
+        <a href="security.html">Security</a>
+        <a href="benchmarks.html">Benchmarks</a>
+        <a href="docs.html">Docs</a>
+    </nav>
+    <a class="nav-gh" href="https://github.com/chxperiments/bluebox">GitHub</a>
+  </div>
+</header>
+<main>
+
+<section class="page-head">
+  <div class="wrap">
+    <h1>Architecture</h1>
+    <p class="lead">One interface, three ways to boot a microVM. Everything above the launcher is shared; everything below it is chosen per sandbox with <code>backend:</code> in the Bluefile.</p>
+  </div>
+</section>
+
+<section class="section" style="border-top:0;padding-top:0">
+  <div class="wrap">
+    <figure class="figure">
+      <div class="figure-body">
+<div class="stack">
+  <div></div>
+  <div class="head">podman<span>default</span></div>
+  <div class="head">krun<span>direct libkrun</span></div>
+  <div class="head">firecracker<span>snapshot per run</span></div>
+
+  <div class="rowlabel">Interface</div>
+  <div class="cell span3"><b>bluebox CLI, SDKs and local API</b><span>Bluefile, warm pool, up / exec, forks, data import / export, isolation checks</span></div>
+
+  <div class="rowlabel">Launcher</div>
+  <div class="cell "><b>podman</b><span>builds images, runs crun</span></div>
+  <div class="cell "><b>crun</b><span>OCI spec written by bluebox</span></div>
+  <div class="cell "><b>crun</b><span>a jail container for the VMM</span></div>
+
+  <div class="rowlabel">VMM</div>
+  <div class="cell "><b>libkrun</b><span>inside crun's process</span></div>
+  <div class="cell "><b>libkrun</b><span>inside crun's process</span></div>
+  <div class="cell "><b>Firecracker v1.17</b><span>minimal device model</span></div>
+
+  <div class="rowlabel">Host confinement</div>
+  <div class="cell boundary"><b>6 caps, seccomp, no_new_privs</b><span>own netns, pids and memory limits</span></div>
+  <div class="cell boundary"><b>6 caps, seccomp, no_new_privs</b><span>own netns, pids and memory limits</span></div>
+  <div class="cell boundary"><b>0 caps, seccomp, no_new_privs</b><span>read-only jail root, own netns, limits</span></div>
+
+  <div class="rowlabel">Hypervisor</div>
+  <div class="cell span3 boundary"><b>KVM</b><span>hardware virtualization: the guest has its own kernel</span></div>
+
+  <div class="rowlabel">Guest</div>
+  <div class="cell guest"><b>kernel 6.12 (libkrunfw)</b><span>init.krun, image as rootfs</span></div>
+  <div class="cell guest"><b>kernel 6.12 (libkrunfw)</b><span>init.krun, image as rootfs</span></div>
+  <div class="cell guest"><b>kernel 6.1</b><span>bluebox as PID 1, RAM overlay on root</span></div>
+
+  <div class="rowlabel">Agent channel</div>
+  <div class="cell "><b>TCP on 127.0.0.1</b><span>token-authenticated</span></div>
+  <div class="cell "><b>TCP via pasta, 127.0.0.1</b><span>token-authenticated</span></div>
+  <div class="cell "><b>vsock</b><span>Unix socket, owner-only, token rotated per copy</span></div>
+
+  <div class="rowlabel">/data</div>
+  <div class="cell "><b>host directory</b><span>shared by virtiofs</span></div>
+  <div class="cell "><b>host directory</b><span>shared by virtiofs</span></div>
+  <div class="cell "><b>ext4 disk</b><span>one VM mounts it at a time</span></div>
+</div>
+<div class="legend"><span><i class="b"></i>security boundary</span><span><i class="g"></i>inside the guest</span><span><i></i>host side</span></div>
+</div>
+      <figcaption><b>Figure 1.</b> The layers of a sandbox on each backend, from the interface you call to the guest that runs your command. Images are always built by podman.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap split">
+    <div class="prose">
+      <h2 style="margin-bottom:1rem">podman and krun: libkrun</h2>
+      <p>libkrun is a library that turns a process into a microVM. crun's libkrun handler uses it to boot an OCI image with its own kernel; bluebox verifies that at build by comparing the guest's kernel with the one a plain container sees, and again before every command.</p>
+      <p>libkrun's own documentation says the guest and its VMM share one security context: the VMM does the guest's file I/O and opens its network connections. So bluebox treats the VMM's confinement as the boundary behind a libkrun escape, and keeps only the six capabilities virtiofs and low ports need.</p>
+      <p>The <code>krun</code> backend writes the OCI spec itself and drives crun directly, removing podman's share of a cold boot (about 0.85 s of 1.4 s), with the same confinement.</p>
+    </div>
+    <div class="prose">
+      <h2 style="margin-bottom:1rem">firecracker: a snapshot per run</h2>
+      <p>Firecracker is the VMM built for running other people's code at scale. It has no host-side proxy for guest sockets and a device model of block, vsock and little else.</p>
+      <p>bluebox boots each image once, waits for its agent, and snapshots the VM. Every run restores that snapshot instead of booting a kernel. Before anything runs, the copy is made distinct: the agent token baked into the snapshot is rotated, the guest mixes in fresh randomness and takes the host clock, and only then is <code>/data</code> mounted.</p>
+      <p>The VMM runs in a crun container with no capabilities at all and a read-only root holding only its binary, kernel, image, VM directory, disk and <code>/dev/kvm</code>: what Firecracker's jailer provides, without the root it needs.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap split">
+    <div>
+      <h2 style="margin-bottom:1rem">A run, from the pool</h2>
+      <ol class="steps">
+        <li><div><b>Claim</b><span>A waiting VM is taken by renaming its state file; two runs can never get the same one.</span></div></li>
+        <li><div><b>Check</b><span>The guest reports its kernel; a VM that answers with the host's is refused.</span></div></li>
+        <li><div><b>Execute</b><span>The command runs through the agent, with stdout, stderr, exit code and timeout passed through.</span></div></li>
+        <li><div><b>Discard</b><span>The VM is destroyed. A detached tender boots its replacement in the background.</span></div></li>
+      </ol>
+    </div>
+    <div>
+      <h2 style="margin-bottom:1rem">A run, from a snapshot</h2>
+      <ol class="steps">
+        <li><div><b>Start the VMM</b><span>Firecracker starts in its jail container, with the image's memory mapped copy-on-write.</span></div></li>
+        <li><div><b>Restore</b><span>The paused VM resumes where its agent was waiting, in tens of milliseconds.</span></div></li>
+        <li><div><b>Make it distinct</b><span>Rotate the token, reseed randomness, set the clock, mount <code>/data</code>.</span></div></li>
+        <li><div><b>Execute and flush</b><span>Run the command, write <code>/data</code> out, then tear the VM down.</span></div></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Data and forks</h2>
+    <p class="lead">Everything in a sandbox resets per run except <code>/data</code>, so state is a filesystem problem, and filesystem problems are cheap.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Operation</th><th>What happens</th><th>Cost</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">fork</td><td>A new sandbox whose <code>/data</code> is an overlay on the parent's, mounted inside podman's user namespace without root.</td><td class="num">~0.25 s</td></tr>
+          <tr><td class="mono">diff</td><td>Read straight from the fork's upper layer, whiteouts and opaque directories included. No VM boots.</td><td class="num">ms</td></tr>
+          <tr><td class="mono">apply</td><td>Merges into the parent through an os.Root, so a symlink the guest planted cannot redirect a write.</td><td class="num">ms</td></tr>
+          <tr><td class="mono">data export</td><td>Copies <code>/data</code> to a host directory. Symlinks stay links, devices are skipped, setuid bits dropped.</td><td class="num">size-bound</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="wrap">
+    <span>bluebox, MIT licensed. Isolated, disposable microVM sandboxes.</span>
+    <nav aria-label="Footer">
+      <a href="architecture.html">Architecture</a>
+      <a href="security.html">Security</a>
+      <a href="benchmarks.html">Benchmarks</a>
+      <a href="docs.html">Docs</a>
+      <a href="https://github.com/chxperiments/bluebox">Source</a>
+    </nav>
+  </div>
+</footer>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

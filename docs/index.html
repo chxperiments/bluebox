@@ -3,789 +3,188 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="bluebox - isolated, persistent sandboxes that run as real microVMs.">
 <title>bluebox</title>
+<meta name="description" content="bluebox runs every command in a disposable microVM with its own kernel, defined in one file, started in milliseconds.">
+<meta property="og:title" content="bluebox">
+<meta property="og:description" content="bluebox runs every command in a disposable microVM with its own kernel, defined in one file, started in milliseconds.">
+<meta name="theme-color" content="#002fa7">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-
-<style>
-/* Two pigments only: true blue ground, white ink. Every lighter value is
-   white laid over the blue at reduced alpha -- no third hue anywhere. */
-:root{
-  --blue:#002FA7;
-  --white:#FFFFFF;
-  --line:rgba(255,255,255,.28);
-  --line-soft:rgba(255,255,255,.16);
-  --dim:rgba(255,255,255,.62);
-}
-
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-
-body{
-  margin:0;
-  min-height:100%;
-  background:var(--blue);
-  color:var(--white);
-  font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:16px;
-  line-height:1.6;
-  -webkit-font-smoothing:antialiased;
-}
-
-.wrap{max-width:64rem;margin:0 auto;padding:0 clamp(1.1rem,4vw,2.5rem)}
-
-/* ── Nav ───────────────────────────────────────────────────────────── */
-nav{border-bottom:1px solid var(--line-soft)}
-nav .wrap{
-  display:flex;align-items:center;justify-content:space-between;
-  gap:1rem;height:clamp(3.4rem,7vw,4.25rem);
-}
-.brand{
-  font-weight:600;letter-spacing:.02em;font-size:1rem;
-  color:var(--white);text-decoration:none;
-}
-.links{display:flex;align-items:center;gap:clamp(1rem,3vw,1.9rem)}
-.links a{
-  color:var(--dim);text-decoration:none;font-size:.86rem;
-  padding:.25rem 0;border-bottom:1px solid transparent;transition:color .15s,border-color .15s;
-}
-.links a:hover,.links a:focus-visible{color:var(--white);border-bottom-color:var(--white)}
-
-/* ── Hero ──────────────────────────────────────────────────────────── */
-.hero{padding:clamp(1.25rem,3.5vw,2.25rem) 0 clamp(1.5rem,4vw,2.5rem)}
-.hero-inner{display:flex;flex-direction:column;align-items:center;gap:clamp(.6rem,1.6vw,1rem)}
-
-.stage{
-  position:relative;
-  display:grid;place-items:center;
-  cursor:grab;touch-action:none;
-  padding:.5rem;border-radius:2px;
-}
-.stage:active{cursor:grabbing}
-.stage:focus-visible{outline:1px solid var(--line);outline-offset:10px}
-pre#cube{
-  margin:0;color:var(--white);font-family:inherit;font-weight:500;
-  font-size:clamp(4.6px,1.05vw,10px);line-height:1.2;
-  white-space:pre;user-select:none;
-}
-.hint{
-  margin-top:-.25rem;
-  font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--dim);transition:opacity .5s ease;
-}
-.stage.touched + .hint{opacity:0}
-
-/* ── Shell window ──────────────────────────────────────────────────── */
-.shell{
-  width:min(38rem,100%);
-  border:1px solid var(--line);
-  background:transparent;
-}
-.shell-bar{
-  display:flex;align-items:center;gap:.75rem;
-  padding:.55rem .75rem;border-bottom:1px solid var(--line-soft);
-}
-.dots{display:flex;gap:.4rem}
-.dots i{width:.55rem;height:.55rem;border:1px solid var(--line);border-radius:50%}
-.shell-title{
-  flex:1;text-align:center;font-size:.74rem;letter-spacing:.1em;
-  color:var(--dim);
-}
-.copy{
-  border:1px solid var(--line);background:transparent;color:var(--white);
-  font-family:inherit;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;
-  padding:.25rem .6rem;cursor:pointer;transition:background .15s,color .15s;
-}
-.copy:hover,.copy:focus-visible{background:var(--white);color:var(--blue)}
-.shell-body{padding:.95rem 1rem;overflow-x:auto}
-.shell-body pre{
-  margin:0;font-family:inherit;font-weight:500;
-  font-size:clamp(.74rem,1.5vw,.9rem);line-height:1.7;
-  white-space:pre;color:var(--white);
-}
-.shell-body .p{color:var(--dim)}
-
-/* ── About ─────────────────────────────────────────────────────────── */
-#about{padding:clamp(2rem,5vw,3.25rem) 0 clamp(2.5rem,6vw,4rem);border-top:1px solid var(--line-soft)}
-#about h2{
-  margin:0 0 1.1rem;font-size:.74rem;font-weight:600;
-  letter-spacing:.2em;text-transform:uppercase;color:var(--dim);
-}
-.about-grid{display:grid;gap:clamp(1.2rem,3vw,2.25rem)}
-@media (min-width:48rem){.about-grid{grid-template-columns:1.2fr 1fr}}
-#about p{margin:0 0 .9rem;max-width:56ch;font-size:.92rem;color:var(--white)}
-#about p:last-child{margin-bottom:0}
-#about .muted{color:var(--dim);font-size:.86rem}
-.facts{display:grid;gap:.55rem;align-content:start}
-.fact{display:flex;gap:.9rem;font-size:.86rem;border-top:1px solid var(--line-soft);padding-top:.55rem}
-.fact:first-child{border-top:0;padding-top:0}
-.fact b{font-weight:500;color:var(--white);min-width:6.5rem}
-.fact span{color:var(--dim)}
-
-footer{border-top:1px solid var(--line-soft)}
-footer .wrap{
-  display:flex;flex-wrap:wrap;gap:.5rem 1.5rem;justify-content:space-between;
-  padding-top:1.1rem;padding-bottom:1.1rem;font-size:.76rem;color:var(--dim);
-}
-footer a{color:var(--dim);text-decoration:none;border-bottom:1px solid transparent}
-footer a:hover,footer a:focus-visible{color:var(--white);border-bottom-color:var(--white)}
-
-/* ── Sections shared ───────────────────────────────────────────────── */
-.sec{padding:clamp(2rem,5vw,3.25rem) 0 clamp(2.5rem,6vw,4rem);border-top:1px solid var(--line-soft)}
-.sec h2{
-  margin:0 0 .5rem;font-size:.74rem;font-weight:600;
-  letter-spacing:.2em;text-transform:uppercase;color:var(--dim);
-}
-.sec .lede{margin:0 0 1.6rem;font-size:clamp(1.05rem,2.4vw,1.35rem);font-weight:500;max-width:40ch;line-height:1.4}
-.sec .lede em{font-style:normal;border-bottom:1px solid var(--white)}
-.sec .note{margin:1rem 0 0;font-size:.74rem;color:var(--dim)}
-.sec .note a{color:var(--dim)}
-.panel{border:1px solid var(--line)}
-.panel-bar{
-  display:flex;align-items:center;gap:.75rem;min-height:2.3rem;
-  padding:0 .75rem;border-bottom:1px solid var(--line-soft);
-  font-size:.74rem;letter-spacing:.1em;color:var(--dim);
-}
-.panel-bar .grow{flex:1}
-
-/* ── Speed ─────────────────────────────────────────────────────────── */
-.bars{display:grid;gap:.55rem;padding:1rem;overflow-x:auto}
-.bar{display:grid;grid-template-columns:minmax(9.5rem,13rem) 1fr 5.2rem;align-items:center;gap:.9rem;font-size:.82rem}
-.bar .name{color:var(--dim);white-space:nowrap}
-.bar .ink{white-space:pre;color:var(--dim);overflow:hidden;font-size:.78rem;letter-spacing:-.02em}
-.bar .ms{text-align:right;font-variant-numeric:tabular-nums;color:var(--dim)}
-.bar.us .name,.bar.us .ink,.bar.us .ms{color:var(--white)}
-.bar.us .name b{font-weight:600}
-.bar .tag{display:block;font-size:.66rem;letter-spacing:.08em;color:var(--dim)}
-@media (max-width:34rem){
-  .bar{grid-template-columns:1fr 4.6rem;gap:.1rem .6rem}
-  .bar .ink{grid-column:1 / -1;grid-row:2}
-}
-.big{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--line-soft);margin-bottom:1.25rem}
-.big div{background:var(--blue);padding:1rem}
-.big b{display:block;font-size:clamp(1.6rem,4.5vw,2.3rem);font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
-.big span{font-size:.76rem;color:var(--dim)}
-
-/* ── Bluefile ──────────────────────────────────────────────────────── */
-.bf-grid{display:grid;gap:1rem}
-@media (min-width:52rem){.bf-grid{grid-template-columns:1.15fr 1fr}}
-.bf-code{padding:.8rem 0;overflow-x:auto;font-size:clamp(.74rem,1.5vw,.86rem);line-height:1.75}
-.ln{display:block;padding:0 1rem;white-space:pre;color:var(--dim);border-left:2px solid transparent;cursor:default;outline:none}
-.ln[data-note]{color:var(--white);cursor:pointer}
-.ln[data-note]:hover,.ln[data-note]:focus-visible,.ln.on{background:rgba(255,255,255,.08);border-left-color:var(--white)}
-.ln .c{color:var(--dim)}
-.explain{display:flex;flex-direction:column}
-.explain .body{padding:1rem;flex:1;min-height:12rem}
-.explain .key{font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:0 0 .6rem}
-.explain .what{margin:0 0 .9rem;font-size:.95rem;line-height:1.55}
-.explain .becomes{margin:0;font-size:.78rem;color:var(--dim);white-space:pre-wrap;border-top:1px solid var(--line-soft);padding-top:.7rem}
-.explain .becomes::before{content:"becomes  ";color:var(--white)}
-.steps{display:flex;flex-wrap:wrap;gap:.4rem 1.2rem;padding:.7rem 1rem;border-top:1px solid var(--line-soft);font-size:.74rem;color:var(--dim)}
-.steps b{color:var(--white);font-weight:500}
-
-/* ── SDK ───────────────────────────────────────────────────────────── */
-.sdk-grid{display:grid;gap:1rem}
-@media (min-width:52rem){.sdk-grid{grid-template-columns:1.2fr 1fr}}
-.tabs{display:flex;gap:0;align-self:stretch}
-.tab{
-  background:transparent;border:0;border-right:1px solid var(--line-soft);color:var(--dim);
-  font-family:inherit;font-size:.74rem;letter-spacing:.1em;padding:0 .9rem;cursor:pointer;
-}
-.tab:first-child{border-left:1px solid var(--line-soft)}
-.tab[aria-selected="true"]{color:var(--blue);background:var(--white)}
-.tab:hover:not([aria-selected="true"]){color:var(--white)}
-.code{padding:.95rem 1rem;overflow-x:auto;margin:0;font-family:inherit;font-weight:500;font-size:clamp(.72rem,1.45vw,.84rem);line-height:1.7;white-space:pre}
-.code .c{color:var(--dim)}
-.code[hidden]{display:none}
-.replay{padding:.95rem 1rem;margin:0;min-height:15.5rem;font-family:inherit;font-size:clamp(.72rem,1.45vw,.82rem);line-height:1.7;white-space:pre-wrap;word-break:break-word}
-.replay .p{color:var(--dim)}
-.replay .r{color:var(--dim)}
-.replay .t{border:1px solid var(--line);padding:0 .3rem;margin-left:.4rem;font-size:.7rem;color:var(--white)}
-.cursor{display:inline-block;width:.55em;height:1.05em;vertical-align:-.15em;background:var(--white);animation:blink 1s steps(1) infinite}
-@keyframes blink{50%{opacity:0}}
-@media (prefers-reduced-motion:reduce){.cursor{animation:none}}
-.chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}
-.chip{border:1px solid var(--line);padding:.25rem .6rem;font-size:.72rem;letter-spacing:.06em;color:var(--dim)}
-.chip b{color:var(--white);font-weight:500}
-
-:where(a,button,[tabindex]):focus-visible{outline:1px solid var(--white);outline-offset:3px}
-</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<nav>
+<header class="nav">
   <div class="wrap">
-    <a class="brand" href="#top">bluebox</a>
-    <div class="links">
-      <a href="#speed">speed</a>
-      <a href="#bluefile">bluefile</a>
-      <a href="#sdk">sdk</a>
-      <a href="#about">about</a>
-      <a href="https://github.com/chxperiments/bluebox">github</a>
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>bluebox</a>
+    <nav class="nav-links" aria-label="Site">
+        <a href="architecture.html">Architecture</a>
+        <a href="security.html">Security</a>
+        <a href="benchmarks.html">Benchmarks</a>
+        <a href="docs.html">Docs</a>
+    </nav>
+    <a class="nav-gh" href="https://github.com/chxperiments/bluebox">GitHub</a>
+  </div>
+</header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <h1>Disposable microVMs for AI agents.</h1>
+      <p class="lead">Every command runs in its own virtual machine with its own kernel, defined in one file, started in milliseconds.</p>
+      <div class="install">
+        <code><span class="p">$ </span>curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh</code>
+        <button class="copy" type="button" data-copy="curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh">Copy</button>
+      </div>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="docs.html">Read the docs</a>
+        <a class="btn btn-ghost" href="architecture.html">How it works</a>
+      </div>
+    </div>
+    <div class="cube-stage" id="cube-stage" role="img" aria-label="A rotating box drawn in ASCII characters. Drag to turn it.">
+      <pre id="cube" aria-hidden="true"></pre>
     </div>
   </div>
-</nav>
+</section>
 
-<main id="top">
-  <section class="hero">
-    <div class="wrap hero-inner">
-      <div class="stage" id="stage" tabindex="0" role="img"
-           aria-label="A rotating wireframe box drawn in ASCII. Drag to turn it.">
-        <pre id="cube" aria-hidden="true"></pre>
-      </div>
-      <span class="hint" id="hint">drag to rotate</span>
-
-      <div class="shell">
-        <div class="shell-bar">
-          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
-          <span class="shell-title">install</span>
-          <button class="copy" id="copy" type="button">copy</button>
-        </div>
-        <div class="shell-body">
-<pre><span class="p">$</span> <span id="cmd">curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh</span></pre>
-        </div>
-      </div>
+<section class="section" id="speed">
+  <div class="wrap">
+    <h2>Measured, not claimed.</h2>
+    <p class="lead">Isolation used to cost a second per command. bluebox pays it before the command arrives.</p>
+    <div class="numbers reveal">
+      <div><b>15<small>ms</small></b><span>a command in a running VM</span></div>
+      <div><b>41<small>ms</small></b><span>a fresh VM from the warm pool</span></div>
+      <div><b>0.3<small>s</small></b><span>a fresh VM restored from a snapshot</span></div>
+      <div><b>0</b><span>escapes in the escape suite, on every backend</span></div>
     </div>
-  </section>
+    <figure class="figure reveal" style="margin-top:1.5rem">
+      <div class="figure-body"><div class="bars" role="list"><div class="bar" role="listitem"><div class="label"><b>podman + krun</b><span>a microVM booted per command</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:100.0%"></div></div><div class="ms">1,618 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, podman backend</b><span>booted per command</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:87.2%"></div></div><div class="ms">1,411 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, krun backend</b><span>booted per command, no podman</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:71.0%"></div></div><div class="ms">1,148 ms</div></div><div class="bar" role="listitem"><div class="label"><b>podman + runc</b><span>plain container, shares your kernel</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:27.8%"></div></div><div class="ms">450 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, firecracker</b><span>a fresh VM from a snapshot, offline</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:19.3%"></div></div><div class="ms">312 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, warm pool</b><span>a fresh VM waiting in the pool</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:2.5%"></div></div><div class="ms">41 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox exec</b><span>a command in a running VM</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:0.9%"></div></div><div class="ms">15 ms</div></div></div></div>
+      <figcaption><b>Figure 1.</b> Median wall-clock latency of a no-op command, measured from the host on one x86_64 Linux machine (KVM). Blue rows are bluebox. Sources and method on the <a href="benchmarks.html">benchmarks</a> page.</figcaption>
+    </figure>
+  </div>
+</section>
 
-
-  <section class="sec" id="speed">
-    <div class="wrap">
-      <h2>Speed</h2>
-      <p class="lede">A fresh microVM in <em>tens of milliseconds</em>. Its own kernel, every time.</p>
-
-      <div class="big" aria-label="Headline numbers">
-        <div><b data-count="15">15</b><span>ms · exec in a running VM</span></div>
-        <div><b data-count="44">44</b><span>ms · run in a fresh VM, warm pool</span></div>
-        <div><b data-count="31">31</b><span>× faster than a cold boot</span></div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-bar"><span class="grow">latency · median of 20 · no-op command</span><span>lower is better</span></div>
-        <div class="bars" id="bars" role="list"></div>
-      </div>
-      <p class="note">
-        Measured with <a href="https://github.com/chxperiments/bluebox/tree/main/bench">bench/bench.py</a>
-        on one Linux machine (KVM, libkrun 1.19), wall clock from the host.
-        Reproduce it: <code>python3 bench/bench.py</code>.
-      </p>
+<section class="section">
+  <div class="wrap split">
+    <div class="prose">
+      <h2 style="margin-bottom:1rem">A kernel per sandbox, three ways to boot it.</h2>
+      <p>A container shares your kernel; one kernel bug and the workload is on your machine. Every bluebox sandbox is a microVM under KVM with its own kernel, and the process that runs it is confined on the host as tightly as it allows.</p>
+      <p>Choose the virtual machine monitor per sandbox: libkrun through podman, libkrun driven directly, or Firecracker restoring a snapshot per run. The same CLI, SDKs, pool, forks and checks sit on top of all three.</p>
+      <p><a href="architecture.html">Read the architecture</a></p>
     </div>
-  </section>
+    <div class="table-wrap reveal">
+      <table>
+        <thead><tr><th>Backend</th><th>Fresh VM</th><th>Strongest at</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">podman</td><td class="num">1.4 s</td><td>every feature, macOS too</td></tr>
+          <tr><td class="mono">krun</td><td class="num">0.75 s</td><td>libkrun without podman's overhead</td></tr>
+          <tr><td class="mono">firecracker</td><td class="num">0.3 s</td><td>hostile code: no VMM capabilities, no shared host files</td></tr>
+        </tbody>
+      </table>
+      <p class="small muted" style="padding:0.75rem 1rem;margin:0">Offline sandbox, no warm pool. With <code>warm:</code>, podman and krun start in about 41 ms.</p>
+    </div>
+  </div>
+</section>
 
-  <section class="sec" id="bluefile">
-    <div class="wrap">
-      <h2>Bluefile</h2>
-      <p class="lede">The whole sandbox is <em>one file</em>. Declare it; bluebox builds it.</p>
-
-      <div class="bf-grid">
-        <div class="panel">
-          <div class="panel-bar"><span class="grow">~/.bluebox/sandboxes/agent/Bluefile</span><span>point at a line</span></div>
-          <div class="bf-code" id="bf">
-<span class="ln"><span class="c"># agent -- everything the sandbox is</span></span>
-<span class="ln" tabindex="0" data-k="base" data-note="The image every microVM of this sandbox boots from. The package manager is inferred from it: apk here, apt on Debian, dnf on Fedora." data-becomes="FROM docker.io/library/alpine:latest">base: docker.io/library/alpine:latest</span>
-<span class="ln" tabindex="0" data-k="cpus · ram_mib" data-note="The size of the VM. These are real vCPUs and guest RAM, not cgroup quotas on a shared kernel." data-becomes="--annotation krun.cpus=2 --annotation krun.ram_mib=1024">cpus: 2</span>
-<span class="ln" tabindex="0" data-k="cpus · ram_mib" data-note="The size of the VM. These are real vCPUs and guest RAM, not cgroup quotas on a shared kernel." data-becomes="--annotation krun.cpus=2 --annotation krun.ram_mib=1024">ram_mib: 1024</span>
-<span class="ln" tabindex="0" data-k="network" data-note="bridge gives the guest internet access; none cuts it off entirely." data-becomes="--network=bridge">network: bridge</span>
-<span class="ln" tabindex="0" data-k="readonly" data-note="The guest can't modify its own image. /tmp and /data stay writable." data-becomes="--read-only">readonly: true</span>
-<span class="ln" tabindex="0" data-k="timeout_seconds" data-note="A wall-clock limit per command. When it's hit, every process the command started is killed and it exits 124, like timeout(1)." data-becomes="exit 124 after 60s">timeout_seconds: 60</span>
-<span class="ln" tabindex="0" data-k="warm" data-note="Keep two microVMs booted and waiting. Each run takes one, uses it once and destroys it, then a replacement boots in the background. Every run is still a fresh VM." data-becomes="bluebox run in ~45ms instead of ~1.4s">warm: 2</span>
-<span class="ln" tabindex="0" data-k="warmup" data-note="Run once in each waiting VM before it serves anyone, so the first python3 of a run doesn't pay to load the interpreter." data-becomes="python3 preloaded in every pooled VM">warmup:</span>
-<span class="ln" tabindex="0" data-k="warmup" data-note="Run once in each waiting VM before it serves anyone, so the first python3 of a run doesn't pay to load the interpreter." data-becomes="python3 preloaded in every pooled VM">  - python3 -c "import json"</span>
-<span class="ln" tabindex="0" data-k="packages" data-note="Baked into the image at build time. Package names are checked when the Bluefile is parsed, so one can't smuggle a second command into the build." data-becomes="RUN apk add --no-cache python3 py3-pip">packages: [python3, py3-pip]</span>
-<span class="ln" tabindex="0" data-k="mounts" data-note="Exactly which host directories the sandbox sees, and whether it can write them. Read-only unless you say rw." data-becomes="-v ~/projects/demo:/work:ro">mounts:</span>
-<span class="ln" tabindex="0" data-k="mounts" data-note="Exactly which host directories the sandbox sees, and whether it can write them. Read-only unless you say rw." data-becomes="-v ~/projects/demo:/work:ro">  - {host: ~/projects/demo, guest: /work}</span>
-<span class="ln" tabindex="0" data-k="env" data-note="Environment for every command. Keys must be identifiers and values single-line, so the generated build file can't be restructured." data-becomes="ENV PYTHONUNBUFFERED=1">env: {PYTHONUNBUFFERED: "1"}</span>
+<section class="section" id="bluefile">
+  <div class="wrap">
+    <h2>The whole sandbox is one file.</h2>
+    <p class="lead">Declare it; bluebox builds it, proves it has its own kernel, and refuses it if not. Point at a line.</p>
+    <div class="bf">
+  <div class="figure"><div class="bf-code" id="bf"><span class="ln"># agent: everything this sandbox is</span><span class="ln" tabindex="0" data-k="base" data-note="The image every VM of this sandbox starts from. The package manager is inferred from it." data-becomes="FROM docker.io/library/alpine:latest">base: docker.io/library/alpine:latest</span><span class="ln" tabindex="0" data-k="backend" data-note="What boots the VM: podman (default), krun (crun with libkrun, no podman), or firecracker (a snapshot restored per run)." data-becomes="a fresh VM in about 0.3 s, restored from a snapshot">backend: firecracker</span><span class="ln" tabindex="0" data-k="isolation" data-note="The VMM process runs as a subordinate host UID that owns nothing of yours. Recommended for agents." data-becomes="VMM as host UID 524288, not you">isolation: strict</span><span class="ln" tabindex="0" data-k="cpus / ram_mib" data-note="Real vCPUs and guest RAM, not cgroup quotas on a shared kernel." data-becomes="machine-config: 2 vCPU, 1024 MiB">cpus: 2</span><span class="ln" tabindex="0" data-k="cpus / ram_mib" data-note="Real vCPUs and guest RAM, not cgroup quotas on a shared kernel." data-becomes="machine-config: 2 vCPU, 1024 MiB">ram_mib: 1024</span><span class="ln" tabindex="0" data-k="network" data-note="No network device at all. The agent is still reachable: on Firecracker it speaks vsock." data-becomes="no NIC in the guest">network: none</span><span class="ln" tabindex="0" data-k="readonly" data-note="The guest cannot change its own root. /tmp, /run and /data stay writable." data-becomes="read-only root disk, no RAM overlay">readonly: true</span><span class="ln" tabindex="0" data-k="timeout_seconds" data-note="A wall-clock limit per command. Everything the command started is killed, and it exits 124." data-becomes="exit 124 after 60 s">timeout_seconds: 60</span><span class="ln" tabindex="0" data-k="packages" data-note="Baked in at build time. Names are checked when the Bluefile is parsed, so none can smuggle in a command." data-becomes="RUN apk add --no-cache python3 py3-pip">packages: [python3, py3-pip]</span><span class="ln" tabindex="0" data-k="env" data-note="Environment for every command. Keys are identifiers and values single-line." data-becomes="ENV PYTHONUNBUFFERED=1">env: {PYTHONUNBUFFERED: "1"}</span></div></div>
+  <div class="figure bf-explain" aria-live="polite">
+    <p class="key" id="bf-key"></p>
+    <p class="what" id="bf-what"></p>
+    <p class="becomes" id="bf-becomes"></p>
+  </div>
 </div>
-        </div>
-        <div class="panel explain" aria-live="polite">
-          <div class="panel-bar"><span class="grow">what it declares</span></div>
-          <div class="body">
-            <p class="key" id="bf-key">base</p>
-            <p class="what" id="bf-what"></p>
-            <p class="becomes" id="bf-becomes"></p>
-          </div>
-          <div class="steps">
-            <span><b>01</b> parse · unknown keys rejected</span>
-            <span><b>02</b> build the image</span>
-            <span><b>03</b> prove it has its own kernel</span>
-          </div>
-        </div>
-      </div>
+  </div>
+</section>
+
+<section class="section" id="sdk">
+  <div class="wrap split">
+    <div class="prose">
+      <h2 style="margin-bottom:1rem">Sandboxes as a function call.</h2>
+      <p>Python, TypeScript and Go SDKs, none with dependencies. They talk to a local server over a Unix socket only you can open, and start it when needed.</p>
+      <p><b>Fork</b> branches a sandbox's <code>/data</code>, so an agent can try several approaches side by side. <b>Diff</b> shows what one changed, and its work reaches your data only when you <b>apply</b> it.</p>
+      <p><a href="docs.html#sdk">SDK reference</a></p>
     </div>
-  </section>
+    <div class="codebox" data-lang-group="overview-sdk">
+  <div class="codebox-bar" role="tablist" aria-label="SDK language"><button class="tab" role="tab" data-lang="py" aria-selected="true" tabindex="0">Python</button><button class="tab" role="tab" data-lang="ts" aria-selected="false" tabindex="-1">TypeScript</button><button class="tab" role="tab" data-lang="go" aria-selected="false" tabindex="-1">Go</button><button class="copy" type="button" data-copy-from>Copy</button></div>
+  <pre class="code" data-lang-panel="py">from bluebox import Sandbox
 
-  <section class="sec" id="sdk">
-    <div class="wrap">
-      <h2>SDK</h2>
-      <p class="lede">Sandboxes as a <em>function call</em>. From Python or Go.</p>
-
-      <div class="sdk-grid">
-        <div class="panel">
-          <div class="panel-bar" style="padding-right:0">
-            <div class="tabs" role="tablist" aria-label="SDK language">
-              <button class="tab" role="tab" id="t-py" aria-controls="c-py" aria-selected="true">python</button>
-              <button class="tab" role="tab" id="t-ts" aria-controls="c-ts" aria-selected="false" tabindex="-1">typescript</button>
-              <button class="tab" role="tab" id="t-go" aria-controls="c-go" aria-selected="false" tabindex="-1">go</button>
-              <button class="tab" role="tab" id="t-cli" aria-controls="c-cli" aria-selected="false" tabindex="-1">cli</button>
-            </div>
-            <span class="grow"></span>
-            <button class="copy" id="copy-sdk" type="button" style="margin-right:.75rem">copy</button>
-          </div>
-<pre class="code" id="c-py" role="tabpanel" aria-labelledby="t-py">from bluebox import Sandbox
-
-<span class="c"># a persistent microVM: up on enter, down on exit</span>
+<span class="c"># a persistent microVM, about 10 ms per command</span>
 with Sandbox("agent") as sb:
     sb.write_file("/data/task.py", code)
     r = sb.exec(["python3", "/data/task.py"])
-    print(r.stdout_text, r.exit_code, r.duration_ms)
+    print(r.stdout_text, r.exit_code)
 
-<span class="c"># a fresh microVM per call, from the warm pool</span>
-r = Sandbox("agent").run("pytest -q")
-r.check()   <span class="c"># raises on a non-zero exit</span></pre>
-<pre class="code" id="c-ts" role="tabpanel" aria-labelledby="t-ts" hidden>import { Sandbox } from "bluebox-sdk";
+<span class="c"># branch /data, try something, keep it or drop it</span>
+trial = Sandbox("agent").fork("trial")
+trial.run("pytest -q").check()
+print(trial.diff())
+trial.apply()</pre><pre class="code" data-lang-panel="ts" hidden>import { Sandbox } from "bluebox-sdk";
 
-<span class="c">// a persistent microVM: up, work, down</span>
+<span class="c">// a persistent microVM, about 10 ms per command</span>
 await new Sandbox("agent").withUp(async (sb) =&gt; {
   await sb.writeFile("/data/task.py", code);
   const r = await sb.exec(["python3", "/data/task.py"]);
-  console.log(r.stdoutText, r.exitCode, r.durationMs);
+  console.log(r.stdoutText, r.exitCode);
 });
 
-<span class="c">// a fresh microVM per call, from the warm pool</span>
-const r = await new Sandbox("agent").run("pytest -q");
-r.check();   <span class="c">// throws on a non-zero exit</span></pre>
-<pre class="code" id="c-go" role="tabpanel" aria-labelledby="t-go" hidden>sb := bluebox.New().Sandbox("agent")
+<span class="c">// branch /data, try something, keep it or drop it</span>
+const trial = await new Sandbox("agent").fork("trial");
+(await trial.run("pytest -q")).check();
+console.log(await trial.diff());
+await trial.apply();</pre><pre class="code" data-lang-panel="go" hidden>sb := bluebox.New().Sandbox("agent")
 if err := sb.Up(ctx); err != nil {
 	return err
 }
 defer sb.Down(ctx)
 
-r, err := sb.Exec(ctx, bluebox.Cmd("python3", "task.py"))
-fmt.Println(string(r.Stdout), r.ExitCode, r.Duration)
+r, err := sb.Exec(ctx, bluebox.Cmd("python3", "/data/task.py"))
+fmt.Println(string(r.Stdout), r.ExitCode)
 
-<span class="c">// a fresh microVM per call, from the warm pool</span>
-r, err = sb.Run(ctx, bluebox.Sh("pytest -q"))</pre>
-<pre class="code" id="c-cli" role="tabpanel" aria-labelledby="t-cli" hidden>bluebox new agent --from tiny-python
-bluebox build agent               <span class="c"># verifies its own kernel</span>
+<span class="c">// branch /data, try something, keep it or drop it</span>
+trial, _ := sb.Fork(ctx, "trial")
+trial.Run(ctx, bluebox.Sh("pytest -q"))
+changes, _ := trial.Diff(ctx)
+trial.Apply(ctx)</pre>
+</div>
+  </div>
+</section>
 
-bluebox up agent                  <span class="c"># boot once</span>
-bluebox exec agent -- python3 task.py
-echo 'print(6*7)' | bluebox exec agent -- python3 -
-bluebox down agent
-
-bluebox run agent -- pytest -q    <span class="c"># fresh VM, then gone</span></pre>
-        </div>
-
-        <div class="panel">
-          <div class="panel-bar"><span class="grow">agent loop · replay</span><span id="replay-state">live</span></div>
-          <pre class="replay" id="replay" aria-label="A replay of an agent running commands in a sandbox"></pre>
-        </div>
-      </div>
-
-      <div class="chips">
-        <span class="chip"><b>0</b> dependencies</span>
-        <span class="chip">python · <b>typescript</b> · go</span>
-        <span class="chip">owner-only <b>unix socket</b></span>
-        <span class="chip">starts the server <b>on demand</b></span>
-        <span class="chip">file I/O <b>inside the guest</b></span>
-        <span class="chip">binary-safe <b>stdin / stdout</b></span>
-        <span class="chip">escape-tested: <b>security/escape-test.sh</b></span>
-      </div>
+<section class="section" id="about">
+  <div class="wrap split">
+    <div class="prose">
+      <h2 style="margin-bottom:1rem">Built to be checked.</h2>
+      <p>An escape suite runs what a hostile agent would try from inside a sandbox: reaching services on your loopback, reading host files, symlink and path traversal, writing through read-only mounts, reading the agent's token, a fork bomb. It then inspects the VMM from outside: capabilities, privileges, seccomp, namespaces, limits.</p>
+      <p>It passes on every backend and both isolation modes, and it ships in the repository so anyone can run it.</p>
+      <p><a href="security.html">Read the threat model</a></p>
     </div>
-  </section>
-
-  <section id="about">
-    <div class="wrap">
-      <h2>About</h2>
-      <div class="about-grid">
-        <div>
-          <p>
-            bluebox gives you a sandbox with its own kernel. Not a container
-            sharing yours — a real microVM, ready in tens of milliseconds from a
-            warm pool, built from one file you can read.
-          </p>
-          <p>
-            Install anything into it. Break it, fill it with junk, delete half
-            the filesystem. The next command gets a clean machine, and the work
-            you meant to keep is still in <code>/data</code>.
-          </p>
-          <p class="muted">
-            Built on podman and libkrun. The build compares the sandbox kernel
-            against the one a plain container sees, and refuses to hand you a
-            sandbox that only looks isolated.
-          </p>
-        </div>
-        <div class="facts">
-          <div class="fact"><b>isolation</b><span>its own kernel, via KVM</span></div>
-          <div class="fact"><b>confined</b><span>VMM: no new privs, 6 caps, own UID</span></div>
-          <div class="fact"><b>start</b><span>~44ms warm, ~1.4s cold</span></div>
-          <div class="fact"><b>exec</b><span>~15ms in a running VM</span></div>
-          <div class="fact"><b>persists</b><span>/data, and nothing else</span></div>
-          <div class="fact"><b>config</b><span>one YAML Bluefile</span></div>
-          <div class="fact"><b>sdk</b><span>python, typescript, go</span></div>
-          <div class="fact"><b>platform</b><span>linux, macos</span></div>
-        </div>
-      </div>
+    <div class="next">
+      <a href="architecture.html">Architecture<span>How the three backends boot, confine and reach a VM.</span></a>
+      <a href="security.html">Security<span>What the boundary is, what it is not, and the tests.</span></a>
+      <a href="benchmarks.html">Benchmarks<span>Every number on this site, with method and sources.</span></a>
+      <a href="docs.html">Docs<span>Bluefile, CLI, SDKs and the local API.</span></a>
     </div>
-  </section>
+  </div>
+</section>
+
 </main>
-
 <footer>
   <div class="wrap">
-    <span>bluebox. 2026</span>
-    <span><a href="https://github.com/chxperiments/bluebox">chxperiments/bluebox</a></span>
+    <span>bluebox, MIT licensed. Isolated, disposable microVM sandboxes.</span>
+    <nav aria-label="Footer">
+      <a href="architecture.html">Architecture</a>
+      <a href="security.html">Security</a>
+      <a href="benchmarks.html">Benchmarks</a>
+      <a href="docs.html">Docs</a>
+      <a href="https://github.com/chxperiments/bluebox">Source</a>
+    </nav>
   </div>
 </footer>
-
-<script>
-// ── The box ─────────────────────────────────────────────────────────
-// A solid cube, shaded rather than outlined. Each face is sampled, projected
-// and depth-tested into a z-buffer, then flat-lit and mapped onto an ASCII
-// ramp -- so faces read by tone and the edges fall out of the contrast. Drag
-// turns it; let go and the throw carries before the idle spin resumes.
-(function () {
-  const out = document.getElementById("cube");
-  const stage = document.getElementById("stage");
-  if (!out || !stage) return;
-
-  const W = 50, H = 25;       // cells; 2:1 matches line-height 1.2 over a 0.6em advance
-  const SCALE = 0.98;   // fills ~89% of the grid; 0.62 left it 44% blank
-  const STEPS = 70;           // samples per face axis; enough for this grid
-  const CAM = 4.2;
-  const RAMP = ".,-~:;=!*#$@";
-  const LIGHT = [-0.42, -0.60, -0.68];   // toward the light: upper left, toward you
-  const PITCH_LIMIT = 1.4;
-  const IDLE_SPIN = 0.010;
-
-  // centre, and the two in-plane axes, for each face
-  const FACES = [
-    [[ 1, 0, 0],[0,1,0],[0,0,1]], [[-1, 0, 0],[0,0,1],[0,1,0]],
-    [[ 0, 1, 0],[0,0,1],[1,0,0]], [[ 0,-1, 0],[1,0,0],[0,0,1]],
-    [[ 0, 0, 1],[1,0,0],[0,1,0]], [[ 0, 0,-1],[0,1,0],[1,0,0]],
-  ];
-
-  const zbuf = new Float32Array(W * H);
-  const cbuf = new Uint8Array(W * H);   // ramp index + 1; 0 means empty
-  const rowChars = new Array(W);
-
-  function frame(ax, ay) {
-    const ca = Math.cos(ax), sa = Math.sin(ax);
-    const cb = Math.cos(ay), sb = Math.sin(ay);
-    // one rotation, expanded inline: this runs 30k times a frame
-    const rot = (x, y, z) => {
-      const x1 = x * cb + z * sb;
-      const z1 = -x * sb + z * cb;
-      return [x1, y * ca - z1 * sa, y * sa + z1 * ca];
-    };
-
-    zbuf.fill(0); cbuf.fill(0);
-
-    for (const [c, u, v] of FACES) {
-      const n = rot(c[0], c[1], c[2]);
-      // |n| is 1, so dot(n, centre - camera) reduces to 1 + n.z * CAM
-      if (1 + n[2] * CAM >= 0) continue;          // face points away; skip it
-      let lum = n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2];
-      lum = 0.18 + 0.82 * Math.max(0, lum);       // ambient keeps unlit faces readable
-      const gi = Math.min(RAMP.length - 1, Math.max(0, Math.floor(lum * RAMP.length))) + 1;
-
-      for (let i = 0; i <= STEPS; i++) {
-        const sTerm = -1 + (2 * i) / STEPS;
-        for (let j = 0; j <= STEPS; j++) {
-          const tTerm = -1 + (2 * j) / STEPS;
-          const [x, y, z] = rot(
-            c[0] + u[0] * sTerm + v[0] * tTerm,
-            c[1] + u[1] * sTerm + v[1] * tTerm,
-            c[2] + u[2] * sTerm + v[2] * tTerm);
-          const k = 1 / (z + CAM);
-          const px = (W / 2 + x * k * W * SCALE) | 0;
-          const py = (H / 2 + y * k * H * SCALE) | 0;
-          if (px < 0 || px >= W || py < 0 || py >= H) continue;
-          const o = py * W + px;
-          // A bias, so that where two faces meet at the same depth the first
-          // one drawn keeps the cell. Without it they interleave and the
-          // shared edge speckles.
-          if (k > zbuf[o] + 1e-4) { zbuf[o] = k; cbuf[o] = gi; }
-        }
-      }
-    }
-
-    let sOut = "";
-    for (let r = 0; r < H; r++) {
-      const base = r * W;
-      for (let cx = 0; cx < W; cx++) {
-        const g = cbuf[base + cx];
-        rowChars[cx] = g === 0 ? " " : RAMP[g - 1];
-      }
-      sOut += rowChars.join("") + "\n";
-    }
-    return sOut;
-  }
-
-  const clamp = (val, lo, hi) => (val < lo ? lo : val > hi ? hi : val);
-  const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  let ax = 0.52, ay = 0.68;
-  let vx = 0, vy = 0;
-  let dragging = false, lastX = 0, lastY = 0, moved = false, lastMoveAt = 0;
-
-  function draw() { out.textContent = frame(ax, ay); }
-
-  stage.addEventListener("pointerdown", (e) => {
-    dragging = true; moved = false;
-    lastX = e.clientX; lastY = e.clientY;
-    vx = vy = 0;
-    stage.setPointerCapture(e.pointerId);
-  });
-
-  stage.addEventListener("pointermove", (e) => {
-    if (!dragging) return;
-    const dx = e.clientX - lastX, dy = e.clientY - lastY;
-    lastX = e.clientX; lastY = e.clientY;
-    if (Math.abs(dx) + Math.abs(dy) > 2) { moved = true; stage.classList.add("touched"); }
-    ay += dx * 0.011;
-    ax = clamp(ax + dy * 0.009, -PITCH_LIMIT, PITCH_LIMIT);
-    vy = dx * 0.011;
-    vx = dy * 0.009;
-    lastMoveAt = e.timeStamp;
-    if (calm) draw();
-  });
-
-  function release(e) {
-    if (!dragging) return;
-    dragging = false;
-    if (stage.hasPointerCapture?.(e.pointerId)) stage.releasePointerCapture(e.pointerId);
-    // A throw only counts if the pointer was still moving as it left. Holding
-    // still before releasing should set the box down, not fling it.
-    if (!moved || e.timeStamp - lastMoveAt > 120) { vx = vy = 0; }
-  }
-  stage.addEventListener("pointerup", release);
-  stage.addEventListener("pointercancel", release);
-
-  stage.addEventListener("keydown", (e) => {
-    const step = 0.12;
-    let handled = true;
-    switch (e.key) {
-      case "ArrowLeft":  ay -= step; break;
-      case "ArrowRight": ay += step; break;
-      case "ArrowUp":    ax = clamp(ax - step, -PITCH_LIMIT, PITCH_LIMIT); break;
-      case "ArrowDown":  ax = clamp(ax + step, -PITCH_LIMIT, PITCH_LIMIT); break;
-      default: handled = false;
-    }
-    if (handled) { e.preventDefault(); stage.classList.add("touched"); if (calm) draw(); }
-  });
-
-  if (calm) { draw(); return; }
-
-  (function tick() {
-    if (!dragging) {
-      ay += IDLE_SPIN + vy;
-      ax = clamp(ax + vx, -PITCH_LIMIT, PITCH_LIMIT);
-      vy *= 0.94; vx *= 0.94;
-      if (Math.abs(vy) < 1e-4) vy = 0;
-      if (Math.abs(vx) < 1e-4) vx = 0;
-    }
-    draw();
-    requestAnimationFrame(tick);
-  })();
-})();
-
-const CALM = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-// Run fn once when el scrolls into view (or at once without observers).
-function onView(el, fn) {
-  if (!el) return;
-  if (!("IntersectionObserver" in window)) { fn(); return; }
-  const io = new IntersectionObserver((es) => {
-    if (es.some((e) => e.isIntersecting)) { io.disconnect(); fn(); }
-  }, { threshold: 0.35 });
-  io.observe(el);
-}
-
-// ── Speed: ASCII bars, drawn in as they scroll into view ────────────
-(function () {
-  const host = document.getElementById("bars");
-  if (!host) return;
-  // Median, no-op command, from bench/RESULTS.md. us marks bluebox's own paths.
-  const DATA = [{"name": "podman + krun", "tag": "microVM, booted per command", "ms": 1488, "us": false}, {"name": "bluebox run \u00b7 cold", "tag": "microVM, booted per command", "ms": 1357, "us": true}, {"name": "podman + runc", "tag": "container, shares your kernel", "ms": 448, "us": false}, {"name": "bluebox run \u00b7 warm", "tag": "fresh microVM from the pool", "ms": 44, "us": true}, {"name": "bluebox exec", "tag": "running microVM", "ms": 15, "us": true}];
-  const max = Math.max(...DATA.map((d) => d.ms));
-  const rows = DATA.map((d) => {
-    const row = document.createElement("div");
-    row.className = "bar" + (d.us ? " us" : "");
-    row.setAttribute("role", "listitem");
-    row.innerHTML =
-      `<span class="name">${d.us ? "<b>" + d.name + "</b>" : d.name}<span class="tag">${d.tag}</span></span>` +
-      `<span class="ink" aria-hidden="true"></span><span class="ms">${d.ms.toLocaleString()} ms</span>`;
-    host.appendChild(row);
-    return { d, ink: row.querySelector(".ink") };
-  });
-  // Width in cells tracks the column, so the longest bar always fills it.
-  function cells() {
-    const ink = rows[0].ink;
-    const w = ink.getBoundingClientRect().width;
-    const ch = parseFloat(getComputedStyle(ink).fontSize) * 0.6;
-    return Math.max(8, Math.floor(w / ch));
-  }
-  function paint(t) {
-    const n = cells();
-    for (const { d, ink } of rows) {
-      const exact = (d.ms / max) * n * t;
-      const full = Math.floor(exact);
-      // Anything that ran at all gets a sliver, so the fast rows still read.
-      ink.textContent = full > 0 ? "█".repeat(full) : "▏";
-    }
-  }
-  paint(CALM ? 1 : 0);
-  window.addEventListener("resize", () => paint(1));
-  if (CALM) return;
-  onView(host, () => {
-    const t0 = performance.now(), dur = 1400;
-    (function step(now) {
-      const t = Math.min(1, (now - t0) / dur);
-      paint(1 - Math.pow(1 - t, 3));
-      if (t < 1) requestAnimationFrame(step);
-    })(t0);
-  });
-})();
-
-// ── Headline numbers count up ───────────────────────────────────────
-(function () {
-  const els = document.querySelectorAll("[data-count]");
-  if (CALM || !els.length) return;
-  els.forEach((el) => {
-    const target = parseFloat(el.dataset.count);
-    el.textContent = "0";
-    onView(el, () => {
-      const t0 = performance.now(), dur = 900;
-      (function step(now) {
-        const t = Math.min(1, (now - t0) / dur);
-        el.textContent = Math.round(target * (1 - Math.pow(1 - t, 3)));
-        if (t < 1) requestAnimationFrame(step);
-      })(t0);
-    });
-  });
-})();
-
-// ── Bluefile: point at a line to see what it declares ───────────────
-(function () {
-  const lines = [...document.querySelectorAll("#bf .ln[data-note]")];
-  const key = document.getElementById("bf-key");
-  const what = document.getElementById("bf-what");
-  const becomes = document.getElementById("bf-becomes");
-  if (!lines.length || !key) return;
-  function show(ln) {
-    lines.forEach((l) => l.classList.toggle("on", l.dataset.k === ln.dataset.k));
-    key.textContent = ln.dataset.k;
-    what.textContent = ln.dataset.note;
-    becomes.textContent = ln.dataset.becomes;
-  }
-  lines.forEach((ln) => {
-    ln.addEventListener("mouseenter", () => show(ln));
-    ln.addEventListener("focus", () => show(ln));
-    ln.addEventListener("click", () => show(ln));
-  });
-  show(lines.find((l) => l.dataset.k === "warm") || lines[0]);
-})();
-
-// ── SDK tabs (arrow keys move between them, as tablists should) ─────
-(function () {
-  const tabs = [...document.querySelectorAll('[role="tab"]')];
-  if (!tabs.length) return;
-  function select(tab) {
-    tabs.forEach((t) => {
-      const on = t === tab;
-      t.setAttribute("aria-selected", on);
-      t.tabIndex = on ? 0 : -1;
-      document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
-    });
-  }
-  tabs.forEach((t, i) => {
-    t.addEventListener("click", () => select(t));
-    t.addEventListener("keydown", (e) => {
-      const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-      if (!d) return;
-      const next = tabs[(i + d + tabs.length) % tabs.length];
-      select(next); next.focus(); e.preventDefault();
-    });
-  });
-  const btn = document.getElementById("copy-sdk");
-  btn?.addEventListener("click", async () => {
-    const panel = document.querySelector(".code:not([hidden])");
-    try { await navigator.clipboard.writeText(panel.textContent); btn.textContent = "copied"; }
-    catch { btn.textContent = "select it"; }
-    setTimeout(() => { btn.textContent = "copy"; }, 1700);
-  });
-})();
-
-// ── Agent loop replay ────────────────────────────────────────────────
-// A scripted replay, not a live call: the timings are the medians measured
-// by bench/bench.py, so it shows what a real loop feels like.
-(function () {
-  const out = document.getElementById("replay");
-  const state = document.getElementById("replay-state");
-  if (!out) return;
-  const STEPS = [
-    ["p", ">>> sb = Sandbox(\"agent\"); sb.up()"],
-    ["r", "up · ready", "~1.3s once"],
-    ["p", ">>> sb.exec(\"python3 -c 'print(6*7)'\")"],
-    ["r", "42  · exit 0", "56ms"],
-    ["p", ">>> sb.exec(\"echo draft > /tmp/notes\")"],
-    ["r", "exit 0", "15ms"],
-    ["p", ">>> sb.exec(\"cat /tmp/notes\")"],
-    ["r", "draft  · state kept between calls", "15ms"],
-    ["p", ">>> sb.exec(\"mount -t tmpfs x /mnt && echo ok\")"],
-    ["r", "ok  · a real kernel, just not yours", "root in the guest"],
-    ["p", ">>> Sandbox(\"agent\").run(\"uname -r\")"],
-    ["r", "6.12.91  · fresh VM, own kernel", "44ms"],
-  ];
-  const esc = (t) => t.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-  const line = ([k, text, tag], typed) => k === "p"
-    ? `<span class="p">${esc(typed ?? text)}</span>`
-    : `<span class="r">${esc(text)}</span><span class="t">${esc(tag)}</span>`;
-
-  if (CALM) {
-    out.innerHTML = STEPS.map((s) => line(s)).join("\n");
-    state.textContent = "replay";
-    return;
-  }
-  let done = [];
-  const render = (tail) => { out.innerHTML = done.concat(tail ?? []).join("\n") + '<span class="cursor"></span>'; };
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  async function play() {
-    for (;;) {
-      done = [];
-      for (const s of STEPS) {
-        if (s[0] === "p") {
-          for (let i = 1; i <= s[1].length; i += 2) { render([line(s, s[1].slice(0, i))]); await sleep(18); }
-          done.push(line(s)); render(); await sleep(260);
-        } else {
-          done.push(line(s)); render(); await sleep(520);
-        }
-      }
-      await sleep(3200);
-    }
-  }
-  onView(out, play);
-})();
-
-// ── Copy the install line ───────────────────────────────────────────
-(function () {
-  const btn = document.getElementById("copy");
-  const cmd = document.getElementById("cmd");
-  if (!btn || !cmd) return;
-  let resetting;
-  btn.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(cmd.textContent.trim());
-      btn.textContent = "copied";
-    } catch {
-      btn.textContent = "select it";
-    }
-    clearTimeout(resetting);
-    resetting = setTimeout(() => { btn.textContent = "copy"; }, 1700);
-  });
-})();
-</script>
+<script src="assets/site.js" defer></script>
 </body>
 </html>

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security | bluebox</title>
+<meta name="description" content="bluebox&#x27;s threat model, VMM confinement per backend, and the escape suite.">
+<meta property="og:title" content="Security | bluebox">
+<meta property="og:description" content="bluebox&#x27;s threat model, VMM confinement per backend, and the escape suite.">
+<meta name="theme-color" content="#002fa7">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>bluebox</a>
+    <nav class="nav-links" aria-label="Site">
+        <a href="architecture.html">Architecture</a>
+        <a href="security.html" aria-current="page">Security</a>
+        <a href="benchmarks.html">Benchmarks</a>
+        <a href="docs.html">Docs</a>
+    </nav>
+    <a class="nav-gh" href="https://github.com/chxperiments/bluebox">GitHub</a>
+  </div>
+</header>
+<main>
+
+<section class="page-head">
+  <div class="wrap">
+    <h1>Security</h1>
+    <p class="lead">The workload is assumed hostile: careless, malicious, or an agent turned by prompt injection. This page says what stands between it and your machine, and what does not.</p>
+  </div>
+</section>
+
+<section class="section" style="border-top:0;padding-top:0">
+  <div class="wrap split">
+    <div class="prose">
+      <h2 style="margin-bottom:1rem">Two layers</h2>
+      <p><b>The guest kernel.</b> Every sandbox is a microVM under KVM. A kernel exploit inside takes over a guest that is thrown away. bluebox proves the guest has its own kernel at build and checks it again before every command.</p>
+      <p><b>The VMM's confinement.</b> A guest that breaks its VMM gets whatever the VMM has. So the VMM gets as little as possible: dropped capabilities, no new privileges, seccomp, its own namespaces, resource limits, only the files the Bluefile declares, and under <code>isolation: strict</code> a host UID that owns nothing of yours.</p>
+    </div>
+    <div class="note prose">
+      <p><b>Use <code>isolation: strict</code> for agents.</b> Under standard isolation the VMM runs as your user, so escaping both the guest kernel and the VMM lands in your account. Strict maps it to your first subordinate UID instead.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Confinement, per backend</h2>
+    <p class="lead">Read off the running VMM by the escape suite, not from configuration.</p>
+    <div class="table-wrap"><table>
+<thead><tr><th>Property</th><th>podman</th><th>krun</th><th>firecracker</th></tr></thead>
+<tbody><tr><td>Guest has its own kernel (KVM)</td><td>yes</td><td>yes</td><td>yes</td></tr><tr><td>VMM capabilities</td><td>6</td><td>6</td><td>0</td></tr><tr><td>no_new_privs</td><td>yes</td><td>yes</td><td>yes</td></tr><tr><td>seccomp on the VMM</td><td>podman default</td><td>podman default</td><td>podman default + Firecracker's own</td></tr><tr><td>VMM network namespace</td><td>own</td><td>own</td><td>own, empty</td></tr><tr><td>pids / memory limit</td><td>512 / RAM + 256 MiB</td><td>512 / RAM + 256 MiB</td><td>512 / RAM + 256 MiB</td></tr><tr><td>VMM host UID under isolation: strict</td><td>subordinate</td><td>strict refused</td><td>subordinate</td></tr><tr><td>Host directories shared into the guest</td><td>/data, declared mounts</td><td>/data, declared mounts</td><td>none (/data is a disk)</td></tr><tr><td>Agent channel</td><td>TCP 127.0.0.1 + token</td><td>TCP 127.0.0.1 + token</td><td>vsock, owner-only socket</td></tr></tbody></table></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The escape suite</h2>
+    <p class="lead">Every check below passes on podman (strict), krun (standard) and Firecracker (strict and standard). Run it yourself:</p>
+    <pre class="code" style="margin-bottom:1.75rem">security/escape-test.sh "$(command -v bluebox)" strict firecracker</pre>
+    <div class="checks"><div>Guest runs its own kernel, not the host's</div><div>No service on host loopback is reachable (127.0.0.1, localhost, gateway, host.containers.internal)</div><div>Host paths outside declared mounts are invisible</div><div>Symlinks in shared directories resolve inside the guest</div><div>No ../ traversal out of a shared directory</div><div>Read-only mounts refuse writes, and cannot be remounted writable</div><div>The read-only root refuses writes</div><div>The agent's token is not visible inside the guest</div><div>The agent binary cannot be overwritten</div><div>The SDK server's socket is not exposed to the guest</div><div>No /dev/kvm in the guest</div><div>VMM has no_new_privs and a seccomp filter</div><div>VMM holds only the capabilities it needs (none on Firecracker)</div><div>VMM runs as a UID that is not yours, under strict</div><div>VMM is in its own network namespace</div><div>VMM has a pids limit and a memory limit</div><div>The host stays responsive during a guest fork bomb</div></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap split">
+    <div class="prose">
+      <h2 style="margin-bottom:1rem">What it is not</h2>
+      <ul>
+        <li><b>Not egress control, yet.</b> A sandbox with a network can send what it can read. Per-sandbox allowlists are planned.</li>
+        <li><b>Not a secrets boundary.</b> Anything in <code>/data</code>, a mount or <code>env:</code> is the workload's. Credential brokering is planned.</li>
+        <li><b>Not a boundary between strict sandboxes.</b> They share one subordinate UID.</li>
+        <li><b>Not a check on a lying guest.</b> The kernel comparison catches a runtime that fell back to a container, not a guest that fakes <code>uname</code>.</li>
+        <li><b>Not multi-tenant.</b> bluebox is one user's tool on their own machine.</li>
+      </ul>
+    </div>
+    <div class="prose">
+      <h2 style="margin-bottom:1rem">Guest-written files on the host</h2>
+      <p>A guest can put anything in <code>/data</code>: symlinks to <code>/etc/shadow</code>, archive entries with <code>../</code>, device nodes, setuid bits. bluebox's own tools never follow them. Restore, apply and export go through <code>os.Root</code>; exports skip devices and drop setuid bits; strict sandboxes' files are handled inside podman's namespace, where the subordinate UID is reachable and yours is not.</p>
+      <p>Reporting: open a private security advisory on <a href="https://github.com/chxperiments/bluebox/security">GitHub</a>. Please do not open a public issue for an escape.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="wrap">
+    <span>bluebox, MIT licensed. Isolated, disposable microVM sandboxes.</span>
+    <nav aria-label="Footer">
+      <a href="architecture.html">Architecture</a>
+      <a href="security.html">Security</a>
+      <a href="benchmarks.html">Benchmarks</a>
+      <a href="docs.html">Docs</a>
+      <a href="https://github.com/chxperiments/bluebox">Source</a>
+    </nav>
+  </div>
+</footer>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

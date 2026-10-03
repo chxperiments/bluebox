@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benchmarks | bluebox</title>
+<meta name="description" content="bluebox latency against containers, microVMs and interpreters, with method and sources.">
+<meta property="og:title" content="Benchmarks | bluebox">
+<meta property="og:description" content="bluebox latency against containers, microVMs and interpreters, with method and sources.">
+<meta name="theme-color" content="#002fa7">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>bluebox</a>
+    <nav class="nav-links" aria-label="Site">
+        <a href="architecture.html">Architecture</a>
+        <a href="security.html">Security</a>
+        <a href="benchmarks.html" aria-current="page">Benchmarks</a>
+        <a href="docs.html">Docs</a>
+    </nav>
+    <a class="nav-gh" href="https://github.com/chxperiments/bluebox">GitHub</a>
+  </div>
+</header>
+<main>
+
+<section class="page-head">
+  <div class="wrap">
+    <h1>Benchmarks</h1>
+    <p class="lead">Every number on this site, where it came from, and how to reproduce it. Medians of repeated runs, wall clock from the host, one machine.</p>
+  </div>
+</section>
+
+<section class="section" style="border-top:0;padding-top:0">
+  <div class="wrap">
+    <figure class="figure">
+      <div class="figure-body"><div class="bars" role="list"><div class="bar" role="listitem"><div class="label"><b>podman + krun</b><span>a microVM booted per command</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:100.0%"></div></div><div class="ms">1,618 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, podman backend</b><span>booted per command</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:87.2%"></div></div><div class="ms">1,411 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, krun backend</b><span>booted per command, no podman</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:71.0%"></div></div><div class="ms">1,148 ms</div></div><div class="bar" role="listitem"><div class="label"><b>podman + runc</b><span>plain container, shares your kernel</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:27.8%"></div></div><div class="ms">450 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, firecracker</b><span>a fresh VM from a snapshot, offline</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:19.3%"></div></div><div class="ms">312 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, warm pool</b><span>a fresh VM waiting in the pool</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:2.5%"></div></div><div class="ms">41 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox exec</b><span>a command in a running VM</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:0.9%"></div></div><div class="ms">15 ms</div></div></div></div>
+      <figcaption><b>Figure 1.</b> Median latency of a no-op command. podman, runc, krun, warm pool and exec from <code>bench/bench.py</code>; the backend rows from the comparison below, on an offline sandbox.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Against the baselines</h2>
+    <p class="lead">Median of 10 runs after one warm-up. The Python workload is <code>sum(i * i for i in range(100_000))</code>.</p>
+    <div class="table-wrap"><table>
+<thead><tr><th>Path</th><th>Isolation</th><th class="num">No-op</th><th class="num">Python workload</th></tr></thead>
+<tbody><tr><td>host process</td><td>none</td><td class="num">0.8 ms</td><td class="num">19 ms</td></tr><tr><td>podman + runc</td><td>container</td><td class="num">450 ms</td><td class="num">514 ms</td></tr><tr><td>podman + krun</td><td>microVM</td><td class="num">1,618 ms</td><td class="num">1,821 ms</td></tr><tr class="us"><td>bluebox run, cold (podman)</td><td>microVM</td><td class="num">1,411 ms</td><td class="num">1,514 ms</td></tr><tr class="us"><td>bluebox run, warm pool</td><td>microVM, fresh per run</td><td class="num">41 ms</td><td class="num">149 ms</td></tr><tr class="us"><td>bluebox exec</td><td>microVM, persistent</td><td class="num">15 ms</td><td class="num">62 ms</td></tr><tr><td>pydantic-monty, new session</td><td>interpreter subprocess</td><td class="num">0.5 ms</td><td class="num">12 ms</td></tr></tbody></table></div>
+    <p class="small muted" style="margin-top:1rem">Monty is Pydantic's sandboxed Python interpreter, listed for scale: it runs a subset of Python in microseconds, with no VM and no Linux programs. A warm-pool run is measured while the pool refills in the background; with the refill finished it measures 20 to 30 ms.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Backends, side by side</h2>
+    <p class="lead">Same alpine image, 1 vCPU, 512 MiB, <code>network: none</code>, median of 7. podman and krun were measured with networking for <code>up</code>, which they need for their agent.</p>
+    <div class="table-wrap"><table>
+<thead><tr><th>Backend</th><th class="num">Fresh-VM run</th><th class="num">up</th><th>VMM capabilities</th></tr></thead>
+<tbody><tr><td class="mono">podman</td><td class="num">1,282 ms</td><td class="num">1,612 ms</td><td>6 caps</td></tr><tr><td class="mono">krun</td><td class="num">756 ms</td><td class="num">1,032 ms</td><td>6 caps</td></tr><tr><td class="mono">firecracker</td><td class="num">312 ms</td><td class="num">312 ms</td><td>0 caps</td></tr></tbody></table></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap split">
+    <div class="prose">
+      <h2 style="margin-bottom:1rem">Method</h2>
+      <ul>
+        <li>x86_64 Linux under WSL2 with nested KVM, podman 5.8, crun 1.28, libkrun 1.19, Firecracker 1.17.</li>
+        <li>Times are from starting the command on the host to having its exit status: what an agent loop waits for.</li>
+        <li>One machine. Absolute numbers will differ on yours; the ratios between rows are what carries over.</li>
+      </ul>
+    </div>
+    <div>
+      <h2 style="margin-bottom:1rem">Reproduce</h2>
+      <pre class="code">python3 bench/bench.py -n 20
+security/escape-test.sh ./bluebox strict firecracker</pre>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="wrap">
+    <span>bluebox, MIT licensed. Isolated, disposable microVM sandboxes.</span>
+    <nav aria-label="Footer">
+      <a href="architecture.html">Architecture</a>
+      <a href="security.html">Security</a>
+      <a href="benchmarks.html">Benchmarks</a>
+      <a href="docs.html">Docs</a>
+      <a href="https://github.com/chxperiments/bluebox">Source</a>
+    </nav>
+  </div>
+</footer>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docs | bluebox</title>
+<meta name="description" content="Install bluebox, write a Bluefile, and drive sandboxes from the CLI or the Python, TypeScript and Go SDKs.">
+<meta property="og:title" content="Docs | bluebox">
+<meta property="og:description" content="Install bluebox, write a Bluefile, and drive sandboxes from the CLI or the Python, TypeScript and Go SDKs.">
+<meta name="theme-color" content="#002fa7">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>bluebox</a>
+    <nav class="nav-links" aria-label="Site">
+        <a href="architecture.html">Architecture</a>
+        <a href="security.html">Security</a>
+        <a href="benchmarks.html">Benchmarks</a>
+        <a href="docs.html" aria-current="page">Docs</a>
+    </nav>
+    <a class="nav-gh" href="https://github.com/chxperiments/bluebox">GitHub</a>
+  </div>
+</header>
+<main>
+
+<section class="page-head">
+  <div class="wrap">
+    <h1>Documentation</h1>
+    <p class="lead">Install, define a sandbox, and drive it from the CLI or from code.</p>
+  </div>
+</section>
+
+<div class="wrap docs">
+  <aside class="toc" aria-label="On this page">
+    <p>Start</p>
+    <a href="#install">Install</a>
+    <a href="#quickstart">Quick start</a>
+    <p>Reference</p>
+    <a href="#bluefile">Bluefile</a>
+    <a href="#cli">CLI</a>
+    <a href="#sdk">SDKs</a>
+    <a href="#sdk-exec">exec and run</a>
+    <a href="#sdk-files">Files</a>
+    <a href="#sdk-fork">Forks</a>
+    <a href="#sdk-errors">Results and errors</a>
+    <a href="#api">Local API</a>
+  </aside>
+
+  <article class="doc">
+    <h2 id="install">Install</h2>
+    <p>bluebox needs Linux with KVM (or macOS with a podman machine), podman, and crun built with libkrun. The firecracker backend downloads a pinned Firecracker and guest kernel on first use and verifies their SHA-256.</p>
+    <pre class="code">curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh
+bluebox doctor          <span class="c"># checks podman, KVM, krun, subordinate UIDs; prints a fix for each failure</span></pre>
+
+    <h2 id="quickstart">Quick start</h2>
+    <pre class="code">bluebox new agent --from tiny-python    <span class="c"># a ~60 MB Python sandbox</span>
+bluebox build agent                     <span class="c"># builds, then proves it has its own kernel</span>
+bluebox run agent -- python3 -c 'print(6*7)'
+
+bluebox up agent                        <span class="c"># keep one VM running</span>
+bluebox exec agent -- pip list
+bluebox down agent</pre>
+    <div class="note"><p>For agents, add <code>isolation: strict</code> to the Bluefile. The <code>tiny-python</code>, <code>tiny-node</code> and <code>ai-agent</code> examples already have it.</p></div>
+
+    <h2 id="bluefile">Bluefile</h2>
+    <p>One YAML file per sandbox at <code>~/.bluebox/sandboxes/&lt;name&gt;/Bluefile</code>. Unknown keys are rejected, so a typo fails loudly.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Field</th><th>Values</th><th>Default</th><th>Meaning</th></tr></thead>
+      <tbody><tr><td class="mono">base</td><td>image reference</td><td class="mono">alpine:latest</td><td>The image every VM starts from.</td></tr><tr><td class="mono">backend</td><td>podman, krun, firecracker</td><td class="mono">podman</td><td>What boots the VM. See Architecture.</td></tr><tr><td class="mono">isolation</td><td>standard, strict</td><td class="mono">standard</td><td>strict runs the VMM as a subordinate UID.</td></tr><tr><td class="mono">cpus</td><td>1 to 16</td><td class="mono">2</td><td>vCPUs.</td></tr><tr><td class="mono">ram_mib</td><td>128 and up</td><td class="mono">2048</td><td>Guest RAM in MiB.</td></tr><tr><td class="mono">network</td><td>bridge, none</td><td class="mono">bridge</td><td>Internet access, or none at all.</td></tr><tr><td class="mono">readonly</td><td>bool</td><td class="mono">false</td><td>Read-only root; /tmp and /data stay writable.</td></tr><tr><td class="mono">timeout_seconds</td><td>int</td><td class="mono">0</td><td>Per-command limit; exits 124. 0 is unlimited.</td></tr><tr><td class="mono">warm</td><td>0 to 8</td><td class="mono">0</td><td>VMs kept booted for run (podman, krun).</td></tr><tr><td class="mono">warmup</td><td>shell lines</td><td class="mono"></td><td>Run once in each warm VM before it serves a run.</td></tr><tr><td class="mono">packages</td><td>names</td><td class="mono"></td><td>Installed with the image's package manager.</td></tr><tr><td class="mono">run</td><td>shell lines</td><td class="mono"></td><td>Extra build steps.</td></tr><tr><td class="mono">env</td><td>map</td><td class="mono"></td><td>Environment for every command.</td></tr><tr><td class="mono">mounts</td><td>host, guest, mode</td><td class="mono"></td><td>Host directories shared in (podman, krun); ro by default.</td></tr><tr><td class="mono">blueprint</td><td>users, write_files, runcmd</td><td class="mono"></td><td>Provisioning applied at build time.</td></tr><tr><td class="mono">pkgmgr</td><td>apk, apt, dnf</td><td class="mono">inferred</td><td>Override the package manager.</td></tr><tr><td class="mono">passt</td><td>bool</td><td class="mono">false</td><td>A real NIC with a default route (podman, krun).</td></tr><tr><td class="mono">seccomp</td><td>path</td><td class="mono"></td><td>A seccomp profile for the VMM.</td></tr></tbody>
+    </table></div>
+
+    <h2 id="cli">CLI</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+      <tbody><tr><td class="mono">bluebox new &lt;name&gt; [--from example]</td><td>Create a sandbox, optionally from a shipped example</td></tr><tr><td class="mono">bluebox build &lt;name&gt;</td><td>Build the image and prove the sandbox has its own kernel</td></tr><tr><td class="mono">bluebox run &lt;name&gt; -- &lt;cmd&gt;</td><td>Run one command in a fresh VM</td></tr><tr><td class="mono">bluebox up / down &lt;name&gt;</td><td>Keep a VM running, or stop it</td></tr><tr><td class="mono">bluebox exec &lt;name&gt; -- &lt;cmd&gt;</td><td>Run in the running VM; state carries over</td></tr><tr><td class="mono">bluebox shell &lt;name&gt;</td><td>Interactive session</td></tr><tr><td class="mono">bluebox fork &lt;name&gt; &lt;fork&gt;</td><td>Branch /data</td></tr><tr><td class="mono">bluebox diff / apply / discard &lt;fork&gt;</td><td>Review, merge or drop a fork's changes</td></tr><tr><td class="mono">bluebox data import / export &lt;name&gt; &lt;dir&gt;</td><td>Move files into or out of /data</td></tr><tr><td class="mono">bluebox snapshot / restore &lt;name&gt; [label]</td><td>Archive /data and roll back</td></tr><tr><td class="mono">bluebox reset &lt;name&gt;</td><td>Empty /data</td></tr><tr><td class="mono">bluebox serve</td><td>The local API the SDKs use</td></tr><tr><td class="mono">bluebox doctor</td><td>Check the host setup, with a fix for each failure</td></tr><tr><td class="mono">bluebox ls, env, logs, verify</td><td>Inspect sandboxes</td></tr><tr><td class="mono">bluebox rename, destroy, nuke</td><td>Remove or rename</td></tr></tbody>
+    </table></div>
+
+    <h2 id="sdk">SDKs</h2>
+    <p>Python, TypeScript and Go, no dependencies. Each talks to <code>bluebox serve</code> over a Unix socket only your user can open, and starts it when nothing is listening. Pick a language once; every sample on this page follows.</p>
+    <div class="codebox" data-lang-group="api-install">
+  <div class="codebox-bar" role="tablist" aria-label="SDK language"><button class="tab" role="tab" data-lang="py" aria-selected="true" tabindex="0">Python</button><button class="tab" role="tab" data-lang="ts" aria-selected="false" tabindex="-1">TypeScript</button><button class="tab" role="tab" data-lang="go" aria-selected="false" tabindex="-1">Go</button><button class="copy" type="button" data-copy-from>Copy</button></div>
+  <pre class="code" data-lang-panel="py">pip install ./sdk/python          <span class="c"># from a bluebox checkout</span>
+
+from bluebox import Client, Sandbox</pre><pre class="code" data-lang-panel="ts" hidden>npm install ./sdk/typescript      <span class="c">// from a bluebox checkout</span>
+
+import { Client, Sandbox } from "bluebox-sdk";</pre><pre class="code" data-lang-panel="go" hidden>go get github.com/chxperiments/bluebox/sdk/go
+
+import "github.com/chxperiments/bluebox/sdk/go"</pre>
+</div>
+
+    <h3 id="sdk-up">up and down</h3>
+    <p>Boot a VM once and keep it running for <code>exec</code>. The context-manager forms bring it down afterwards unless it was already up.</p>
+    <div class="codebox" data-lang-group="api-up">
+  <div class="codebox-bar" role="tablist" aria-label="SDK language"><button class="tab" role="tab" data-lang="py" aria-selected="true" tabindex="0">Python</button><button class="tab" role="tab" data-lang="ts" aria-selected="false" tabindex="-1">TypeScript</button><button class="tab" role="tab" data-lang="go" aria-selected="false" tabindex="-1">Go</button><button class="copy" type="button" data-copy-from>Copy</button></div>
+  <pre class="code" data-lang-panel="py">sb = Sandbox("agent")
+sb.up()
+...
+sb.down()
+
+<span class="c"># or</span>
+with Sandbox("agent") as sb:
+    ...</pre><pre class="code" data-lang-panel="ts" hidden>const sb = new Sandbox("agent");
+await sb.up();
+...
+await sb.down();
+
+<span class="c">// or</span>
+await sb.withUp(async (sb) =&gt; {
+  ...
+});</pre><pre class="code" data-lang-panel="go" hidden>sb := bluebox.New().Sandbox("agent")
+if err := sb.Up(ctx); err != nil {
+	return err
+}
+defer sb.Down(ctx)</pre>
+</div>
+
+    <h3 id="sdk-exec">exec and run</h3>
+    <p><code>exec</code> runs in the running VM, so state carries over. <code>run</code> takes a fresh VM and throws it away. A command is a shell string or an argv list; a timeout exits 124.</p>
+    <div class="codebox" data-lang-group="api-exec">
+  <div class="codebox-bar" role="tablist" aria-label="SDK language"><button class="tab" role="tab" data-lang="py" aria-selected="true" tabindex="0">Python</button><button class="tab" role="tab" data-lang="ts" aria-selected="false" tabindex="-1">TypeScript</button><button class="tab" role="tab" data-lang="go" aria-selected="false" tabindex="-1">Go</button><button class="copy" type="button" data-copy-from>Copy</button></div>
+  <pre class="code" data-lang-panel="py">r = sb.exec(["python3", "-c", "print(6*7)"])
+r = sb.exec("ls -la | head", timeout=10)
+r = sb.exec("wc -c", stdin=b"bytes")
+
+r = Sandbox("agent").run("pytest -q")</pre><pre class="code" data-lang-panel="ts" hidden>let r = await sb.exec(["python3", "-c", "print(6*7)"]);
+r = await sb.exec("ls -la | head", { timeout: 10 });
+r = await sb.exec("wc -c", { stdin: Buffer.from("bytes") });
+
+r = await new Sandbox("agent").run("pytest -q");</pre><pre class="code" data-lang-panel="go" hidden>r, err := sb.Exec(ctx, bluebox.Cmd("python3", "-c", "print(6*7)"))
+r, err = sb.Exec(ctx, bluebox.Command{
+	Argv: []string{"sh", "-c", "ls -la | head"}, Timeout: 10 * time.Second})
+
+r, err = sb.Run(ctx, bluebox.Sh("pytest -q"))</pre>
+</div>
+
+    <h3 id="sdk-files">Files</h3>
+    <p>Reads and writes happen inside the guest, so a path or symlink the sandbox controls can never redirect them onto a host file. For bulk moves, use <code>bluebox data import</code> and <code>export</code>.</p>
+    <div class="codebox" data-lang-group="api-files">
+  <div class="codebox-bar" role="tablist" aria-label="SDK language"><button class="tab" role="tab" data-lang="py" aria-selected="true" tabindex="0">Python</button><button class="tab" role="tab" data-lang="ts" aria-selected="false" tabindex="-1">TypeScript</button><button class="tab" role="tab" data-lang="go" aria-selected="false" tabindex="-1">Go</button><button class="copy" type="button" data-copy-from>Copy</button></div>
+  <pre class="code" data-lang-panel="py">sb.write_file("/data/task.py", "print(1)")
+data = sb.read_file("/data/result.json")</pre><pre class="code" data-lang-panel="ts" hidden>await sb.writeFile("/data/task.py", "print(1)");
+const data = await sb.readFile("/data/result.json");</pre><pre class="code" data-lang-panel="go" hidden>err := sb.WriteFile(ctx, "/data/task.py", []byte("print(1)"))
+data, err := sb.ReadFile(ctx, "/data/result.json")</pre>
+</div>
+
+    <h3 id="sdk-fork">Forks: fork, diff, apply, discard</h3>
+    <p>A fork has its parent's image and a <code>/data</code> overlaid on the parent's. Running it never touches the parent. <code>diff</code> lists changes as <code>A</code> added, <code>M</code> modified, <code>D</code> deleted; <code>apply</code> merges them into the parent; <code>discard</code> drops them. Apply is refused while either side is up.</p>
+    <div class="codebox" data-lang-group="api-fork">
+  <div class="codebox-bar" role="tablist" aria-label="SDK language"><button class="tab" role="tab" data-lang="py" aria-selected="true" tabindex="0">Python</button><button class="tab" role="tab" data-lang="ts" aria-selected="false" tabindex="-1">TypeScript</button><button class="tab" role="tab" data-lang="go" aria-selected="false" tabindex="-1">Go</button><button class="copy" type="button" data-copy-from>Copy</button></div>
+  <pre class="code" data-lang-panel="py">trial = Sandbox("agent").fork("trial")
+trial.run("python3 refactor.py").check()
+
+for ch in trial.diff():
+    print(ch.kind, ch.path)
+
+if tests_pass:
+    trial.apply()       <span class="c"># returns how many changes were merged</span>
+else:
+    trial.discard()</pre><pre class="code" data-lang-panel="ts" hidden>const trial = await new Sandbox("agent").fork("trial");
+(await trial.run("python3 refactor.py")).check();
+
+for (const ch of await trial.diff()) console.log(ch.kind, ch.path);
+
+if (testsPass) await trial.apply();
+else await trial.discard();</pre><pre class="code" data-lang-panel="go" hidden>trial, err := bluebox.New().Sandbox("agent").Fork(ctx, "trial")
+trial.Run(ctx, bluebox.Sh("python3 refactor.py"))
+
+changes, _ := trial.Diff(ctx)
+for _, ch := range changes {
+	fmt.Println(ch.Kind, ch.Path)
+}
+if testsPass {
+	trial.Apply(ctx)
+} else {
+	trial.Discard(ctx)
+}</pre>
+</div>
+
+    <h3 id="sdk-errors">Results and errors</h3>
+    <p>A non-zero exit is a result, not an exception. Errors carry a machine-readable code: <code>no_sandbox</code>, <code>not_up</code>, <code>bad_name</code>, <code>bad_request</code>, <code>no_server</code>.</p>
+    <div class="codebox" data-lang-group="api-errors">
+  <div class="codebox-bar" role="tablist" aria-label="SDK language"><button class="tab" role="tab" data-lang="py" aria-selected="true" tabindex="0">Python</button><button class="tab" role="tab" data-lang="ts" aria-selected="false" tabindex="-1">TypeScript</button><button class="tab" role="tab" data-lang="go" aria-selected="false" tabindex="-1">Go</button><button class="copy" type="button" data-copy-from>Copy</button></div>
+  <pre class="code" data-lang-panel="py">r = sb.exec("make test")
+r.exit_code, r.stdout, r.stderr, r.duration_ms, r.timed_out
+r.ok; r.stdout_text
+r.check()               <span class="c"># raises CommandFailed on a non-zero exit</span>
+
+from bluebox import NotFound, NotUp, BlueboxError</pre><pre class="code" data-lang-panel="ts" hidden>const r = await sb.exec("make test");
+r.exitCode; r.stdout; r.stderr; r.durationMs; r.timedOut;
+r.ok; r.stdoutText;
+r.check();              <span class="c">// throws CommandFailed on a non-zero exit</span>
+
+import { NotFound, NotUp, BlueboxError } from "bluebox-sdk";</pre><pre class="code" data-lang-panel="go" hidden>r, err := sb.Exec(ctx, bluebox.Sh("make test"))
+r.ExitCode; r.Stdout; r.Stderr; r.Duration; r.TimedOut
+r.OK()
+
+bluebox.IsNotFound(err); bluebox.IsNotUp(err)</pre>
+</div>
+
+    <h2 id="api">Local API</h2>
+    <p>HTTP with JSON bodies on <code>~/.bluebox/bluebox.sock</code>, owner-only. <code>stdout</code>, <code>stderr</code> and <code>stdin</code> are base64. The SDKs are thin clients of this.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Method</th><th>Path</th><th>Body or result</th></tr></thead>
+      <tbody><tr><td class="mono">GET</td><td class="mono">/v1/version</td><td></td></tr><tr><td class="mono">GET</td><td class="mono">/v1/sandboxes</td><td>name, up, warm, warm_target, network, base</td></tr><tr><td class="mono">POST</td><td class="mono">/v1/sandboxes/{name}/up</td><td></td></tr><tr><td class="mono">POST</td><td class="mono">/v1/sandboxes/{name}/down</td><td></td></tr><tr><td class="mono">POST</td><td class="mono">/v1/sandboxes/{name}/exec</td><td>argv, stdin (base64), timeout_seconds</td></tr><tr><td class="mono">POST</td><td class="mono">/v1/sandboxes/{name}/run</td><td>same, in a fresh VM</td></tr><tr><td class="mono">POST</td><td class="mono">/v1/sandboxes/{name}/fork</td><td>as</td></tr><tr><td class="mono">GET</td><td class="mono">/v1/sandboxes/{name}/diff</td><td>returns changes: [kind, path]</td></tr><tr><td class="mono">POST</td><td class="mono">/v1/sandboxes/{name}/apply</td><td>returns changes: n</td></tr><tr><td class="mono">POST</td><td class="mono">/v1/sandboxes/{name}/discard</td><td>returns changes: n</td></tr></tbody>
+    </table></div>
+  </article>
+</div>
+
+</main>
+<footer>
+  <div class="wrap">
+    <span>bluebox, MIT licensed. Isolated, disposable microVM sandboxes.</span>
+    <nav aria-label="Footer">
+      <a href="architecture.html">Architecture</a>
+      <a href="security.html">Security</a>
+      <a href="benchmarks.html">Benchmarks</a>
+      <a href="docs.html">Docs</a>
+      <a href="https://github.com/chxperiments/bluebox">Source</a>
+    </nav>
+  </div>
+</footer>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

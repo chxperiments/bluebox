@@ -32,6 +32,8 @@ r.check(); // throws CommandFailed on a non-zero exit
 | `sb.exec(cmd, { stdin, timeout })` | run in the running VM; state carries over |
 | `sb.run(cmd, { timeout })` | run in a fresh VM, then throw it away |
 | `sb.writeFile(path, data)` / `sb.readFile(path)` | file I/O inside the guest |
+| `sb.fork(name)` | branch the sandbox; resolves to the fork, whose `/data` overlays this one |
+| `sb.diff()` / `sb.apply()` / `sb.discard()` | on a fork: list changes (`{kind, path}`), merge into the parent, or drop |
 | `new Client().sandboxes()` | list sandboxes, whether each is up, its warm pool |
 
 `cmd` is a shell string (`"ls -la | head"`) or an argv array

@@ -92,6 +92,12 @@ export class Result {
   }
 }
 
+/** One entry of a fork's diff. */
+export interface Change {
+  kind: "A" | "M" | "D";
+  path: string;
+}
+
 export interface SandboxInfo {
   name: string;
   up: boolean;
@@ -348,6 +354,31 @@ export class Sandbox {
   async writeFile(path: string, data: Buffer | string, mode = "0644"): Promise<void> {
     if (!/^[0-7]{3,4}$/.test(mode)) throw new RangeError(`mode must be octal like '0644', got ${mode}`);
     (await this.exec(["sh", "-c", 'umask 077; cat > "$1" && chmod "$2" "$1"', "sh", path, mode], { stdin: data })).check();
+  }
+
+  /**
+   * Branch this sandbox: a new sandbox with the same image and a /data that
+   * overlays this one's. Running the fork never touches this sandbox; diff
+   * shows its changes, apply merges them back.
+   */
+  async fork(name: string): Promise<Sandbox> {
+    await this.client.request("POST", this.path("fork"), { as: name });
+    return new Sandbox(name, this.client);
+  }
+
+  /** A fork's changes to /data: kind "A" added, "M" modified, "D" deleted. */
+  async diff(): Promise<Change[]> {
+    return (await this.client.request<{ changes: Change[] }>("GET", this.path("diff"))).changes;
+  }
+
+  /** Merge a fork's changes into its parent. Resolves to how many. Refused while either side is up. */
+  async apply(): Promise<number> {
+    return (await this.client.request<{ changes: number }>("POST", this.path("apply"))).changes;
+  }
+
+  /** Throw a fork's changes away. Resolves to how many. */
+  async discard(): Promise<number> {
+    return (await this.client.request<{ changes: number }>("POST", this.path("discard"))).changes;
   }
 
   /** Read a file from inside the running microVM. */

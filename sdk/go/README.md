@@ -19,7 +19,8 @@ fmt.Println(string(r.Stdout), r.ExitCode, r.Duration)
 r, err = sb.Run(ctx, bluebox.Sh("pytest -q"))
 ```
 
-`Exec`, `Run`, `WriteFile`, `ReadFile`, `Up`, `Down` and `Sandboxes` work as in
+`Exec`, `Run`, `WriteFile`, `ReadFile`, `Up`, `Down`, `Sandboxes`, and on forks
+`Fork`, `Diff`, `Apply` and `Discard`, work as in
 the [Python SDK](../python/README.md), and so does starting `bluebox serve` on
 demand. Errors are `*bluebox.Error`, checked with `IsNotFound` and `IsNotUp`.
 Standard library only.

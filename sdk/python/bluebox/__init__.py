@@ -38,6 +38,7 @@ __all__ = [
     "NotFound",
     "NotUp",
     "CommandFailed",
+    "Change",
 ]
 __version__ = "0.1.0"
 
@@ -136,6 +137,14 @@ def _argv(cmd: Command) -> list:
     if not argv or not all(isinstance(a, str) for a in argv):
         raise TypeError("command must be a string or a non-empty list of strings")
     return argv
+
+
+@dataclass(frozen=True)
+class Change:
+    """One entry of a fork's diff: kind is "A" added, "M" modified, "D" deleted."""
+
+    kind: str
+    path: str
 
 
 class Client:
@@ -291,6 +300,29 @@ class Sandbox:
             raise ValueError(f"mode must be octal like '0644', got {mode!r}")
         script = 'umask 077; cat > "$1" && chmod "$2" "$1"'
         self.exec(["sh", "-c", script, "sh", path, mode], stdin=data).check()
+
+    # -- forks ------------------------------------------------------------
+
+    def fork(self, name: str) -> "Sandbox":
+        """Branch this sandbox: a new sandbox with the same image and a /data
+        that overlays this one's. Running the fork never touches this
+        sandbox; diff shows its changes, apply merges them back."""
+        self.client._request("POST", self._path("fork"), {"as": name})
+        return Sandbox(name, client=self.client)
+
+    def diff(self) -> list:
+        """A fork's changes to /data: [Change(kind, path)], kind A/M/D."""
+        r = self.client._request("GET", self._path("diff"))
+        return [Change(c["kind"], c["path"]) for c in r["changes"]]  # type: ignore[index]
+
+    def apply(self) -> int:
+        """Merge a fork's changes into its parent's /data. Returns how many
+        changes were applied. Refused while either side is up."""
+        return self.client._request("POST", self._path("apply"))["changes"]  # type: ignore[index]
+
+    def discard(self) -> int:
+        """Throw a fork's changes away. Returns how many were discarded."""
+        return self.client._request("POST", self._path("discard"))["changes"]  # type: ignore[index]
 
     def read_file(self, path: str) -> bytes:
         """Read a file from inside the running microVM."""

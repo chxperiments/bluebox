@@ -283,6 +283,41 @@ func (s *Sandbox) command(ctx context.Context, verb string, cmd Command) (Result
 	}, nil
 }
 
+// Change is one entry of a fork's diff: Kind is "A" added, "M" modified,
+// "D" deleted.
+type Change struct {
+	Kind string `json:"kind"`
+	Path string `json:"path"`
+}
+
+// Fork branches this sandbox: a new sandbox with the same image and a /data
+// that overlays this one's. Running the fork never touches this sandbox.
+func (s *Sandbox) Fork(ctx context.Context, name string) (*Sandbox, error) {
+	if err := s.c.do(ctx, "POST", s.path("fork"), map[string]string{"as": name}, nil); err != nil {
+		return nil, err
+	}
+	return s.c.Sandbox(name), nil
+}
+
+// Diff lists a fork's changes to /data.
+func (s *Sandbox) Diff(ctx context.Context) ([]Change, error) {
+	var out struct{ Changes []Change }
+	return out.Changes, s.c.do(ctx, "GET", s.path("diff"), nil, &out)
+}
+
+// Apply merges a fork's changes into its parent and returns how many.
+// Refused while either side is up.
+func (s *Sandbox) Apply(ctx context.Context) (int, error) {
+	var out struct{ Changes int }
+	return out.Changes, s.c.do(ctx, "POST", s.path("apply"), nil, &out)
+}
+
+// Discard throws a fork's changes away and returns how many.
+func (s *Sandbox) Discard(ctx context.Context) (int, error) {
+	var out struct{ Changes int }
+	return out.Changes, s.c.do(ctx, "POST", s.path("discard"), nil, &out)
+}
+
 // WriteFile writes a file inside the running microVM. The write happens in
 // the guest, so a path or symlink the sandbox controls can never redirect it
 // onto a host file.

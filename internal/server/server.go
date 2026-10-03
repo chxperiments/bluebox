@@ -10,6 +10,7 @@
 //	POST /v1/sandboxes/{name}/down
 //	POST /v1/sandboxes/{name}/exec   {"argv": [...], "stdin": b64, "timeout_seconds": n}
 //	POST /v1/sandboxes/{name}/run    the same, in a fresh microVM
+//	POST /v1/sandboxes/{name}/fork, GET .../diff, POST .../apply, .../discard  (fork.go)
 //
 // exec and run answer {"exit_code", "stdout", "stderr", "duration_ms",
 // "timed_out", "truncated"}; stdout and stderr are base64, so binary output
@@ -155,6 +156,10 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("POST /v1/sandboxes/{name}/down", s.track(s.handleDown))
 	mux.HandleFunc("POST /v1/sandboxes/{name}/exec", s.track(s.handleCommand(false)))
 	mux.HandleFunc("POST /v1/sandboxes/{name}/run", s.track(s.handleCommand(true)))
+	mux.HandleFunc("POST /v1/sandboxes/{name}/fork", s.track(s.handleFork))
+	mux.HandleFunc("GET /v1/sandboxes/{name}/diff", s.track(s.handleDiff))
+	mux.HandleFunc("POST /v1/sandboxes/{name}/apply", s.track(s.handleMerge("apply")))
+	mux.HandleFunc("POST /v1/sandboxes/{name}/discard", s.track(s.handleMerge("discard")))
 	return mux
 }
 

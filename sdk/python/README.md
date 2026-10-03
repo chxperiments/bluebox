@@ -29,6 +29,8 @@ r.check()   # raises CommandFailed on a non-zero exit
 | `.exec(cmd, stdin=None, timeout=None)` | run in the running VM; state carries over |
 | `.run(cmd, timeout=None)` | run in a fresh VM, then throw it away |
 | `.write_file(path, data)` / `.read_file(path)` | file I/O inside the guest |
+| `.fork(name)` | branch the sandbox; returns the fork, whose `/data` overlays this one |
+| `.diff()` / `.apply()` / `.discard()` | on a fork: list changes (`Change(kind, path)`), merge into the parent, or drop |
 | `Client().sandboxes()` | list sandboxes, whether each is up, its warm pool |
 
 `cmd` is a shell string (`"ls -la | head"`) or an argv list

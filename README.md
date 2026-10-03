@@ -1,6 +1,6 @@
 # bluebox
 
-Just a box for your AI agents.
+A box for your AI.
 
 They can install, delete and break whatever they like inside it; nothing
 outside changes. Every command runs in a disposable microVM with its own

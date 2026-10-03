@@ -248,7 +248,7 @@ overview = f"""
   <div class="wrap">
     <div class="hero-art hero-art-wide">{art.hero_labelled()}</div>
     <div class="hero-art hero-art-narrow">{art.hero_minimal()}</div>
-    <h1>Just a box for your AI agents.</h1>
+    <h1>A box for your AI.</h1>
     {art.scribble(4)}
     <p class="lead">Let your agent install, delete and break things. It does it in its own virtual machine, and nothing outside it changes.</p>
     <div class="install-wrap">

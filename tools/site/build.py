@@ -7,6 +7,45 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from common import page, codebox, esc, GH  # noqa: E402
 import art  # noqa: E402
+from urllib.parse import quote  # noqa: E402
+
+# The prompt visitors hand to their own AI to judge whether bluebox fits.
+FIT_PROMPT = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "fit_prompt.txt")).read().strip()
+
+
+def ask_section():
+    """A chat thread: the visitor's message is the prompt, the reply is still
+    typing. Copy it, or open it straight in Claude or ChatGPT."""
+    q = quote(FIT_PROMPT)
+    kb = len(FIT_PROMPT.encode()) / 1024
+    return f"""
+<section class="section" id="ask">
+  <div class="wrap split ask">
+    <div class="prose">
+      <h2 style="margin-bottom:1rem">Not sure it fits? Ask your AI.</h2>
+      <p>This prompt tells an assistant what bluebox does, what it costs, where it stops and how to set it up. Paste it anywhere, describe what you are building, and it will tell you plainly whether bluebox is the right tool. If it is not, the prompt asks it to say what is.</p>
+      <ol class="ask-steps"><li>Copy the prompt</li><li>Paste it into your AI</li><li>Answer its questions</li></ol>
+    </div>
+    <div class="thread reveal">
+      <div class="msg msg-you" data-expand>
+        <div class="msg-head"><span>you</span><span>{kb:.1f} KB · plain text</span></div>
+        <pre class="msg-body" id="fit-prompt">{esc(FIT_PROMPT)}</pre>
+        <button class="msg-more" type="button" aria-expanded="false" aria-controls="fit-prompt">Show the whole prompt</button>
+      </div>
+      <div class="msg msg-ai" aria-live="polite">
+        <div class="msg-head"><span>your AI</span></div>
+        <p class="typing" aria-hidden="true"><i></i><i></i><i></i></p>
+        <p class="reply" hidden>Got it. What are you building?</p>
+      </div>
+      <div class="ask-actions">
+        <button class="btn btn-primary" type="button" data-copy-from="#fit-prompt" data-ask>Copy prompt</button>
+        <a class="btn btn-ghost" href="https://claude.ai/new?q={q}" target="_blank" rel="noopener">Ask Claude</a>
+        <a class="btn btn-ghost" href="https://chatgpt.com/?q={q}" target="_blank" rel="noopener">Ask ChatGPT</a>
+      </div>
+    </div>
+  </div>
+</section>
+"""
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "docs")
 
@@ -244,6 +283,7 @@ overview = f"""
   </div>
 </section>
 
+{ask_section()}
 <section class="section" id="about">
   <div class="wrap split">
     <div class="prose">

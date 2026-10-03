@@ -10,7 +10,7 @@ import art  # noqa: E402
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "docs")
 
-PY, TS, GO, CLI = "py", "ts", "go", "cli"
+PY, TS, GO, RS, CLI = "py", "ts", "go", "rs", "cli"
 
 
 def c(s):
@@ -88,6 +88,19 @@ trial, _ := sb.Fork(ctx, "trial")
 trial.Run(ctx, bluebox.Sh("pytest -q"))
 changes, _ := trial.Diff(ctx)
 trial.Apply(ctx)"""),
+    (RS, "Rust", f"""use bluebox::{{Command, Sandbox}};
+
+let sb = Sandbox::new("agent")?;
+sb.up()?;
+let out = sb.exec(Command::new(["python3", "/data/task.py"]))?;
+println!("{{}} {{}}", out.stdout_text(), out.exit_code);
+sb.down()?;
+
+{c('// branch /data, try something, keep it or drop it')}
+let trial = sb.fork("trial")?;
+trial.run("pytest -q")?.check()?;
+println!("{{:?}}", trial.diff()?);
+trial.apply()?;"""),
 ]
 
 BLUEFILE_LINES = [
@@ -164,7 +177,7 @@ overview = f"""
   </div>
 </section>
 
-<section class="section invert wipe">
+<section class="section">
   <div class="wrap">
     <p class="statement">A container shares your kernel. <span>A bluebox sandbox brings its own, boots it in milliseconds, and throws it away.</span></p>
   </div>
@@ -187,24 +200,33 @@ overview = f"""
   </div>
 </section>
 
-<section class="section invert wipe">
-  <div class="wrap split">
-    <div class="prose">
-      <h2 style="margin-bottom:1rem">A kernel per sandbox, three ways to boot it.</h2>
-      <p>A container shares your kernel; one kernel bug and the workload is on your machine. Every bluebox sandbox is a microVM under KVM with its own kernel, and the process that runs it is confined on the host as tightly as it allows.</p>
-      <p>Choose the virtual machine monitor per sandbox: libkrun through podman, libkrun driven directly, or Firecracker restoring a snapshot per run. The same CLI, SDKs, pool, forks and checks sit on top of all three.</p>
-      <p><a href="architecture.html">Read the architecture</a></p>
-    </div>
-    <div class="table-wrap reveal">
-      <table>
-        <thead><tr><th>Backend</th><th>Fresh VM</th><th>Strongest at</th></tr></thead>
-        <tbody>
-          <tr><td class="mono">podman</td><td class="num">1.4 s</td><td>every feature, macOS too</td></tr>
-          <tr><td class="mono">krun</td><td class="num">0.75 s</td><td>libkrun without podman's overhead</td></tr>
-          <tr><td class="mono">firecracker</td><td class="num">0.3 s</td><td>hostile code: no VMM capabilities, no shared host files</td></tr>
-        </tbody>
-      </table>
-      <p class="small muted" style="padding:0.75rem 1rem;margin:0">Offline sandbox, no warm pool. With <code>warm:</code>, podman and krun start in about 41 ms.</p>
+<section class="section invert wipe race-section" data-ghost="BOOT">
+  <div class="tape" aria-hidden="true"></div>
+  <div class="wrap">
+    <h2 class="stencil">A kernel per sandbox.<br>Three ways to boot it.</h2>
+    <p class="lead">A container shares your kernel; one kernel bug and the workload is on your machine. bluebox gives every sandbox its own, and lets you pick what boots it. Here they race, in real time.</p>
+    <div class="race" data-race>
+      <div class="lights" aria-hidden="true"><i></i><i></i><i></i><b>GO</b></div>
+      <div class="lane" style="--ms:1282">
+        <div class="lane-name">podman<span>libkrun through podman, every feature</span></div>
+        <div class="lane-track"><div class="car" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M20 3 L35 11.5 V28.5 L20 37 L5 28.5 V11.5 Z M5 11.5 L20 20 L35 11.5 M20 20 V37"/></svg></div><div class="flag" aria-hidden="true"></div></div>
+        <div class="sticker" style="--r:-6deg">1.28 s</div>
+      </div>
+      <div class="lane" style="--ms:756">
+        <div class="lane-name">krun<span>libkrun driven directly, no podman</span></div>
+        <div class="lane-track"><div class="car" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M20 3 L35 11.5 V28.5 L20 37 L5 28.5 V11.5 Z M5 11.5 L20 20 L35 11.5 M20 20 V37"/></svg></div><div class="flag" aria-hidden="true"></div></div>
+        <div class="sticker" style="--r:5deg">0.76 s</div>
+      </div>
+      <div class="lane" style="--ms:312">
+        <div class="lane-name">firecracker<span>a snapshot restored per run, 0 VMM capabilities</span></div>
+        <div class="lane-track"><div class="car" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M20 3 L35 11.5 V28.5 L20 37 L5 28.5 V11.5 Z M5 11.5 L20 20 L35 11.5 M20 20 V37"/></svg></div><div class="flag" aria-hidden="true"></div></div>
+        <div class="sticker" style="--r:-3deg">0.31 s</div>
+      </div>
+      
+      <div class="race-foot">
+        <button class="btn btn-primary race-again" type="button">Race again</button>
+        <p class="small muted">Real time, from the measured medians: a fresh VM per command, offline sandbox, no warm pool. With <code>warm:</code>, podman and krun start in about 41 ms. <a href="architecture.html">How each one works</a></p>
+      </div>
     </div>
   </div>
 </section>
@@ -226,7 +248,7 @@ overview = f"""
   <div class="wrap split">
     <div class="prose">
       <h2 style="margin-bottom:1rem">Sandboxes as a function call.</h2>
-      <p>Python, TypeScript and Go SDKs, none with dependencies. They talk to a local server over a Unix socket only you can open, and start it when needed.</p>
+      <p>SDKs for Python, TypeScript, Go and Rust. They talk to a local server over a Unix socket only you can open, and start it when needed. For agents, <code>bluebox mcp</code> serves the same tools over the Model Context Protocol.</p>
       <p><b>Fork</b> branches a sandbox's <code>/data</code>, so an agent can try several approaches side by side. <b>Diff</b> shows what one changed, and its work reaches your data only when you <b>apply</b> it.</p>
       <p><a href="docs.html#sdk">SDK reference</a></p>
       <div style="margin-top:2rem">{art.fork()}</div>
@@ -328,7 +350,7 @@ architecture = f"""
   </div>
 </section>
 
-<section class="section invert wipe">
+<section class="section invert wipe" data-ghost="KVM">
   <div class="wrap split">
     <div class="prose">
       <h2 style="margin-bottom:1rem">podman and krun: libkrun</h2>
@@ -457,7 +479,7 @@ security = f"""
   </div>
 </section>
 
-<section class="section invert wipe">
+<section class="section invert wipe" data-ghost="JAIL">
   <div class="wrap">
     <h2>Confinement, per backend</h2>
     <p class="lead">Read off the running VMM by the escape suite, not from configuration.</p>
@@ -548,7 +570,7 @@ benchmarks = f"""
   </div>
 </section>
 
-<section class="section invert wipe">
+<section class="section invert wipe" data-ghost="MS">
   <div class="wrap">
     <h2>Against the baselines</h2>
     <p class="lead">Median of 10 runs after one warm-up. The Python workload is <code>sum(i * i for i in range(100_000))</code>.</p>
@@ -587,8 +609,8 @@ security/escape-test.sh ./bluebox strict firecracker</pre>
 # ==========================================================================
 # Docs
 
-def api_code(name, py, ts, go):
-    return codebox(f"api-{name}", [(PY, "Python", py), (TS, "TypeScript", ts), (GO, "Go", go)], "SDK language")
+def api_code(name, py, ts, go, rs):
+    return codebox(f"api-{name}", [(PY, "Python", py), (TS, "TypeScript", ts), (GO, "Go", go), (RS, "Rust", rs)], "SDK language")
 
 
 BLUEFILE_FIELDS = [
@@ -649,7 +671,7 @@ def rows(items, fmt):
 
 
 docs = f"""
-<section class="page-head">
+<section class="page-head invert wipe" data-ghost="DOCS">
   <div class="wrap">
     <h1>Documentation</h1>
     <p class="lead">Install, define a sandbox, and drive it from the CLI or from code.</p>
@@ -669,6 +691,7 @@ docs = f"""
     <a href="#sdk-files">Files</a>
     <a href="#sdk-fork">Forks</a>
     <a href="#sdk-errors">Results and errors</a>
+    <a href="#mcp">MCP for agents</a>
     <a href="#api">Local API</a>
   </aside>
 
@@ -702,46 +725,68 @@ bluebox down agent</pre>
     </table></div>
 
     <h2 id="sdk">SDKs</h2>
-    <p>Python, TypeScript and Go, no dependencies. Each talks to <code>bluebox serve</code> over a Unix socket only your user can open, and starts it when nothing is listening. Pick a language once; every sample on this page follows.</p>
+    <p>Python, TypeScript, Go and Rust. Each talks to <code>bluebox serve</code> over a Unix socket only your user can open, and starts it when nothing is listening. Pick a language once; every sample on this page follows.</p>
     {api_code("install",
       'pip install ./sdk/python          ' + c('# from a bluebox checkout') + '\n\nfrom bluebox import Client, Sandbox',
       'npm install ./sdk/typescript      ' + c('// from a bluebox checkout') + '\n\nimport { Client, Sandbox } from "bluebox-sdk";',
-      'go get github.com/chxperiments/bluebox/sdk/go\n\nimport "github.com/chxperiments/bluebox/sdk/go"')}
+      'go get github.com/chxperiments/bluebox/sdk/go\n\nimport "github.com/chxperiments/bluebox/sdk/go"',
+      'cargo add --git https://github.com/chxperiments/bluebox bluebox-sdk\n\nuse bluebox::{Client, Command, Sandbox};')}
 
     <h3 id="sdk-up">up and down</h3>
     <p>Boot a VM once and keep it running for <code>exec</code>. The context-manager forms bring it down afterwards unless it was already up.</p>
     {api_code("up",
       'sb = Sandbox("agent")\nsb.up()\n...\nsb.down()\n\n' + c('# or') + '\nwith Sandbox("agent") as sb:\n    ...',
       'const sb = new Sandbox("agent");\nawait sb.up();\n...\nawait sb.down();\n\n' + c('// or') + '\nawait sb.withUp(async (sb) =&gt; {\n  ...\n});',
-      'sb := bluebox.New().Sandbox("agent")\nif err := sb.Up(ctx); err != nil {\n\treturn err\n}\ndefer sb.Down(ctx)')}
+      'sb := bluebox.New().Sandbox("agent")\nif err := sb.Up(ctx); err != nil {\n\treturn err\n}\ndefer sb.Down(ctx)',
+      'let sb = Sandbox::new("agent")?;\nsb.up()?;\n...\nsb.down()?;')}
 
     <h3 id="sdk-exec">exec and run</h3>
     <p><code>exec</code> runs in the running VM, so state carries over. <code>run</code> takes a fresh VM and throws it away. A command is a shell string or an argv list; a timeout exits 124.</p>
     {api_code("exec",
       'r = sb.exec(["python3", "-c", "print(6*7)"])\nr = sb.exec("ls -la | head", timeout=10)\nr = sb.exec("wc -c", stdin=b"bytes")\n\nr = Sandbox("agent").run("pytest -q")',
       'let r = await sb.exec(["python3", "-c", "print(6*7)"]);\nr = await sb.exec("ls -la | head", { timeout: 10 });\nr = await sb.exec("wc -c", { stdin: Buffer.from("bytes") });\n\nr = await new Sandbox("agent").run("pytest -q");',
-      'r, err := sb.Exec(ctx, bluebox.Cmd("python3", "-c", "print(6*7)"))\nr, err = sb.Exec(ctx, bluebox.Command{\n\tArgv: []string{"sh", "-c", "ls -la | head"}, Timeout: 10 * time.Second})\n\nr, err = sb.Run(ctx, bluebox.Sh("pytest -q"))')}
+      'r, err := sb.Exec(ctx, bluebox.Cmd("python3", "-c", "print(6*7)"))\nr, err = sb.Exec(ctx, bluebox.Command{\n\tArgv: []string{"sh", "-c", "ls -la | head"}, Timeout: 10 * time.Second})\n\nr, err = sb.Run(ctx, bluebox.Sh("pytest -q"))',
+      'let r = sb.exec(Command::new(["python3", "-c", "print(6*7)"]))?;\nlet r = sb.exec(Command::sh("ls -la | head").timeout(10))?;\nlet r = sb.exec(Command::new(["wc", "-c"]).stdin(b"bytes".to_vec()))?;\n\nlet r = Sandbox::new("agent")?.run("pytest -q")?;')}
 
     <h3 id="sdk-files">Files</h3>
     <p>Reads and writes happen inside the guest, so a path or symlink the sandbox controls can never redirect them onto a host file. For bulk moves, use <code>bluebox data import</code> and <code>export</code>.</p>
     {api_code("files",
       'sb.write_file("/data/task.py", "print(1)")\ndata = sb.read_file("/data/result.json")',
       'await sb.writeFile("/data/task.py", "print(1)");\nconst data = await sb.readFile("/data/result.json");',
-      'err := sb.WriteFile(ctx, "/data/task.py", []byte("print(1)"))\ndata, err := sb.ReadFile(ctx, "/data/result.json")')}
+      'err := sb.WriteFile(ctx, "/data/task.py", []byte("print(1)"))\ndata, err := sb.ReadFile(ctx, "/data/result.json")',
+      'sb.write_file("/data/task.py", "print(1)")?;\nlet data = sb.read_file("/data/result.json")?;')}
 
     <h3 id="sdk-fork">Forks: fork, diff, apply, discard</h3>
     <p>A fork has its parent's image and a <code>/data</code> overlaid on the parent's. Running it never touches the parent. <code>diff</code> lists changes as <code>A</code> added, <code>M</code> modified, <code>D</code> deleted; <code>apply</code> merges them into the parent; <code>discard</code> drops them. Apply is refused while either side is up.</p>
     {api_code("fork",
       'trial = Sandbox("agent").fork("trial")\ntrial.run("python3 refactor.py").check()\n\nfor ch in trial.diff():\n    print(ch.kind, ch.path)\n\nif tests_pass:\n    trial.apply()       ' + c('# returns how many changes were merged') + '\nelse:\n    trial.discard()',
       'const trial = await new Sandbox("agent").fork("trial");\n(await trial.run("python3 refactor.py")).check();\n\nfor (const ch of await trial.diff()) console.log(ch.kind, ch.path);\n\nif (testsPass) await trial.apply();\nelse await trial.discard();',
-      'trial, err := bluebox.New().Sandbox("agent").Fork(ctx, "trial")\ntrial.Run(ctx, bluebox.Sh("python3 refactor.py"))\n\nchanges, _ := trial.Diff(ctx)\nfor _, ch := range changes {\n\tfmt.Println(ch.Kind, ch.Path)\n}\nif testsPass {\n\ttrial.Apply(ctx)\n} else {\n\ttrial.Discard(ctx)\n}')}
+      'trial, err := bluebox.New().Sandbox("agent").Fork(ctx, "trial")\ntrial.Run(ctx, bluebox.Sh("python3 refactor.py"))\n\nchanges, _ := trial.Diff(ctx)\nfor _, ch := range changes {\n\tfmt.Println(ch.Kind, ch.Path)\n}\nif testsPass {\n\ttrial.Apply(ctx)\n} else {\n\ttrial.Discard(ctx)\n}',
+      'let trial = Sandbox::new("agent")?.fork("trial")?;\ntrial.run("python3 refactor.py")?.check()?;\n\nfor ch in trial.diff()? {\n    println!("{} {}", ch.kind, ch.path);\n}\nif tests_pass { trial.apply()?; } else { trial.discard()?; }')}
 
     <h3 id="sdk-errors">Results and errors</h3>
     <p>A non-zero exit is a result, not an exception. Errors carry a machine-readable code: <code>no_sandbox</code>, <code>not_up</code>, <code>bad_name</code>, <code>bad_request</code>, <code>no_server</code>.</p>
     {api_code("errors",
       'r = sb.exec("make test")\nr.exit_code, r.stdout, r.stderr, r.duration_ms, r.timed_out\nr.ok; r.stdout_text\nr.check()               ' + c('# raises CommandFailed on a non-zero exit') + '\n\nfrom bluebox import NotFound, NotUp, BlueboxError',
       'const r = await sb.exec("make test");\nr.exitCode; r.stdout; r.stderr; r.durationMs; r.timedOut;\nr.ok; r.stdoutText;\nr.check();              ' + c('// throws CommandFailed on a non-zero exit') + '\n\nimport { NotFound, NotUp, BlueboxError } from "bluebox-sdk";',
-      'r, err := sb.Exec(ctx, bluebox.Sh("make test"))\nr.ExitCode; r.Stdout; r.Stderr; r.Duration; r.TimedOut\nr.OK()\n\nbluebox.IsNotFound(err); bluebox.IsNotUp(err)')}
+      'r, err := sb.Exec(ctx, bluebox.Sh("make test"))\nr.ExitCode; r.Stdout; r.Stderr; r.Duration; r.TimedOut\nr.OK()\n\nbluebox.IsNotFound(err); bluebox.IsNotUp(err)',
+      'let r = sb.exec("make test")?;\nr.exit_code; r.stdout; r.stderr; r.duration_ms; r.timed_out;\nr.ok(); r.stdout_text();\nlet r = r.check()?;      ' + c('// Error::CommandFailed on a non-zero exit') + '\n\nmatch err { Error::NotFound(_) | Error::NotUp(_) => {}, _ => {} }')}
+
+    <h2 id="mcp">MCP for agents</h2>
+    <p><code>bluebox mcp</code> serves bluebox over the Model Context Protocol on stdin and stdout, so an agent in Claude Code, Claude Desktop, Cursor or any MCP client can run code in your sandboxes. Every tool goes through the same handler as the local API, with the same checks. Sandboxes are still created and built by you, on the CLI.</p>
+    <pre class="code">claude mcp add bluebox -- bluebox mcp</pre>
+    <pre class="code">{{ "mcpServers": {{ "bluebox": {{ "command": "bluebox", "args": ["mcp"] }} }} }}</pre>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Tool</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">list_sandboxes</td><td>The sandboxes the agent may use</td></tr>
+        <tr><td class="mono">run</td><td>A command in a fresh VM</td></tr>
+        <tr><td class="mono">up / exec / down</td><td>Keep a VM and run commands in it, state carried over</td></tr>
+        <tr><td class="mono">read_file / write_file</td><td>File I/O inside the guest</td></tr>
+        <tr><td class="mono">fork / diff / discard</td><td>Branch <code>/data</code>, review the changes, drop them</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note"><p><b><code>apply</code> is not offered to agents</b> unless you start the server with <code>--allow-apply</code>. A fork exists so that you review an agent's work before it reaches real data; an agent that could apply its own fork would skip that.</p></div>
 
     <h2 id="api">Local API</h2>
     <p>HTTP with JSON bodies on <code>~/.bluebox/bluebox.sock</code>, owner-only. <code>stdout</code>, <code>stderr</code> and <code>stdin</code> are base64. The SDKs are thin clients of this.</p>

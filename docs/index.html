@@ -58,7 +58,7 @@
   </div>
 </section>
 
-<section class="section invert wipe">
+<section class="section">
   <div class="wrap">
     <p class="statement">A container shares your kernel. <span>A bluebox sandbox brings its own, boots it in milliseconds, and throws it away.</span></p>
   </div>
@@ -81,24 +81,33 @@
   </div>
 </section>
 
-<section class="section invert wipe">
-  <div class="wrap split">
-    <div class="prose">
-      <h2 style="margin-bottom:1rem">A kernel per sandbox, three ways to boot it.</h2>
-      <p>A container shares your kernel; one kernel bug and the workload is on your machine. Every bluebox sandbox is a microVM under KVM with its own kernel, and the process that runs it is confined on the host as tightly as it allows.</p>
-      <p>Choose the virtual machine monitor per sandbox: libkrun through podman, libkrun driven directly, or Firecracker restoring a snapshot per run. The same CLI, SDKs, pool, forks and checks sit on top of all three.</p>
-      <p><a href="architecture.html">Read the architecture</a></p>
-    </div>
-    <div class="table-wrap reveal">
-      <table>
-        <thead><tr><th>Backend</th><th>Fresh VM</th><th>Strongest at</th></tr></thead>
-        <tbody>
-          <tr><td class="mono">podman</td><td class="num">1.4 s</td><td>every feature, macOS too</td></tr>
-          <tr><td class="mono">krun</td><td class="num">0.75 s</td><td>libkrun without podman's overhead</td></tr>
-          <tr><td class="mono">firecracker</td><td class="num">0.3 s</td><td>hostile code: no VMM capabilities, no shared host files</td></tr>
-        </tbody>
-      </table>
-      <p class="small muted" style="padding:0.75rem 1rem;margin:0">Offline sandbox, no warm pool. With <code>warm:</code>, podman and krun start in about 41 ms.</p>
+<section class="section invert wipe race-section" data-ghost="BOOT">
+  <div class="tape" aria-hidden="true"></div>
+  <div class="wrap">
+    <h2 class="stencil">A kernel per sandbox.<br>Three ways to boot it.</h2>
+    <p class="lead">A container shares your kernel; one kernel bug and the workload is on your machine. bluebox gives every sandbox its own, and lets you pick what boots it. Here they race, in real time.</p>
+    <div class="race" data-race>
+      <div class="lights" aria-hidden="true"><i></i><i></i><i></i><b>GO</b></div>
+      <div class="lane" style="--ms:1282">
+        <div class="lane-name">podman<span>libkrun through podman, every feature</span></div>
+        <div class="lane-track"><div class="car" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M20 3 L35 11.5 V28.5 L20 37 L5 28.5 V11.5 Z M5 11.5 L20 20 L35 11.5 M20 20 V37"/></svg></div><div class="flag" aria-hidden="true"></div></div>
+        <div class="sticker" style="--r:-6deg">1.28 s</div>
+      </div>
+      <div class="lane" style="--ms:756">
+        <div class="lane-name">krun<span>libkrun driven directly, no podman</span></div>
+        <div class="lane-track"><div class="car" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M20 3 L35 11.5 V28.5 L20 37 L5 28.5 V11.5 Z M5 11.5 L20 20 L35 11.5 M20 20 V37"/></svg></div><div class="flag" aria-hidden="true"></div></div>
+        <div class="sticker" style="--r:5deg">0.76 s</div>
+      </div>
+      <div class="lane" style="--ms:312">
+        <div class="lane-name">firecracker<span>a snapshot restored per run, 0 VMM capabilities</span></div>
+        <div class="lane-track"><div class="car" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M20 3 L35 11.5 V28.5 L20 37 L5 28.5 V11.5 Z M5 11.5 L20 20 L35 11.5 M20 20 V37"/></svg></div><div class="flag" aria-hidden="true"></div></div>
+        <div class="sticker" style="--r:-3deg">0.31 s</div>
+      </div>
+      
+      <div class="race-foot">
+        <button class="btn btn-primary race-again" type="button">Race again</button>
+        <p class="small muted">Real time, from the measured medians: a fresh VM per command, offline sandbox, no warm pool. With <code>warm:</code>, podman and krun start in about 41 ms. <a href="architecture.html">How each one works</a></p>
+      </div>
     </div>
   </div>
 </section>
@@ -127,7 +136,7 @@
   <div class="wrap split">
     <div class="prose">
       <h2 style="margin-bottom:1rem">Sandboxes as a function call.</h2>
-      <p>Python, TypeScript and Go SDKs, none with dependencies. They talk to a local server over a Unix socket only you can open, and start it when needed.</p>
+      <p>SDKs for Python, TypeScript, Go and Rust. They talk to a local server over a Unix socket only you can open, and start it when needed. For agents, <code>bluebox mcp</code> serves the same tools over the Model Context Protocol.</p>
       <p><b>Fork</b> branches a sandbox's <code>/data</code>, so an agent can try several approaches side by side. <b>Diff</b> shows what one changed, and its work reaches your data only when you <b>apply</b> it.</p>
       <p><a href="docs.html#sdk">SDK reference</a></p>
       <div style="margin-top:2rem"><svg class="art fork-loop" viewBox="0 0 720 240" role="img" aria-labelledby="fork-art-t">
@@ -147,7 +156,7 @@
 </svg></div>
     </div>
     <div class="codebox" data-lang-group="overview-sdk">
-  <div class="codebox-bar" role="tablist" aria-label="SDK language"><button class="tab" role="tab" data-lang="py" aria-selected="true" tabindex="0">Python</button><button class="tab" role="tab" data-lang="ts" aria-selected="false" tabindex="-1">TypeScript</button><button class="tab" role="tab" data-lang="go" aria-selected="false" tabindex="-1">Go</button><button class="copy" type="button" data-copy-from>Copy</button></div>
+  <div class="codebox-bar" role="tablist" aria-label="SDK language"><button class="tab" role="tab" data-lang="py" aria-selected="true" tabindex="0">Python</button><button class="tab" role="tab" data-lang="ts" aria-selected="false" tabindex="-1">TypeScript</button><button class="tab" role="tab" data-lang="go" aria-selected="false" tabindex="-1">Go</button><button class="tab" role="tab" data-lang="rs" aria-selected="false" tabindex="-1">Rust</button><button class="copy" type="button" data-copy-from>Copy</button></div>
   <pre class="code" data-lang-panel="py">from bluebox import Sandbox
 
 <span class="c"># a persistent microVM, about 10 ms per command</span>
@@ -186,7 +195,19 @@ fmt.Println(string(r.Stdout), r.ExitCode)
 trial, _ := sb.Fork(ctx, "trial")
 trial.Run(ctx, bluebox.Sh("pytest -q"))
 changes, _ := trial.Diff(ctx)
-trial.Apply(ctx)</pre>
+trial.Apply(ctx)</pre><pre class="code" data-lang-panel="rs" hidden>use bluebox::{Command, Sandbox};
+
+let sb = Sandbox::new("agent")?;
+sb.up()?;
+let out = sb.exec(Command::new(["python3", "/data/task.py"]))?;
+println!("{} {}", out.stdout_text(), out.exit_code);
+sb.down()?;
+
+<span class="c">// branch /data, try something, keep it or drop it</span>
+let trial = sb.fork("trial")?;
+trial.run("pytest -q")?.check()?;
+println!("{:?}", trial.diff()?);
+trial.apply()?;</pre>
 </div>
   </div>
 </section>
@@ -231,6 +252,8 @@ trial.Apply(ctx)</pre>
         <a href="docs.html#sdk">Python SDK</a>
         <a href="docs.html#sdk">TypeScript SDK</a>
         <a href="docs.html#sdk">Go SDK</a>
+        <a href="docs.html#sdk">Rust SDK</a>
+        <a href="docs.html#mcp">MCP server</a>
         <a href="docs.html#api">Local API</a>
       </nav>
       <nav aria-label="Source">

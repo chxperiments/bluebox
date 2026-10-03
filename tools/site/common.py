@@ -66,6 +66,8 @@ def page(filename, title, description, body):
         <a href="docs.html#sdk">Python SDK</a>
         <a href="docs.html#sdk">TypeScript SDK</a>
         <a href="docs.html#sdk">Go SDK</a>
+        <a href="docs.html#sdk">Rust SDK</a>
+        <a href="docs.html#mcp">MCP server</a>
         <a href="docs.html#api">Local API</a>
       </nav>
       <nav aria-label="Source">

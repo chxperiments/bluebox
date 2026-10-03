@@ -96,6 +96,48 @@
     show(lines.filter(function (l) { return l.dataset.k === "backend"; })[0] || lines[0]);
   }
 
+  // The boot race: three lights, then each backend's box runs its lane in
+  // the real median time it takes to boot, and its time is slapped on as a
+  // sticker when it lands. Under reduced motion the finish is shown as is.
+  document.querySelectorAll("[data-race]").forEach(function (race) {
+    var lanes = Array.prototype.slice.call(race.querySelectorAll(".lane"));
+    var lights = race.querySelectorAll(".lights i"), lightsBox = race.querySelector(".lights");
+    var timers = [];
+    function clear() { timers.forEach(clearTimeout); timers = []; }
+    function place(lane, at, ms) {
+      var car = lane.querySelector(".car"), track = lane.querySelector(".lane-track");
+      var dist = track.clientWidth - car.offsetWidth - 16;
+      car.style.transition = ms ? "transform " + ms + "ms linear" : "none";
+      car.style.transform = "translateX(" + (at ? dist : 0) + "px)";
+    }
+    function finished() {
+      lanes.forEach(function (l) { place(l, true, 0); l.querySelector(".sticker").classList.add("slap"); });
+      lightsBox.classList.add("go"); lights.forEach(function (i) { i.classList.add("on"); });
+    }
+    if (calm) { finished(); window.addEventListener("resize", finished); return; }
+    function go() {
+      clear();
+      race.classList.add("armed"); race.classList.remove("racing"); lightsBox.classList.remove("go");
+      lights.forEach(function (i) { i.classList.remove("on"); });
+      lanes.forEach(function (l) { place(l, false, 0); l.querySelector(".sticker").classList.remove("slap"); });
+      lights.forEach(function (i, k) { timers.push(setTimeout(function () { i.classList.add("on"); }, 420 * (k + 1))); });
+      timers.push(setTimeout(function () {
+        lightsBox.classList.add("go"); race.classList.add("racing");
+        lanes.forEach(function (l) {
+          var ms = parseInt(getComputedStyle(l).getPropertyValue("--ms"), 10);
+          void l.offsetWidth;
+          place(l, true, ms);
+          timers.push(setTimeout(function () { l.querySelector(".sticker").classList.add("slap"); }, ms));
+        });
+        timers.push(setTimeout(function () { race.classList.remove("racing"); }, 1400));
+      }, 420 * 4));
+    }
+    var again = race.querySelector(".race-again");
+    if (again) again.addEventListener("click", go);
+    window.addEventListener("resize", function () { lanes.forEach(function (l) { place(l, true, 0); }); });
+    onView(race, go);
+  });
+
   // Op-art: concentric squares, each turned a little more than the one
   // outside it, so the stack reads as a box falling into itself. The twist
   // follows the pointer; it only animates while on screen, and holds one

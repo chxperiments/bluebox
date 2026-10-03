@@ -28,8 +28,8 @@ FAQ = [
      "Only <code>/data</code>, a directory on your host at <code>~/.bluebox/data/&lt;name&gt;/</code>. Every <code>run</code> is a new VM, so installed packages, files elsewhere and processes are gone. <code>up</code> keeps one VM alive when you want state to last across commands."),
     ("Can a sandbox reach the internet or my machine?",
      "With <code>network: bridge</code> it reaches the internet; with <code>network: none</code> it has no network at all. Either way it has its own network namespace and cannot reach services on your host's loopback. It sees only the host directories its Bluefile declares, read-only unless you say <code>rw</code>."),
-    ("Is it safe for code written by an AI agent?",
-     "That is what it is for. Use <code>isolation: strict</code>: the guest has its own kernel, and the VMM around it is confined and runs as a UID that is not yours. It is not built for hostile multi-tenant hosting, and strict sandboxes share one UID between them. <a href=\"security.html\">The threat model</a> covers what it does not protect."),
+    ("Can my AI agent break anything?",
+     "Not outside its sandbox. Inside, it can do anything, even <code>rm -rf /</code>, and the next run starts clean. Only <code>/data</code> and the host folders you declare are kept, and forks let you review its changes before they reach your data. Use <code>isolation: strict</code>: the VMM around the agent is confined and runs as a UID that is not yours. bluebox is built for your own agents, not for hosting strangers' code, and strict sandboxes share one UID between them. <a href=\"security.html\">The threat model</a> covers what it does not protect."),
     ("Which backend should I use?",
      "Start with <code>podman</code>, the default: it supports everything. <code>krun</code> boots faster but supports <code>isolation: standard</code> only, for now. <code>firecracker</code> is fastest to start but is x86_64-only and has no network, host mounts or forks yet."),
     ("How do I let an agent use it?",
@@ -250,7 +250,7 @@ overview = f"""
     <div class="hero-art hero-art-narrow">{art.hero_minimal()}</div>
     <h1>Disposable microVMs for AI agents.</h1>
     {art.scribble(4)}
-    <p class="lead">Every command in its own virtual machine, with its own kernel.</p>
+    <p class="lead">Let your agent install, delete and break things. It does it in its own virtual machine, and nothing outside it changes.</p>
     <div class="install-wrap">
       <div class="install">
         <code><span class="p">$ </span>curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh</code>
@@ -335,8 +335,8 @@ overview = f"""
   <div class="wrap split">
     <div class="prose">
       <h2 style="margin-bottom:1rem">An escape suite, in the repo.</h2>
-      <p>It runs what a hostile agent would try from inside a sandbox: reaching services on your loopback, reading host files, escaping through symlinks and <code>../</code> paths, writing through read-only mounts, reading the agent's token, a fork bomb. Then it inspects the VMM from outside: capabilities, privileges, seccomp, namespaces, limits.</p>
-      <p>It passes on every backend in both isolation modes. Run it yourself before you trust it.</p>
+      <p>It runs what an agent gone wrong would try from inside a sandbox: reaching services on your loopback, reading host files, escaping through symlinks and <code>../</code> paths, writing through read-only mounts, reading the agent's token, a fork bomb. Then it inspects the VMM from outside: capabilities, privileges, seccomp, namespaces, limits.</p>
+      <p>It passes on every backend in both isolation modes. Run it yourself before you let an agent loose.</p>
       <p><a href="security.html">Read the threat model</a></p>
     </div>
     <div class="next">
@@ -524,7 +524,7 @@ security = f"""
 <section class="page-head dots dots-tr">
   <div class="wrap">
     <h1>Security</h1>
-    <p class="lead">bluebox assumes the code it runs is hostile: careless, malicious, or an agent hijacked by prompt injection. This page lists what stands between that code and your machine, and what does not.</p>
+    <p class="lead">bluebox assumes the agent inside will do the worst it can, by mistake or because a prompt injection told it to. This page lists what stands between the agent and your machine, and what does not.</p>
   </div>
 </section>
 

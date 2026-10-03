@@ -1,7 +1,7 @@
 I'm evaluating bluebox (https://github.com/chxperiments/bluebox) for something I'm building. Help me decide whether it fits, and if it does, how to set it up correctly. Use only the facts below about bluebox; if something isn't covered here, say so instead of guessing.
 
 ## What bluebox is
-An open-source CLI (Go, MIT) that runs code in disposable microVMs on your own machine. Each sandbox is a real VM under KVM with its own kernel, not a container sharing the host kernel. It is aimed at running untrusted code, especially code written by AI agents.
+An open-source CLI (Go, MIT) that runs code in disposable microVMs on your own machine. Each sandbox is a real VM under KVM with its own kernel, not a container sharing the host kernel. Its purpose is to give AI agents a place to run code where a mistake, or an agent hijacked by prompt injection, cannot break anything outside the sandbox.
 
 ## How it works
 - A sandbox is defined by one YAML file, the Bluefile. `bluebox build` turns it into an image and checks that the guest kernel differs from the host's; if not, it refuses the sandbox.
@@ -26,14 +26,14 @@ base (image ref), backend, cpus (max 16), ram_mib, network (bridge = internet, n
 - MCP: `claude mcp add bluebox -- bluebox mcp` gives an agent list_sandboxes, run, up, exec, down, read_file, write_file, fork, diff, discard. `apply` is withheld unless started with `--allow-apply`, so a human reviews forks. Creating and building sandboxes stays on the CLI.
 
 ## Security model
-Two layers: the guest runs on its own kernel under KVM, and the VMM process on the host is itself confined (no_new_privs, seccomp, its own network namespace, pids and memory limits, a reduced capability set; Firecracker's VMM runs with zero capabilities). With `isolation: strict` the VMM runs as a subordinate UID instead of yours, so escaping both the VM and the VMM does not land in your account. Use strict for agents and untrusted code. An escape test suite ships in the repo.
+Two layers: the guest runs on its own kernel under KVM, and the VMM process on the host is itself confined (no_new_privs, seccomp, its own network namespace, pids and memory limits, a reduced capability set; Firecracker's VMM runs with zero capabilities). With `isolation: strict` the VMM runs as a subordinate UID instead of yours, so escaping both the VM and the VMM does not land in your account. Use strict for agents. An escape test suite ships in the repo.
 Not covered: all strict sandboxes share one subordinate UID, so strict separates sandboxes from you, not from each other. The kernel check catches a fallback to a plain container but cannot catch a guest that lies about its kernel. It is not designed for hostile multi-tenant hosting.
 
 ## Requirements and limits
 Linux with KVM (/dev/kvm), podman and libkrun (crun built with +LIBKRUN). macOS works through a podman machine, but up/exec, the warm pool, forks and the krun and firecracker backends are Linux-only. It runs on your machine or your server: it is not a hosted service and has no GPU support. `bluebox shell` has a TTY; `exec` does not yet.
 
 ## What I want from you
-1. Ask me what I'm building: who or what produces the code, how untrusted it is, how many runs and how fast they need to be, whether it needs the network, files from the host, a GPU, or my OS, and where it will run.
+1. Ask me what I'm building: what the agent (or other code) will do and what it must never be able to touch, how many runs and how fast they need to be, whether it needs the network, files from the host, a GPU, or my OS, and where it will run.
 2. Then give a clear verdict: good fit, partial fit, or not a fit. Explain why, using the facts above.
-3. If it fits, write the Bluefile I should start with (prefer isolation: strict for untrusted code), the commands to get running, and the SDK or MCP setup for my case. Mention the limits that will affect me.
+3. If it fits, write the Bluefile I should start with (isolation: strict for agents), the commands to get running, and the SDK or MCP setup for my case. Mention the limits that will affect me.
 4. If it doesn't fit, say what would serve me better and why.

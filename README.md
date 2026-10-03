@@ -1,7 +1,8 @@
 # bluebox
 
-Disposable microVMs for AI agents. Every command runs in a VM with its own
-kernel, defined in one file and started in milliseconds.
+A sandbox for your AI agent, so it can't break anything. Every command runs
+in a disposable microVM with its own kernel, defined in one file and started
+in milliseconds.
 
 **[Docs](https://chxperiments.github.io/bluebox/docs.html)** ·
 [Architecture](https://chxperiments.github.io/bluebox/architecture.html) ·
@@ -69,7 +70,7 @@ with Sandbox("devbox") as sb:
 Each sandbox is a microVM under KVM, and the VMM itself is confined: no new
 privileges, seccomp, a reduced capability set, its own network namespace and,
 under `isolation: strict`, a UID that is not yours.
-`security/escape-test.sh` tries what a hostile agent would. See
+`security/escape-test.sh` tries what an agent gone wrong would. See
 [SECURITY.md](SECURITY.md) for the threat model.
 
 ## Development

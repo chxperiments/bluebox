@@ -2,10 +2,10 @@
 
 ## What bluebox is for
 
-Running code you do not trust -- an AI agent's, a student's, your own
-experiment's -- on your own machine, without it reaching the rest of the
-machine. The threat is the workload: it may be careless, it may be hostile,
-and with an agent it may be both at once through prompt injection.
+Giving an AI agent a machine of its own to work in, on your machine, so
+nothing it does reaches the rest of it. The threat is the agent: it may make
+a mistake, or a prompt injection may turn it against you, and the boundary
+has to hold either way.
 
 ## What the boundary is
 
@@ -33,7 +33,7 @@ as it can:
 
 Under standard isolation the VMM runs as your user. Escaping both the guest
 kernel and libkrun then lands in your account. Use `isolation: strict` for
-agents and any untrusted code.
+agents.
 
 ## What it is not
 

@@ -18,7 +18,7 @@
   --accent-soft: rgba(255, 255, 255, 0.1);
   --on-accent: var(--blue);
   --radius: 4px;
-  --display: "Bricolage Grotesque", "IBM Plex Sans", ui-sans-serif, sans-serif;
+  --display: "Archivo", "IBM Plex Sans", ui-sans-serif, sans-serif;
   --sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --wrap: 76rem;
@@ -50,7 +50,7 @@ code, pre, kbd { font-family: var(--mono); font-size: 0.88em; }
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
 .nav .wrap { display: flex; align-items: center; gap: 2rem; height: 3.75rem; }
 .brand { display: flex; align-items: center; gap: 0.55rem; font: 600 1rem var(--mono); color: var(--ink); text-decoration: none; letter-spacing: 0.01em; }
-.brand-mark { width: 0.95rem; height: 0.95rem; border: 2px solid var(--ink); border-radius: 2px; box-shadow: inset 0 0 0 3px var(--bg), inset 0 0 0 10px var(--ink); }
+.brand .logo { display: block; height: 1.05rem; width: auto; fill: currentColor; }
 .nav-links { display: flex; gap: 1.5rem; margin-left: auto; }
 .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.92rem; padding: 0.3rem 0; border-bottom: 1px solid transparent; }
 .nav-links a:hover, .nav-links a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--ink); }
@@ -437,15 +437,12 @@ pre.code .k { color: var(--accent); }
 .art.sans text.big { font-family: var(--display); font-size: 21px; font-weight: 700; letter-spacing: -0.02em; }
 .art.sans text.dim { font-weight: 400; }
 
-/* The outlined wordmark: the stroke is painted first and the fill, in the
-   ground colour, over it. That hides the strokes where a letter's own
-   contours overlap (the e's bar), leaving only the clean outer edge. */
-/* The wordmark is SVG text so the outline can be painted under a fill in the
-   ground colour: strokes along the font's overlapping contours (the e's bar)
-   are covered, leaving only the clean outer edge. It rises in as one piece. */
+/* The footer wordmark: the logo's outlines, stroked and hollow. The
+   outlines have no overlapping contours, so only the outer edge shows.
+   It rises in as one piece. */
 .wordmark { display: block; -webkit-text-stroke: 0; color: inherit; overflow: hidden; }
 .wordmark svg { display: block; width: 100%; height: auto; overflow: visible; }
-.wordmark text { font: 700 270px var(--display); letter-spacing: -0.02em; fill: var(--bg); stroke: var(--ink); stroke-width: 7px; paint-order: stroke fill; stroke-linejoin: round; }
+.wordmark path { fill: none; stroke: var(--ink); stroke-width: clamp(1.5px, 0.22vw, 3px); vector-effect: non-scaling-stroke; stroke-linejoin: round; }
 @media (prefers-reduced-motion: no-preference) {
   .wordmark svg { transform: translateY(105%); transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s; }
   .footer.in .wordmark svg { transform: none; }
@@ -520,3 +517,18 @@ pre.code .k { color: var(--accent); }
   .conf.build.go .conf-grid > div, .conf.build.go .conf-common span { opacity: 1; transform: none; }
   .conf.build > p { opacity: 1; transform: none; }
 }
+
+/* Archivo, expanded. The `font` shorthand resets font-stretch, so it is set
+   once here, after every rule that uses the display face. */
+h1, h2, h3, .numbers b, .statement, .footer-lead, .opart-text p, .layers-col b,
+.conf-h, .conf-big b, .art text.big, .art.sans text.big { font-stretch: 125%; }
+h1 { letter-spacing: -0.03em; }
+h2 { font-size: clamp(1.6rem, 3.1vw, 2.5rem); letter-spacing: -0.025em; }
+.hero-center h1 { font-size: clamp(1.9rem, 4.1vw, 3.3rem); max-width: 21ch; }
+.footer-lead { font-size: clamp(1.5rem, 2.9vw, 2.2rem); }
+.numbers b { font-size: clamp(1.8rem, 3.8vw, 2.9rem); }
+.art.sans text.big { font-size: 18px; }
+
+/* The router in the workflow: a solid box turning, edges in the ground colour. */
+.art .cube-edge { fill: none; stroke: var(--bg); stroke-width: 2; stroke-linejoin: round; }
+.opart-text p { font-size: clamp(1.9rem, 5vw, 4.2rem); }

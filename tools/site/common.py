@@ -10,9 +10,27 @@ PAGES = [
 GH = "https://github.com/chxperiments/bluebox"
 
 
+def logo():
+    """The bluebox wordmark, set in Archivo Expanded ExtraBold and stored as
+    outlines (docs/assets/bluebox-wordmark.svg), so it needs no font load.
+    Solid for the nav, hollow for the footer."""
+    import re
+    from pathlib import Path
+    svg = (Path(__file__).resolve().parents[2] / "docs/assets/bluebox-wordmark.svg").read_text()
+    vb = re.search(r'viewBox="([^"]+)"', svg).group(1)
+    d = re.search(r' d="([^"]+)"', svg).group(1)
+    x, y, w, h = (float(v) for v in vb.split())
+    nav = f'<svg class="logo" viewBox="{vb}" aria-hidden="true"><path d="{d}"/></svg>'
+    pad = 40
+    foot = (f'<svg viewBox="{x - pad:.0f} {y - pad:.0f} {w + 2 * pad:.0f} {h + 2 * pad:.0f}">'
+            f'<path d="{d}"/></svg>')
+    return nav, foot
+
+
 def page(filename, title, description, body):
     import art
     DRIPS = art.drips(23)
+    LOGO, WORDMARK = logo()
     nav = "\n".join(
         f'        <a href="{f}"{" aria-current=\"page\"" if f == filename else ""}>{t}</a>'
         for f, t in PAGES if f != "index.html"
@@ -30,13 +48,13 @@ def page(filename, title, description, body):
 <meta name="theme-color" content="#1300f9">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,700;125,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
 <header class="nav">
   <div class="wrap">
-    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>bluebox</a>
+    <a class="brand" href="index.html" aria-label="bluebox, home">{LOGO}</a>
     <nav class="nav-links" aria-label="Site">
 {nav}
     </nav>
@@ -81,7 +99,7 @@ def page(filename, title, description, body):
         <a href="{GH}/tree/main/examples">Examples</a>
       </nav>
     </div>
-    <div class="wordmark" aria-hidden="true"><svg viewBox="0 0 1000 245" preserveAspectRatio="xMinYMid meet"><text x="8" y="212" textLength="950" lengthAdjust="spacingAndGlyphs">bluebox</text></svg></div>
+    <div class="wordmark" aria-hidden="true">{WORDMARK}</div>
     <div class="footer-base">
       <span>MIT licensed. Isolated, disposable microVM sandboxes.</span>
       <a href="#top">Back to top</a>

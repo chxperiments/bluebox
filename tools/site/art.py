@@ -186,6 +186,47 @@ def security():
 </svg>"""
 
 
+def spinning_box(cx, cy, s, frames=24, dur=4.8):
+    """A solid box turning on its vertical axis, as SMIL keyframes. The
+    silhouette is the union of its faces filled in ink; the edges of the
+    faces turned toward the viewer are drawn in the ground colour. A quarter
+    turn repeats exactly, so the loop has no seam."""
+    e = radians(28)
+    corners = [(x, y, z) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)]
+    def proj(p, t):
+        x, y, z = p
+        x1, z1 = x * cos(t) + z * sin(t), -x * sin(t) + z * cos(t)
+        return cx + s * x1, cy - s * (y * cos(e) + z1 * sin(e))
+    # Side faces by outward normal, each as four corners in order; then the top.
+    sides = [(1, 0), (0, 1), (-1, 0), (0, -1)]
+    def quad(nx, nz):
+        if nx:
+            return [(nx, -1, -1), (nx, -1, 1), (nx, 1, 1), (nx, 1, -1)]
+        return [(-1, -1, nz), (1, -1, nz), (1, 1, nz), (-1, 1, nz)]
+    faces = [quad(nx, nz) for nx, nz in sides] + [[(-1, 1, -1), (1, 1, -1), (1, 1, 1), (-1, 1, 1)]]
+    fill, edges, vis = [[] for _ in faces], [[] for _ in faces], [[] for _ in faces]
+    for k in range(frames + 1):
+        t = radians(90 * k / frames)
+        for j, f in enumerate(faces):
+            d = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in (proj(p, t) for p in f)) + " Z"
+            fill[j].append(d)
+            if j < 4:
+                nx, nz = sides[j]
+                nz1 = -nx * sin(t) + nz * cos(t)
+                vis[j].append("1" if nz1 < -1e-6 else "0")
+            else:
+                vis[j].append("1")
+    def anim(attr, vals):
+        return f'<animate attributeName="{attr}" dur="{dur}s" repeatCount="indefinite" values="{";".join(vals)}"/>'
+    g = []
+    for j in range(5):
+        g.append(f'<path class="f" d="{fill[j][0]}">{anim("d", fill[j])}</path>')
+    for j in range(5):
+        g.append(f'<path class="cube-edge" d="{fill[j][0]}" stroke-opacity="{vis[j][0]}">'
+                 f'{anim("d", fill[j])}{anim("stroke-opacity", vis[j])}</path>')
+    return f'<g class="lbl spin-box" style="--i:2">{"".join(g)}</g>'
+
+
 def workflow():
     """bluebox as a workflow: three ways in, one router, three engines, each
     booting its own microVM. Signals travel every connector."""
@@ -210,13 +251,13 @@ def workflow():
     inputs = [("CLI", "bluebox run, exec", 70), ("SDKs", "Python, TS, Go, Rust", 230), ("MCP", "for AI agents", 390)]
     for k, (t, sub, y) in enumerate(inputs):
         out.append(node(20, y, 190, 64, t, sub, i=0))
-        out.append(flow(f"M210,{y + 32} C280,{y + 32} 280,262 350,262", 1, 2.2, k * 0.5))
+        out.append(flow(f"M210,{y + 32} C300,{y + 32} 310,262 402,262", 1, 2.2, k * 0.5))
     # Router
-    out.append(node(350, 210, 230, 104, "bluebox", "Bluefile: backend:", i=2, strong=True))
+    out.append(spinning_box(465, 262, 40))
     # Engines
     engines = [("podman", "libkrun via podman", "1.28 s", 70), ("krun", "libkrun, direct", "0.76 s", 230), ("firecracker", "snapshot restore", "0.31 s", 390)]
     for k, (t, sub, ms, y) in enumerate(engines):
-        out.append(flow(f"M580,262 C650,262 650,{y + 32} 720,{y + 32}", 3, 2.0, 1.1 + k * 0.45))
+        out.append(flow(f"M528,262 C620,262 640,{y + 32} 720,{y + 32}", 3, 2.0, 1.1 + k * 0.45))
         out.append(node(720, y, 200, 64, t, sub, i=4))
         out.append(f'<g class="lbl" style="--i:5"><rect class="f" x="{928}" y="{y + 20}" width="62" height="24" rx="4"/>'
                    f'<text class="on-strong" x="{959}" y="{y + 37}" text-anchor="middle">{ms}</text></g>')

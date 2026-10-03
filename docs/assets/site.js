@@ -17,8 +17,8 @@
     if (svg.pauseAnimations) { svg.pauseAnimations(); svg.setCurrentTime(0); }
   });
 
-  // Reveal sections as they enter, in reading order.
-  document.querySelectorAll(".reveal").forEach(function (el) {
+  // Reveal sections as they enter, in reading order; inverted sections wipe in.
+  document.querySelectorAll(".reveal, .wipe").forEach(function (el) {
     if (calm) { el.classList.add("in"); return; }
     onView(el, function () { el.classList.add("in"); });
   });
@@ -95,6 +95,55 @@
     });
     show(lines.filter(function (l) { return l.dataset.k === "backend"; })[0] || lines[0]);
   }
+
+  // Op-art: concentric squares, each turned a little more than the one
+  // outside it, so the stack reads as a box falling into itself. The twist
+  // follows the pointer; it only animates while on screen, and holds one
+  // still frame under reduced motion.
+  document.querySelectorAll(".opart canvas").forEach(function (cv) {
+    var ctx = cv.getContext("2d"); if (!ctx) return;
+    var ink = getComputedStyle(cv).color || "#fff";
+    var w = 0, h = 0, dpr = 1, t = 0, target = 0.06, twist = 0.06, running = false, raf = 0;
+    function size() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = cv.clientWidth; h = cv.clientHeight;
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    function paint() {
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = ink; ctx.lineWidth = 1;
+      var cx = w * 0.62, cy = h * 0.46, max = Math.hypot(w, h) * 0.75, n = 46;
+      for (var i = 0; i < n; i++) {
+        var f = 1 - i / n, s = max * f * f;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(i * twist + t * (0.08 + i * 0.004));
+        ctx.globalAlpha = 0.25 + 0.75 * (i / n);
+        ctx.strokeRect(-s / 2, -s / 2, s, s);
+        ctx.restore();
+      }
+    }
+    function loop() {
+      twist += (target - twist) * 0.05; t += 0.004;
+      paint();
+      if (running) raf = requestAnimationFrame(loop);
+    }
+    size(); paint();
+    window.addEventListener("resize", function () { size(); paint(); });
+    if (calm) return;
+    cv.parentNode.addEventListener("pointermove", function (e) {
+      var r = cv.getBoundingClientRect();
+      target = 0.02 + ((e.clientX - r.left) / r.width) * 0.12;
+    });
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(function (es) {
+        var vis = es.some(function (x) { return x.isIntersecting; });
+        if (vis && !running) { running = true; loop(); }
+        if (!vis) { running = false; cancelAnimationFrame(raf); }
+      }).observe(cv);
+    } else { running = true; loop(); }
+  });
 
   // The box: a shaded ASCII cube, drawn with a z-buffer and flat lighting.
   // Drag turns it; it rests still under reduced motion.

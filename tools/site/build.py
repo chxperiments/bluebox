@@ -164,7 +164,7 @@ overview = f"""
   </div>
 </section>
 
-<section class="section">
+<section class="section invert wipe">
   <div class="wrap">
     <p class="statement">A container shares your kernel. <span>A bluebox sandbox brings its own, boots it in milliseconds, and throws it away.</span></p>
   </div>
@@ -187,7 +187,7 @@ overview = f"""
   </div>
 </section>
 
-<section class="section">
+<section class="section invert wipe">
   <div class="wrap split">
     <div class="prose">
       <h2 style="margin-bottom:1rem">A kernel per sandbox, three ways to boot it.</h2>
@@ -215,6 +215,11 @@ overview = f"""
     <p class="lead">Declare it; bluebox builds it, proves it has its own kernel, and refuses it if not. Point at a line.</p>
     {bluefile_explorer()}
   </div>
+</section>
+
+<section class="opart" aria-label="Generative artwork: nested boxes twisting into a tunnel">
+  <canvas aria-hidden="true"></canvas>
+  <div class="opart-text"><div class="wrap"><p>Every run, a new machine.</p></div></div>
 </section>
 
 <section class="section" id="sdk">
@@ -323,7 +328,7 @@ architecture = f"""
   </div>
 </section>
 
-<section class="section">
+<section class="section invert wipe">
   <div class="wrap split">
     <div class="prose">
       <h2 style="margin-bottom:1rem">podman and krun: libkrun</h2>
@@ -452,7 +457,7 @@ security = f"""
   </div>
 </section>
 
-<section class="section">
+<section class="section invert wipe">
   <div class="wrap">
     <h2>Confinement, per backend</h2>
     <p class="lead">Read off the running VMM by the escape suite, not from configuration.</p>
@@ -543,7 +548,7 @@ benchmarks = f"""
   </div>
 </section>
 
-<section class="section">
+<section class="section invert wipe">
   <div class="wrap">
     <h2>Against the baselines</h2>
     <p class="lead">Median of 10 runs after one warm-up. The Python workload is <code>sum(i * i for i in range(100_000))</code>.</p>

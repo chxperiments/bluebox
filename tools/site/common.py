@@ -25,7 +25,7 @@ def page(filename, title, description, body):
 <meta name="description" content="{html.escape(description)}">
 <meta property="og:title" content="{full_title}">
 <meta property="og:description" content="{html.escape(description)}">
-<meta name="theme-color" content="#002fa7">
+<meta name="theme-color" content="#1300f9">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -41,19 +41,46 @@ def page(filename, title, description, body):
     <a class="nav-gh" href="{GH}">GitHub</a>
   </div>
 </header>
-<main>
+<main id="top">
 {body}
 </main>
-<footer>
+<footer class="footer invert wipe">
   <div class="wrap">
-    <span>bluebox, MIT licensed. Isolated, disposable microVM sandboxes.</span>
-    <nav aria-label="Footer">
-      <a href="architecture.html">Architecture</a>
-      <a href="security.html">Security</a>
-      <a href="benchmarks.html">Benchmarks</a>
-      <a href="docs.html">Docs</a>
-      <a href="{GH}">Source</a>
-    </nav>
+    <div class="footer-top">
+      <div>
+        <p class="footer-lead">Run code you do not trust, in a box of its own.</p>
+        <div class="install">
+          <code><span class="p">$ </span>curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh</code>
+          <button class="copy" type="button" data-copy="curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh">Copy</button>
+        </div>
+      </div>
+      <nav aria-label="Project">
+        <h4>Project</h4>
+        <a href="architecture.html">Architecture</a>
+        <a href="security.html">Security</a>
+        <a href="benchmarks.html">Benchmarks</a>
+        <a href="docs.html">Docs</a>
+      </nav>
+      <nav aria-label="Build with it">
+        <h4>Build with it</h4>
+        <a href="docs.html#sdk">Python SDK</a>
+        <a href="docs.html#sdk">TypeScript SDK</a>
+        <a href="docs.html#sdk">Go SDK</a>
+        <a href="docs.html#api">Local API</a>
+      </nav>
+      <nav aria-label="Source">
+        <h4>Source</h4>
+        <a href="{GH}">GitHub</a>
+        <a href="{GH}/blob/main/SECURITY.md">Threat model</a>
+        <a href="{GH}/tree/main/bench">Benchmark code</a>
+        <a href="{GH}/tree/main/examples">Examples</a>
+      </nav>
+    </div>
+    <div class="wordmark" aria-hidden="true"><span style="--i:0">b</span><span style="--i:1">l</span><span style="--i:2">u</span><span style="--i:3">e</span><span style="--i:4">b</span><span style="--i:5">o</span><span style="--i:6">x</span></div>
+    <div class="footer-base">
+      <span>MIT licensed. Isolated, disposable microVM sandboxes.</span>
+      <a href="#top">Back to top</a>
+    </div>
   </div>
 </footer>
 <script src="assets/site.js" defer></script>

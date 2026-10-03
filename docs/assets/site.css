@@ -384,7 +384,7 @@ pre.code .k { color: var(--accent); }
 .hero-center { grid-template-columns: minmax(0, 1fr); }
 .hero-center .wrap { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0; width: 100%; min-width: 0; }
 .hero-center .wrap > * { max-width: 100%; }
-.hero-center .hero-art { max-width: min(18rem, 56vw, 34dvh); justify-self: auto; margin-bottom: clamp(0.75rem, 2.5vw, 1.75rem); }
+.hero-center .hero-art { max-width: min(18rem, 56vw, 34dvh); justify-self: auto; margin-bottom: clamp(1.5rem, 3.5vw, 2.75rem); }
 .hero-center h1 { max-width: 19ch; margin: 0 auto 0.9rem; font-size: clamp(2.2rem, 4.8vw, 3.9rem); }
 .hero-center .lead { margin: 0 auto 1.75rem; max-width: 38ch; }
 .hero-center .install { margin: 0 auto 1rem; width: 100%; max-width: min(36rem, 100%); }
@@ -452,29 +452,9 @@ pre.code .k { color: var(--accent); }
 }
 
 /* ---- Street marks ------------------------------------------------------ */
-.marker, .art text.marker { font-family: "Permanent Marker", var(--display); }
-
-/* Hero sticker: a round badge beside the box, its ring turning. */
-.hero-stage { position: relative; width: 100%; display: flex; justify-content: center; }
-.hero-badge { position: absolute; width: clamp(5.5rem, 10vw, 8.5rem); right: max(4%, calc(50% - 25rem)); bottom: 8%; transform: rotate(-12deg); }
-.badge { display: block; width: 100%; height: auto; overflow: visible; }
-.badge-fill { fill: var(--ink); }
-.badge-text { fill: var(--bg); font: 700 15.5px var(--display); letter-spacing: 0.06em; }
-.badge-mark { fill: none; stroke: var(--bg); stroke-width: 3; stroke-linejoin: round; }
-.badge .spin { transform-origin: 100px 100px; }
-@media (prefers-reduced-motion: no-preference) { .badge .spin { animation: spin 22s linear infinite; } }
-@keyframes spin { to { transform: rotate(360deg); } }
-@media (max-width: 640px) { .hero-badge { width: 4.6rem; right: 2%; bottom: 2%; } }
-
-/* "try it" arrow, drawn in marker beside the install line. */
-.install-wrap { position: relative; width: 100%; display: flex; justify-content: center; }
-.install-wrap .install { margin-bottom: 1rem; }
-.tryit { position: absolute; width: 8.5rem; left: calc(50% - 22rem - 7.6rem); top: -2.6rem; overflow: visible; }
-.tryit text.marker { fill: var(--ink); font-size: 22px; }
-@media (max-width: 1100px) { .tryit { display: none; } }
 
 /* Marker strokes drawn when they come into view. */
-.art .s.mark, .scribble .s, .tryit .s { fill: none; stroke: var(--ink); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.art .s.mark, .scribble .s { fill: none; stroke: var(--ink); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
 .scribble { display: block; width: min(15rem, 60%); height: auto; margin: -0.35rem 0 1rem -0.2rem; overflow: visible; }
 @media (prefers-reduced-motion: no-preference) {
   .on-view .s { stroke-dasharray: 1; stroke-dashoffset: 1; }
@@ -493,16 +473,6 @@ pre.code .k { color: var(--accent); }
 .invert:has(> .drips) > .wrap { position: relative; z-index: 2; }
 .page-head.invert { padding-top: clamp(4.5rem, 9vw, 7rem); }
 
-/* Crown on the wordmark, drawn after it rises. */
-.crown .tag-stroke { fill: none; stroke: var(--ink); stroke-width: 5.5; stroke-linejoin: round; stroke-linecap: round; }
-.crown .tag-dot { fill: var(--ink); }
-@media (prefers-reduced-motion: no-preference) {
-  .crown .tag-stroke { stroke-dasharray: 1; stroke-dashoffset: 1; }
-  .crown .tag-dot { opacity: 0; transition: opacity 0.4s ease 2.2s; }
-  .footer.in .crown .tag-stroke { animation: draw 1s cubic-bezier(0.65, 0, 0.35, 1) 1.3s forwards; }
-  .footer.in .crown .tag-dot { opacity: 1; }
-}
-
 /* Things that build in piece by piece as they enter. */
 @media (prefers-reduced-motion: no-preference) {
   .build .layer, .build > div, .build tbody tr { opacity: 0; transform: translateY(10px);
@@ -516,4 +486,37 @@ pre.code .k { color: var(--accent); }
   .build tbody tr:nth-child(n+9) { transition-delay: 0.45s; }
   .build.go .layer, .build.go > div, .build.go tbody tr { opacity: 1; transform: none; }
   .table-wrap.build > table { opacity: 1; transform: none; }
+}
+
+/* Paint running off the hero box and the footer wordmark. */
+.art .s.drip { stroke-width: 3.2; stroke-linecap: round; }
+.art .drop { opacity: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .draw .s.drip { animation-duration: 1.8s; animation-delay: calc(1.6s + var(--i, 0) * 0.18s); }
+  .draw .drop { opacity: 0; animation: fadein 0.5s ease forwards; animation-delay: calc(3s + var(--i, 0) * 0.18s); }
+}
+.wdrip { fill: var(--ink); }
+@media (prefers-reduced-motion: no-preference) {
+  .wdrip { transform: scaleY(0); transform-box: fill-box; transform-origin: top; transition: transform 1.4s cubic-bezier(0.22, 1, 0.36, 1); transition-delay: calc(1.2s + var(--n) * 0.12s); }
+  .footer.in .wdrip { transform: none; }
+}
+.hero-center h1 + .scribble { margin: -0.4rem auto 1rem; width: min(17rem, 60%); }
+
+/* Confinement: the shared guarantees in one line, then only what differs. */
+.conf-common { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0 0 1.5rem; }
+.conf-common b { margin-right: 0.25rem; }
+.conf-common span { border: 1.5px solid var(--ink); border-radius: 999px; padding: 0.2rem 0.75rem; font-size: 0.86rem; }
+.conf-grid { display: grid; grid-template-columns: 13rem repeat(3, minmax(9rem, 1fr)); border-top: 2px solid var(--ink); }
+.conf-grid > div { padding: 0.95rem 1rem; border-bottom: 1px solid var(--line); }
+.conf-h { font: 700 1.35rem/1.1 var(--display); letter-spacing: -0.02em; }
+.conf-l { font: 500 0.74rem var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); align-self: stretch; display: flex; align-items: center; }
+.conf-big b { display: block; font: 700 clamp(2.6rem, 5vw, 3.8rem)/0.95 var(--display); letter-spacing: -0.04em; }
+.conf-big span { font-size: 0.8rem; color: var(--muted); }
+.conf-v { font-size: 0.95rem; display: flex; align-items: center; }
+.conf-v.no { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+@media (max-width: 760px) { .conf-grid { grid-template-columns: 8rem repeat(3, minmax(7.5rem, 1fr)); overflow-x: auto; } .conf { overflow-x: auto; } }
+@media (prefers-reduced-motion: no-preference) {
+  .conf.build .conf-grid > div, .conf.build .conf-common span { opacity: 0; transform: translateY(8px); transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); transition-delay: calc(var(--n, 0) * 40ms); }
+  .conf.build.go .conf-grid > div, .conf.build.go .conf-common span { opacity: 1; transform: none; }
+  .conf.build > p { opacity: 1; transform: none; }
 }

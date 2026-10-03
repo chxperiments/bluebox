@@ -12,7 +12,7 @@ GH = "https://github.com/chxperiments/bluebox"
 
 def page(filename, title, description, body):
     import art
-    DRIPS, CROWN = art.drips(23), art.crown()
+    DRIPS, WDRIPS = art.drips(23), art.word_drips()
     nav = "\n".join(
         f'        <a href="{f}"{" aria-current=\"page\"" if f == filename else ""}>{t}</a>'
         for f, t in PAGES if f != "index.html"
@@ -30,7 +30,7 @@ def page(filename, title, description, body):
 <meta name="theme-color" content="#1300f9">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
@@ -81,7 +81,7 @@ def page(filename, title, description, body):
         <a href="{GH}/tree/main/examples">Examples</a>
       </nav>
     </div>
-    <div class="wordmark" aria-hidden="true"><svg viewBox="0 -80 1000 325" preserveAspectRatio="xMinYMid meet"><text x="8" y="212" textLength="950" lengthAdjust="spacingAndGlyphs">bluebox</text><g class="crown" transform="translate(842 -66) rotate(9 50 35) scale(1.25)">{CROWN}</g></svg></div>
+    <div class="wordmark" aria-hidden="true"><svg viewBox="0 0 1000 300" preserveAspectRatio="xMinYMid meet"><text x="8" y="212" textLength="950" lengthAdjust="spacingAndGlyphs">bluebox</text><g class="wdrips">{WDRIPS}</g></svg></div>
     <div class="footer-base">
       <span>MIT licensed. Isolated, disposable microVM sandboxes.</span>
       <a href="#top">Back to top</a>

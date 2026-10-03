@@ -40,6 +40,7 @@ def hero():
   <title id="hero-art-t">Nested boxes: your machine, the confined VMM, KVM and the guest kernel. A command travels inward and runs in the guest.</title>
   <g class="float">
     {''.join(paths)}
+    {cube_drips()}
     <path class="s thin" d="{route}" stroke-dasharray="2 6"/>
     <rect class="f" x="-5" y="-5" width="10" height="10" opacity="0">
       <animateMotion dur="3.6s" repeatCount="indefinite" path="{route}" keyPoints="0;1;1" keyTimes="0;0.55;1" calcMode="spline" keySplines="0.65 0 0.35 1;0 0 1 1"/>
@@ -63,6 +64,7 @@ def hero_minimal():
   <title id="hero-art-t">Nested boxes: your machine, the confined VMM, KVM and the guest kernel. A command travels inward and runs in the guest.</title>
   <g class="float">
     {''.join(paths)}
+    {cube_drips()}
     <path class="s thin" d="{route}" stroke-dasharray="2 6"/>
     <rect class="f" x="-5" y="-5" width="10" height="10" opacity="0">
       <animateMotion dur="3.6s" repeatCount="indefinite" path="{route}" keyPoints="0;1;1" keyTimes="0;0.55;1" calcMode="spline" keySplines="0.65 0 0.35 1;0 0 1 1"/>
@@ -95,6 +97,7 @@ def hero_labelled():
   <title id="hero-art-l">Nested boxes: your machine, the confined VMM, KVM and the guest kernel. A command travels inward and runs in the guest.</title>
   <g class="float">
     {''.join(paths)}
+    {cube_drips()}
     <path class="s thin" d="{route}" stroke-dasharray="2 6"/>
     <rect class="f" x="-5" y="-5" width="10" height="10" opacity="0">
       <animateMotion dur="3.6s" repeatCount="indefinite" path="{route}" keyPoints="0;1;1" keyTimes="0;0.55;1" calcMode="spline" keySplines="0.65 0 0.35 1;0 0 1 1"/>
@@ -290,3 +293,39 @@ def arrow():
             '<path class="s mark" pathLength="1" style="--i:0" d="M14,26 C40,30 70,40 96,60 C108,69 118,74 132,76"/>'
             '<path class="s mark" pathLength="1" style="--i:3" d="M118,62 L134,77 L114,86"/>'
             '<text class="marker" x="6" y="16" transform="rotate(-8 6 16)">try it</text></svg>')
+
+
+
+def cube_drips(cx=300, cy=300, s=250, seed=5):
+    """White paint running off the outer box's two lower edges."""
+    import random
+    rnd = random.Random(seed)
+    k = 0.866 * s
+    out = []
+    for i, t in enumerate([0.12, 0.3, 0.55, 0.78, 0.9]):
+        # along the lower-left edge (ll -> bottom), then the lower-right (bottom -> lr)
+        if i % 2 == 0:
+            x = cx - k + t * k
+            y = cy + s / 2 + t * s / 2
+        else:
+            x = cx + t * k
+            y = cy + s - t * s / 2
+        ln = rnd.uniform(26, 90)
+        out.append(f'<path class="s drip" pathLength="1" style="--i:{4 + i}" d="M{x:.1f},{y:.1f} V{y + ln:.1f}"/>'
+                   f'<circle class="f drop" style="--i:{4 + i}" cx="{x:.1f}" cy="{y + ln + 4:.1f}" r="4.2"/>')
+    return "".join(out)
+
+
+def word_drips(seed=9):
+    """Blue paint running off the wordmark's baseline."""
+    import random
+    rnd = random.Random(seed)
+    out = []
+    for i, x in enumerate([40, 112, 238, 395, 470, 560, 690, 790, 905, 950]):
+        x += rnd.uniform(-8, 8)
+        w = rnd.uniform(9, 15)
+        ln = rnd.uniform(24, 78)
+        out.append(f'<path class="wdrip" style="--n:{i}" d="M{x - w:.1f},206 C{x - w:.1f},214 {x - w * 0.55:.1f},218 '
+                   f'{x - w * 0.55:.1f},{206 + ln:.1f} A{w * 0.55:.1f},{w * 0.55:.1f} 0 0 0 {x + w * 0.55:.1f},{206 + ln:.1f} '
+                   f'C{x + w * 0.55:.1f},218 {x + w:.1f},214 {x + w:.1f},206 Z"/>')
+    return "".join(out)

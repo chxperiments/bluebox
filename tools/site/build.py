@@ -161,15 +161,12 @@ def bluefile_explorer():
 overview = f"""
 <section class="hero hero-center dots dots-center">
   <div class="wrap">
-    <div class="hero-stage">
-      <div class="hero-art hero-art-wide">{art.hero_labelled()}</div>
-      <div class="hero-badge">{art.badge()}</div>
-    </div>
+    <div class="hero-art hero-art-wide">{art.hero_labelled()}</div>
     <div class="hero-art hero-art-narrow">{art.hero_minimal()}</div>
     <h1>Disposable microVMs for AI agents.</h1>
+    {art.scribble(4)}
     <p class="lead">Every command in its own virtual machine, with its own kernel.</p>
     <div class="install-wrap">
-      {art.arrow()}
       <div class="install">
         <code><span class="p">$ </span>curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh</code>
         <button class="copy" type="button" data-copy="curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh">Copy</button>
@@ -392,26 +389,30 @@ architecture = f"""
 # ==========================================================================
 # Security
 
+COMMON = ["its own kernel, under KVM", "no_new_privs", "seccomp", "its own network namespace", "pids and memory limits"]
 CONF = [
-    ("Guest has its own kernel (KVM)", "yes", "yes", "yes"),
-    ("VMM capabilities", "6", "6", "0"),
-    ("no_new_privs", "yes", "yes", "yes"),
-    ("seccomp on the VMM", "podman default", "podman default", "podman default + Firecracker's own"),
-    ("VMM network namespace", "own", "own", "own, empty"),
-    ("pids / memory limit", "512 / RAM + 256 MiB", "512 / RAM + 256 MiB", "512 / RAM + 256 MiB"),
-    ("VMM host UID under isolation: strict", "subordinate", "strict refused", "subordinate"),
-    ("Host directories shared into the guest", "/data, declared mounts", "/data, declared mounts", "none (/data is a disk)"),
-    ("Agent channel", "TCP 127.0.0.1 + token", "TCP 127.0.0.1 + token", "vsock, owner-only socket"),
+    ("strict mode: VMM as a UID that is not yours", ["yes", "not yet", "yes"]),
+    ("host directories shared in", ["/data, declared mounts", "/data, declared mounts", "none: /data is a disk"]),
+    ("agent channel", ["TCP on 127.0.0.1 + token", "TCP on 127.0.0.1 + token", "vsock, owner-only socket"]),
 ]
 
 
 def conf_table():
-    rows = []
-    for name, a, b, c_ in CONF:
-        rows.append(f"<tr><td>{name}</td><td>{a}</td><td>{b}</td><td>{c_}</td></tr>")
-    return f"""<div class="table-wrap build"><table>
-<thead><tr><th>Property</th><th>podman</th><th>krun</th><th>firecracker</th></tr></thead>
-<tbody>{''.join(rows)}</tbody></table></div>"""
+    cells = ['<div class="conf-corner"></div>'] + [f'<div class="conf-h">{b}</div>' for b in ("podman", "krun", "firecracker")]
+    cells.append('<div class="conf-l">VMM capabilities</div>')
+    for n in (6, 6, 0):
+        cells.append(f'<div class="conf-big"><b>{n}</b><span>{"of podman\'s 11" if n else "none at all"}</span></div>')
+    for label, vals in CONF:
+        cells.append(f'<div class="conf-l">{label}</div>')
+        for v in vals:
+            cls = "conf-v no" if v == "not yet" else "conf-v"
+            cells.append(f'<div class="{cls}">{v}</div>')
+    cells = "".join(f'{c[:4]} style="--n:{k}"{c[4:]}' if c.startswith("<div") else c for k, c in enumerate(cells))
+    common = "".join(f"<span>{c}</span>" for c in COMMON)
+    return f"""<div class="conf build">
+  <p class="conf-common"><b>Every backend:</b> {common}</p>
+  <div class="conf-grid">{cells}</div>
+</div>"""
 
 
 CHECKS = [

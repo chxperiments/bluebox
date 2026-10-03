@@ -55,12 +55,6 @@
   </div>
 </section>
 
-<section class="section">
-  <div class="wrap">
-    <p class="statement">A container shares your kernel. <span>A bluebox sandbox brings its own, boots it in milliseconds, and throws it away.</span></p>
-  </div>
-</section>
-
 <section class="section dots dots-tr" id="speed">
   <div class="wrap">
     <h2>Measured, not claimed.</h2>
@@ -73,39 +67,22 @@
     </div>
     <figure class="figure reveal" style="margin-top:1.5rem">
       <div class="figure-body"><div class="bars" role="list"><div class="bar" role="listitem"><div class="label"><b>podman + krun</b><span>a microVM booted per command</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:100.0%"></div></div><div class="ms">1,618 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, podman backend</b><span>booted per command</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:87.2%"></div></div><div class="ms">1,411 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, krun backend</b><span>booted per command, no podman</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:71.0%"></div></div><div class="ms">1,148 ms</div></div><div class="bar" role="listitem"><div class="label"><b>podman + runc</b><span>plain container, shares your kernel</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:27.8%"></div></div><div class="ms">450 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, firecracker</b><span>a fresh VM from a snapshot, offline</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:19.3%"></div></div><div class="ms">312 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, warm pool</b><span>a fresh VM waiting in the pool</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:2.5%"></div></div><div class="ms">41 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox exec</b><span>a command in a running VM</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:0.9%"></div></div><div class="ms">15 ms</div></div></div></div>
-      <figcaption><b>Figure 1.</b> Median wall-clock latency of a no-op command, measured from the host on one x86_64 Linux machine (KVM). Blue rows are bluebox. Sources and method on the <a href="benchmarks.html">benchmarks</a> page.</figcaption>
+      <figcaption><b>Figure 2.</b> Median wall-clock latency of a no-op command, measured from the host on one x86_64 Linux machine (KVM). Filled rows are bluebox. Sources and method on the <a href="benchmarks.html">benchmarks</a> page.</figcaption>
     </figure>
   </div>
 </section>
 
-<section class="section invert wipe race-section" data-ghost="BOOT">
-  <div class="tape" aria-hidden="true"></div>
+<section class="section invert wipe" id="engines">
   <div class="wrap">
-    <h2 class="stencil">A kernel per sandbox.<br>Three ways to boot it.</h2>
-    <p class="lead">A container shares your kernel; one kernel bug and the workload is on your machine. bluebox gives every sandbox its own, and lets you pick what boots it. Here they race, in real time.</p>
-    <div class="race" data-race>
-      <div class="lights" aria-hidden="true"><i></i><i></i><i></i><b>GO</b></div>
-      <div class="lane" style="--ms:1282">
-        <div class="lane-name">podman<span>libkrun through podman, every feature</span></div>
-        <div class="lane-track"><div class="car" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M20 3 L35 11.5 V28.5 L20 37 L5 28.5 V11.5 Z M5 11.5 L20 20 L35 11.5 M20 20 V37"/></svg></div><div class="flag" aria-hidden="true"></div></div>
-        <div class="sticker" style="--r:-6deg">1.28 s</div>
-      </div>
-      <div class="lane" style="--ms:756">
-        <div class="lane-name">krun<span>libkrun driven directly, no podman</span></div>
-        <div class="lane-track"><div class="car" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M20 3 L35 11.5 V28.5 L20 37 L5 28.5 V11.5 Z M5 11.5 L20 20 L35 11.5 M20 20 V37"/></svg></div><div class="flag" aria-hidden="true"></div></div>
-        <div class="sticker" style="--r:5deg">0.76 s</div>
-      </div>
-      <div class="lane" style="--ms:312">
-        <div class="lane-name">firecracker<span>a snapshot restored per run, 0 VMM capabilities</span></div>
-        <div class="lane-track"><div class="car" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M20 3 L35 11.5 V28.5 L20 37 L5 28.5 V11.5 Z M5 11.5 L20 20 L35 11.5 M20 20 V37"/></svg></div><div class="flag" aria-hidden="true"></div></div>
-        <div class="sticker" style="--r:-3deg">0.31 s</div>
-      </div>
-      
-      <div class="race-foot">
-        <button class="btn btn-primary race-again" type="button">Race again</button>
-        <p class="small muted">Real time, from the measured medians: a fresh VM per command, offline sandbox, no warm pool. With <code>warm:</code>, podman and krun start in about 41 ms. <a href="architecture.html">How each one works</a></p>
-      </div>
-    </div>
+    <h2>One interface, three engines.</h2>
+    <p class="lead">Every call goes through bluebox. The Bluefile's <code>backend:</code> decides what boots the microVM, and each one gives the sandbox its own kernel.</p>
+    <figure class="figure">
+      <div class="figure-body"><svg class="art draw workflow" viewBox="0 0 1120 500" role="img" aria-labelledby="wf-t">
+  <title id="wf-t">Calls from the CLI, the SDKs and MCP go to bluebox, which reads the Bluefile's backend and boots the sandbox with podman, krun or Firecracker, each a microVM with its own kernel.</title>
+  <rect class="s" pathLength="1" style="--i:0" x="20" y="70" width="190" height="64" rx="6"/><text class="big lbl" style="--i:0" x="38" y="99">CLI</text><text class="dim lbl" style="--i:0" x="38" y="119">bluebox run, exec</text><path class="s thin" pathLength="1" style="--i:1" d="M210,102 C280,102 280,262 350,262"/><circle class="f" r="4" opacity="0"><animateMotion dur="2.2s" begin="0.0s" repeatCount="indefinite" path="M210,102 C280,102 280,262 350,262"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="2.2s" begin="0.0s" repeatCount="indefinite"/></circle><rect class="s" pathLength="1" style="--i:0" x="20" y="230" width="190" height="64" rx="6"/><text class="big lbl" style="--i:0" x="38" y="259">SDKs</text><text class="dim lbl" style="--i:0" x="38" y="279">Python, TS, Go, Rust</text><path class="s thin" pathLength="1" style="--i:1" d="M210,262 C280,262 280,262 350,262"/><circle class="f" r="4" opacity="0"><animateMotion dur="2.2s" begin="0.5s" repeatCount="indefinite" path="M210,262 C280,262 280,262 350,262"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="2.2s" begin="0.5s" repeatCount="indefinite"/></circle><rect class="s" pathLength="1" style="--i:0" x="20" y="390" width="190" height="64" rx="6"/><text class="big lbl" style="--i:0" x="38" y="419">MCP</text><text class="dim lbl" style="--i:0" x="38" y="439">for AI agents</text><path class="s thin" pathLength="1" style="--i:1" d="M210,422 C280,422 280,262 350,262"/><circle class="f" r="4" opacity="0"><animateMotion dur="2.2s" begin="1.0s" repeatCount="indefinite" path="M210,422 C280,422 280,262 350,262"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="2.2s" begin="1.0s" repeatCount="indefinite"/></circle><rect class="s node-strong" pathLength="1" style="--i:2" x="350" y="210" width="230" height="104" rx="6"/><text class="big lbl on-strong" style="--i:2" x="368" y="259">bluebox</text><text class="dim lbl on-strong" style="--i:2" x="368" y="279">Bluefile: backend:</text><path class="s thin" pathLength="1" style="--i:3" d="M580,262 C650,262 650,102 720,102"/><circle class="f" r="4" opacity="0"><animateMotion dur="2.0s" begin="1.1s" repeatCount="indefinite" path="M580,262 C650,262 650,102 720,102"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="2.0s" begin="1.1s" repeatCount="indefinite"/></circle><rect class="s" pathLength="1" style="--i:4" x="720" y="70" width="200" height="64" rx="6"/><text class="big lbl" style="--i:4" x="738" y="99">podman</text><text class="dim lbl" style="--i:4" x="738" y="119">libkrun via podman</text><g class="lbl" style="--i:5"><rect class="f" x="928" y="90" width="62" height="24" rx="4"/><text class="on-strong" x="959" y="107" text-anchor="middle">1.28 s</text></g><path class="s thin" pathLength="1" style="--i:6" d="M990,102 H1032"/><circle class="f" r="4" opacity="0"><animateMotion dur="1.2s" begin="2.2s" repeatCount="indefinite" path="M990,102 H1032"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="1.2s" begin="2.2s" repeatCount="indefinite"/></circle><path class="s" pathLength="1" style="--i:6" d="M1062.0,76.0 L1084.5,89.0 1084.5,115.0 1062.0,128.0 1039.5,115.0 1039.5,89.0 Z M1039.5,89.0 L1062.0,102.0 1084.5,89.0 M1062.0,102.0 L1062.0,128.0"/><path class="f pulse" d="M1062.0,94.0 L1068.9,98.0 1068.9,106.0 1062.0,110.0 1055.1,106.0 1055.1,98.0 Z"/><path class="s thin" pathLength="1" style="--i:3" d="M580,262 C650,262 650,262 720,262"/><circle class="f" r="4" opacity="0"><animateMotion dur="2.0s" begin="1.55s" repeatCount="indefinite" path="M580,262 C650,262 650,262 720,262"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="2.0s" begin="1.55s" repeatCount="indefinite"/></circle><rect class="s" pathLength="1" style="--i:4" x="720" y="230" width="200" height="64" rx="6"/><text class="big lbl" style="--i:4" x="738" y="259">krun</text><text class="dim lbl" style="--i:4" x="738" y="279">libkrun, direct</text><g class="lbl" style="--i:5"><rect class="f" x="928" y="250" width="62" height="24" rx="4"/><text class="on-strong" x="959" y="267" text-anchor="middle">0.76 s</text></g><path class="s thin" pathLength="1" style="--i:6" d="M990,262 H1032"/><circle class="f" r="4" opacity="0"><animateMotion dur="1.2s" begin="2.6500000000000004s" repeatCount="indefinite" path="M990,262 H1032"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="1.2s" begin="2.6500000000000004s" repeatCount="indefinite"/></circle><path class="s" pathLength="1" style="--i:6" d="M1062.0,236.0 L1084.5,249.0 1084.5,275.0 1062.0,288.0 1039.5,275.0 1039.5,249.0 Z M1039.5,249.0 L1062.0,262.0 1084.5,249.0 M1062.0,262.0 L1062.0,288.0"/><path class="f pulse" d="M1062.0,254.0 L1068.9,258.0 1068.9,266.0 1062.0,270.0 1055.1,266.0 1055.1,258.0 Z"/><path class="s thin" pathLength="1" style="--i:3" d="M580,262 C650,262 650,422 720,422"/><circle class="f" r="4" opacity="0"><animateMotion dur="2.0s" begin="2.0s" repeatCount="indefinite" path="M580,262 C650,262 650,422 720,422"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="2.0s" begin="2.0s" repeatCount="indefinite"/></circle><rect class="s" pathLength="1" style="--i:4" x="720" y="390" width="200" height="64" rx="6"/><text class="big lbl" style="--i:4" x="738" y="419">firecracker</text><text class="dim lbl" style="--i:4" x="738" y="439">snapshot restore</text><g class="lbl" style="--i:5"><rect class="f" x="928" y="410" width="62" height="24" rx="4"/><text class="on-strong" x="959" y="427" text-anchor="middle">0.31 s</text></g><path class="s thin" pathLength="1" style="--i:6" d="M990,422 H1032"/><circle class="f" r="4" opacity="0"><animateMotion dur="1.2s" begin="3.1s" repeatCount="indefinite" path="M990,422 H1032"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="1.2s" begin="3.1s" repeatCount="indefinite"/></circle><path class="s" pathLength="1" style="--i:6" d="M1062.0,396.0 L1084.5,409.0 1084.5,435.0 1062.0,448.0 1039.5,435.0 1039.5,409.0 Z M1039.5,409.0 L1062.0,422.0 1084.5,409.0 M1062.0,422.0 L1062.0,448.0"/><path class="f pulse" d="M1062.0,414.0 L1068.9,418.0 1068.9,426.0 1062.0,430.0 1055.1,426.0 1055.1,418.0 Z"/><text class="dim lbl" style="--i:6" x="1062" y="490" text-anchor="middle">own kernel</text>
+</svg></div>
+      <figcaption><b>Figure 1.</b> From the call to the guest. Times are the median fresh-VM run on each engine, offline and without a warm pool; with <code>warm:</code>, podman and krun start in about 41 ms. <a href="architecture.html">How each one works</a></figcaption>
+    </figure>
   </div>
 </section>
 

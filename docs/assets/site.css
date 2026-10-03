@@ -363,68 +363,6 @@ pre.code .k { color: var(--accent); }
 .opart-text p { font: 700 clamp(2.2rem, 6vw, 5rem)/0.95 var(--display); letter-spacing: -0.04em; margin: 0; max-width: 12ch;
   color: var(--ink); text-shadow: 0 0 24px var(--bg), 0 0 8px var(--bg); }
 
-/* White sections: printer's crop marks in the corners, a halftone corner,
-   and a huge outlined word drifting behind the content. All in the two
-   pigments. */
-.invert { position: relative; isolation: isolate; overflow: hidden;
-  background-image:
-    linear-gradient(var(--ink), var(--ink)), linear-gradient(var(--ink), var(--ink)),
-    linear-gradient(var(--ink), var(--ink)), linear-gradient(var(--ink), var(--ink)),
-    linear-gradient(var(--ink), var(--ink)), linear-gradient(var(--ink), var(--ink)),
-    linear-gradient(var(--ink), var(--ink)), linear-gradient(var(--ink), var(--ink));
-  background-size: 26px 1.5px, 1.5px 26px, 26px 1.5px, 1.5px 26px, 26px 1.5px, 1.5px 26px, 26px 1.5px, 1.5px 26px;
-  background-position: 18px 28px, 28px 18px, calc(100% - 18px) 28px, calc(100% - 28px) 18px,
-    18px calc(100% - 28px), 28px calc(100% - 18px), calc(100% - 18px) calc(100% - 28px), calc(100% - 28px) calc(100% - 18px);
-  background-repeat: no-repeat; }
-.invert::after { content: ""; position: absolute; left: 0; bottom: 0; width: min(46rem, 70%); height: 80%; z-index: -1; pointer-events: none;
-  background: radial-gradient(circle, var(--ink) 1.3px, transparent 1.8px) 0 0 / 13px 13px;
-  -webkit-mask-image: radial-gradient(ellipse at 0% 100%, #000 0%, transparent 70%); mask-image: radial-gradient(ellipse at 0% 100%, #000 0%, transparent 70%);
-  opacity: 0.22; }
-.invert[data-ghost]::before { content: attr(data-ghost); position: absolute; right: -0.04em; top: 50%; z-index: -1; pointer-events: none;
-  transform: translateY(-50%); white-space: nowrap; font: 700 clamp(9rem, 27vw, 25rem)/0.8 var(--display); letter-spacing: -0.06em;
-  color: transparent; -webkit-text-stroke: 1.5px var(--line); }
-@media (prefers-reduced-motion: no-preference) {
-  .invert[data-ghost].in::before { animation: ghost 26s ease-in-out infinite alternate; }
-}
-@keyframes ghost { from { transform: translate(0, -50%); } to { transform: translate(-6%, -50%); } }
-
-/* The boot race: hazard tape, stencil headline, start lights, three lanes,
-   and a time sticker slapped on at each finish. */
-.tape { height: 22px; background: repeating-linear-gradient(-45deg, var(--ink) 0 14px, transparent 14px 28px); border-bottom: 1.5px solid var(--ink); margin-top: calc(-1 * clamp(3rem, 7vw, 5.5rem)); margin-bottom: clamp(2.5rem, 5vw, 4rem); background-size: 39.6px 22px; }
-@media (prefers-reduced-motion: no-preference) { .race-section.in .tape { animation: tape 1.2s linear infinite; } }
-@keyframes tape { to { background-position: 39.6px 0; } }
-.stencil { text-transform: uppercase; font-size: clamp(2.2rem, 5.6vw, 4.6rem); letter-spacing: -0.03em; line-height: 0.92; margin-bottom: 1.25rem; max-width: 18ch; }
-.race { margin-top: 2.5rem; }
-.lights { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 1.5rem; }
-.lights i { width: 1.6rem; height: 1.6rem; border: 2px solid var(--ink); border-radius: 50%; transition: background 0.1s; }
-.lights i.on { background: var(--ink); }
-.lights b { font: 700 1.4rem var(--display); letter-spacing: 0.02em; margin-left: 0.5rem; opacity: 0; }
-.lights.go b { opacity: 1; }
-.lane { display: grid; grid-template-columns: minmax(10rem, 15rem) 1fr 7.5rem; gap: 1.25rem; align-items: center; padding: 1rem 0; border-top: 1.5px dashed var(--line); }
-.lane:last-of-type { border-bottom: 1.5px dashed var(--line); }
-.lane-name { font: 700 clamp(1.3rem, 2.4vw, 1.9rem)/1 var(--display); text-transform: uppercase; letter-spacing: -0.02em; }
-.lane-name span { display: block; font: 400 0.8rem/1.4 var(--sans); text-transform: none; letter-spacing: 0; color: var(--muted); margin-top: 0.35rem; }
-.lane-track { position: relative; height: 3.2rem; border-left: 2px solid var(--ink); }
-.lane-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 2px dashed var(--line); }
-.flag { position: absolute; right: 0; top: 0; bottom: 0; width: 14px;
-  background: repeating-conic-gradient(var(--ink) 0 25%, transparent 0 50%) 0 0 / 7px 7px; }
-.car { position: absolute; left: 0; top: 50%; width: 3rem; height: 3rem; margin-top: -1.5rem; will-change: transform; }
-.car svg { width: 100%; height: 100%; fill: var(--bg); stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; }
-.car::after { content: ""; position: absolute; right: 100%; top: 50%; height: 2px; width: 0; background: var(--ink); opacity: 0.6; transition: width 0.25s; }
-.racing .car::after { width: 2.5rem; }
-.sticker { justify-self: start; font: 700 1.25rem var(--display); background: var(--ink); color: var(--bg); padding: 0.35rem 0.7rem; border-radius: 3px;
-  transform: rotate(var(--r)); }
-.race-foot { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; align-items: center; margin-top: 1.75rem; }
-.race-foot p { margin: 0; max-width: 60ch; }
-@media (prefers-reduced-motion: no-preference) {
-  .race.armed .sticker { opacity: 0; transform: rotate(var(--r)) scale(1.8); }
-  .race .sticker.slap { opacity: 1; transform: rotate(var(--r)) scale(1); transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.1s; }
-}
-@media (max-width: 760px) {
-  .lane { grid-template-columns: 1fr auto; }
-  .lane-track { grid-column: 1 / -1; grid-row: 2; }
-}
-
 /* Fading dot fields, in whichever pigment is the ink: white on blue, blue on
    white. Placed per section with dots-tr, dots-bl or dots-center. */
 .dots { position: relative; isolation: isolate; }
@@ -469,3 +407,12 @@ pre.code .k { color: var(--accent); }
 .layer.boundary span { color: var(--bg); opacity: 0.78; }
 .layer.guest { border-style: dashed; border-color: var(--ink); }
 .legend i.b { background: var(--ink); border-color: var(--ink); }
+
+/* White sections stay plain: white ground, blue ink, nothing else. */
+.invert { position: relative; }
+
+/* Workflow figure */
+.workflow { min-width: 46rem; }
+.art .node-strong { fill: var(--ink); }
+.art text.on-strong { fill: var(--bg); }
+.art text.big { font-size: 19px; }

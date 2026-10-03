@@ -151,3 +151,49 @@ def security():
   <path class="s scan" d="M200,232 H560"/>
   {ticks}
 </svg>"""
+
+
+def workflow():
+    """bluebox as a workflow: three ways in, one router, three engines, each
+    booting its own microVM. Signals travel every connector."""
+    out = []
+    W = 1120
+
+    def node(x, y, w, h, title, sub="", i=0, strong=False):
+        cls = "s node-strong" if strong else "s"
+        g = [f'<rect class="{cls}" pathLength="1" style="--i:{i}" x="{x}" y="{y}" width="{w}" height="{h}" rx="6"/>']
+        ty = y + (h / 2 + 6 if not sub else h / 2 - 3)
+        g.append(f'<text class="big lbl{" on-strong" if strong else ""}" style="--i:{i}" x="{x + 18}" y="{ty:.0f}">{title}</text>')
+        if sub:
+            g.append(f'<text class="dim lbl{" on-strong" if strong else ""}" style="--i:{i}" x="{x + 18}" y="{ty + 20:.0f}">{sub}</text>')
+        return "".join(g)
+
+    def flow(d, i, dur, begin):
+        return (f'<path class="s thin" pathLength="1" style="--i:{i}" d="{d}"/>'
+                f'<circle class="f" r="4" opacity="0"><animateMotion dur="{dur}s" begin="{begin}s" repeatCount="indefinite" path="{d}"/>'
+                f'<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="{dur}s" begin="{begin}s" repeatCount="indefinite"/></circle>')
+
+    # Inputs
+    inputs = [("CLI", "bluebox run, exec", 70), ("SDKs", "Python, TS, Go, Rust", 230), ("MCP", "for AI agents", 390)]
+    for k, (t, sub, y) in enumerate(inputs):
+        out.append(node(20, y, 190, 64, t, sub, i=0))
+        out.append(flow(f"M210,{y + 32} C280,{y + 32} 280,262 350,262", 1, 2.2, k * 0.5))
+    # Router
+    out.append(node(350, 210, 230, 104, "bluebox", "Bluefile: backend:", i=2, strong=True))
+    # Engines
+    engines = [("podman", "libkrun via podman", "1.28 s", 70), ("krun", "libkrun, direct", "0.76 s", 230), ("firecracker", "snapshot restore", "0.31 s", 390)]
+    for k, (t, sub, ms, y) in enumerate(engines):
+        out.append(flow(f"M580,262 C650,262 650,{y + 32} 720,{y + 32}", 3, 2.0, 1.1 + k * 0.45))
+        out.append(node(720, y, 200, 64, t, sub, i=4))
+        out.append(f'<g class="lbl" style="--i:5"><rect class="f" x="{928}" y="{y + 20}" width="62" height="24" rx="4"/>'
+                   f'<text class="on-strong" x="{959}" y="{y + 37}" text-anchor="middle">{ms}</text></g>')
+        # Each engine boots its own microVM: a small box with a kernel inside.
+        cx, cy = 1062, y + 32
+        out.append(flow(f"M990,{cy} H1032", 6, 1.2, 2.2 + k * 0.45))
+        out.append(f'<path class="s" pathLength="1" style="--i:6" d="{iso_cube(cx, cy, 26)}"/>'
+                   f'<path class="f pulse" d="{iso_cube(cx, cy, 8).split(" M")[0]}"/>')
+    out.append('<text class="dim lbl" style="--i:6" x="1062" y="490" text-anchor="middle">own kernel</text>')
+    return f"""<svg class="art draw workflow" viewBox="0 0 {W} 500" role="img" aria-labelledby="wf-t">
+  <title id="wf-t">Calls from the CLI, the SDKs and MCP go to bluebox, which reads the Bluefile's backend and boots the sandbox with podman, krun or Firecracker, each a microVM with its own kernel.</title>
+  {''.join(out)}
+</svg>"""

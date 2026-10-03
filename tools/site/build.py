@@ -175,12 +175,6 @@ overview = f"""
   </div>
 </section>
 
-<section class="section">
-  <div class="wrap">
-    <p class="statement">A container shares your kernel. <span>A bluebox sandbox brings its own, boots it in milliseconds, and throws it away.</span></p>
-  </div>
-</section>
-
 <section class="section dots dots-tr" id="speed">
   <div class="wrap">
     <h2>Measured, not claimed.</h2>
@@ -193,39 +187,19 @@ overview = f"""
     </div>
     <figure class="figure reveal" style="margin-top:1.5rem">
       <div class="figure-body">{bars()}</div>
-      <figcaption><b>Figure 1.</b> Median wall-clock latency of a no-op command, measured from the host on one x86_64 Linux machine (KVM). Blue rows are bluebox. Sources and method on the <a href="benchmarks.html">benchmarks</a> page.</figcaption>
+      <figcaption><b>Figure 2.</b> Median wall-clock latency of a no-op command, measured from the host on one x86_64 Linux machine (KVM). Filled rows are bluebox. Sources and method on the <a href="benchmarks.html">benchmarks</a> page.</figcaption>
     </figure>
   </div>
 </section>
 
-<section class="section invert wipe race-section" data-ghost="BOOT">
-  <div class="tape" aria-hidden="true"></div>
+<section class="section invert wipe" id="engines">
   <div class="wrap">
-    <h2 class="stencil">A kernel per sandbox.<br>Three ways to boot it.</h2>
-    <p class="lead">A container shares your kernel; one kernel bug and the workload is on your machine. bluebox gives every sandbox its own, and lets you pick what boots it. Here they race, in real time.</p>
-    <div class="race" data-race>
-      <div class="lights" aria-hidden="true"><i></i><i></i><i></i><b>GO</b></div>
-      <div class="lane" style="--ms:1282">
-        <div class="lane-name">podman<span>libkrun through podman, every feature</span></div>
-        <div class="lane-track"><div class="car" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M20 3 L35 11.5 V28.5 L20 37 L5 28.5 V11.5 Z M5 11.5 L20 20 L35 11.5 M20 20 V37"/></svg></div><div class="flag" aria-hidden="true"></div></div>
-        <div class="sticker" style="--r:-6deg">1.28 s</div>
-      </div>
-      <div class="lane" style="--ms:756">
-        <div class="lane-name">krun<span>libkrun driven directly, no podman</span></div>
-        <div class="lane-track"><div class="car" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M20 3 L35 11.5 V28.5 L20 37 L5 28.5 V11.5 Z M5 11.5 L20 20 L35 11.5 M20 20 V37"/></svg></div><div class="flag" aria-hidden="true"></div></div>
-        <div class="sticker" style="--r:5deg">0.76 s</div>
-      </div>
-      <div class="lane" style="--ms:312">
-        <div class="lane-name">firecracker<span>a snapshot restored per run, 0 VMM capabilities</span></div>
-        <div class="lane-track"><div class="car" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M20 3 L35 11.5 V28.5 L20 37 L5 28.5 V11.5 Z M5 11.5 L20 20 L35 11.5 M20 20 V37"/></svg></div><div class="flag" aria-hidden="true"></div></div>
-        <div class="sticker" style="--r:-3deg">0.31 s</div>
-      </div>
-      
-      <div class="race-foot">
-        <button class="btn btn-primary race-again" type="button">Race again</button>
-        <p class="small muted">Real time, from the measured medians: a fresh VM per command, offline sandbox, no warm pool. With <code>warm:</code>, podman and krun start in about 41 ms. <a href="architecture.html">How each one works</a></p>
-      </div>
-    </div>
+    <h2>One interface, three engines.</h2>
+    <p class="lead">Every call goes through bluebox. The Bluefile's <code>backend:</code> decides what boots the microVM, and each one gives the sandbox its own kernel.</p>
+    <figure class="figure">
+      <div class="figure-body">{art.workflow()}</div>
+      <figcaption><b>Figure 1.</b> From the call to the guest. Times are the median fresh-VM run on each engine, offline and without a warm pool; with <code>warm:</code>, podman and krun start in about 41 ms. <a href="architecture.html">How each one works</a></figcaption>
+    </figure>
   </div>
 </section>
 
@@ -331,7 +305,7 @@ architecture = f"""
   </div>
 </section>
 
-<section class="section invert wipe" data-ghost="KVM">
+<section class="section invert wipe">
   <div class="wrap split">
     <div class="prose">
       <h2 style="margin-bottom:1rem">podman and krun: libkrun</h2>
@@ -460,7 +434,7 @@ security = f"""
   </div>
 </section>
 
-<section class="section invert wipe" data-ghost="JAIL">
+<section class="section invert wipe">
   <div class="wrap">
     <h2>Confinement, per backend</h2>
     <p class="lead">Read off the running VMM by the escape suite, not from configuration.</p>
@@ -551,7 +525,7 @@ benchmarks = f"""
   </div>
 </section>
 
-<section class="section invert wipe" data-ghost="MS">
+<section class="section invert wipe">
   <div class="wrap">
     <h2>Against the baselines</h2>
     <p class="lead">Median of 10 runs after one warm-up. The Python workload is <code>sum(i * i for i in range(100_000))</code>.</p>
@@ -652,7 +626,7 @@ def rows(items, fmt):
 
 
 docs = f"""
-<section class="page-head invert wipe" data-ghost="DOCS">
+<section class="page-head invert wipe">
   <div class="wrap">
     <h1>Documentation</h1>
     <p class="lead">Install, define a sandbox, and drive it from the CLI or from code.</p>

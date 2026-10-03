@@ -148,6 +148,12 @@ func (s *server) track(h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// NewHandler is the API without a listener, for callers that serve it some
+// other way: the MCP server calls it in-process.
+func NewHandler(version string) http.Handler {
+	return (&server{version: version, last: time.Now()}).routes()
+}
+
 func (s *server) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /v1/version", s.track(s.handleVersion))

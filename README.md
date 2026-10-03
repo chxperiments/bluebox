@@ -250,6 +250,7 @@ construction, so nothing a sandbox does with its name can reach outside
 | `bluebox exec <name> -- <cmd>` | run one command in the running microVM |
 | `bluebox down <name>` | stop the running microVM |
 | `bluebox serve` | local API for the SDKs |
+| `bluebox mcp` | MCP server for AI agents (stdio) |
 | `bluebox verify <name>` | re-check that the sandbox has its own kernel |
 | `bluebox doctor` | check the host setup, with a fix for each failure |
 | `bluebox ls` | list sandboxes |
@@ -491,6 +492,30 @@ the agent's port on `127.0.0.1` only. It passes the same escape suite
 does not start inside the nested user namespace that strict needs here, which
 is the next thing to fix. Warm runs and `exec` are milliseconds on both
 backends; the difference is cold boots and how fast the pool refills.
+
+## MCP: bluebox for AI agents
+
+`bluebox mcp` serves bluebox over the Model Context Protocol (stdio), so an
+agent in Claude Code, Claude Desktop, Cursor or any MCP client can run code
+in your sandboxes directly:
+
+```sh
+claude mcp add bluebox -- bluebox mcp
+```
+
+```json
+{ "mcpServers": { "bluebox": { "command": "bluebox", "args": ["mcp"] } } }
+```
+
+Tools: `list_sandboxes`, `run`, `up`, `exec`, `down`, `read_file`,
+`write_file`, `fork`, `diff`, `discard`. Every call goes through the same
+handler as `bluebox serve`, with the same checks. Creating and building
+sandboxes stays with you, on the CLI.
+
+`apply` is deliberately not offered: a fork exists so a human reviews an
+agent's work before it reaches real data, and an agent that could apply its
+own fork would skip that. Start it with `bluebox mcp --allow-apply` if you
+want that anyway.
 
 ## SDKs
 

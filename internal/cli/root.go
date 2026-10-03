@@ -58,7 +58,7 @@ func newRoot() *cobra.Command {
 
 	root.AddCommand(
 		newCmd(), editCmd(), buildCmd(), lsCmd(),
-		runCmd(), shellCmd(), upCmd(), execCmd(), downCmd(), serveCmd(),
+		runCmd(), shellCmd(), upCmd(), execCmd(), downCmd(), serveCmd(), mcpCmd(),
 		resetCmd(), snapshotCmd(), restoreCmd(),
 		forkCmd(), diffCmd(), applyCmd(), discardCmd(),
 		dataCmd(),

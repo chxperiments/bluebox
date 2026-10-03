@@ -14,6 +14,7 @@ import (
 
 	"bluebox/internal/agent"
 	"bluebox/internal/guest"
+	"bluebox/internal/mcp"
 	"bluebox/internal/runtime"
 	"bluebox/internal/sandbox"
 	"bluebox/internal/server"
@@ -182,6 +183,27 @@ func doctorCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func mcpCmd() *cobra.Command {
+	var allowApply bool
+	c := &cobra.Command{
+		Use: "mcp", Short: "MCP server for AI agents (stdio)", GroupID: groupRun,
+		Long: "Serves bluebox over the Model Context Protocol on stdin and stdout,\n" +
+			"for Claude Code, Claude Desktop, Cursor and other MCP clients. Tools:\n" +
+			"list_sandboxes, run, up, exec, down, read_file, write_file, fork,\n" +
+			"diff, discard. Sandboxes themselves are created and built with the CLI.\n\n" +
+			"apply is not offered unless --allow-apply is given: forks exist so a\n" +
+			"human reviews an agent's work before it reaches real data.\n\n" +
+			"  claude mcp add bluebox -- bluebox mcp",
+		Args:              cobra.NoArgs,
+		ValidArgsFunction: completeNothing,
+		RunE: func(*cobra.Command, []string) error {
+			return mcp.New(server.NewHandler(Version), Version, allowApply).Serve(os.Stdin, os.Stdout)
+		},
+	}
+	c.Flags().BoolVar(&allowApply, "allow-apply", false, "also let the agent apply forks to their parents")
+	return c
 }
 
 func serveCmd() *cobra.Command {

@@ -1,8 +1,10 @@
 # bluebox
 
-A sandbox for your AI agent, so it can't break anything. Every command runs
-in a disposable microVM with its own kernel, defined in one file and started
-in milliseconds.
+Just a box for your AI agents.
+
+They can install, delete and break whatever they like inside it; nothing
+outside changes. Every command runs in a disposable microVM with its own
+kernel, defined in one file and started in milliseconds.
 
 **[Docs](https://chxperiments.github.io/bluebox/docs.html)** ·
 [Architecture](https://chxperiments.github.io/bluebox/architecture.html) ·

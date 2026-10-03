@@ -36,16 +36,6 @@
     onView(el, function () { requestAnimationFrame(function () { el.classList.remove("pending"); }); });
   });
 
-  // Once the fit prompt is copied, the AI in the thread stops typing and
-  // asks its first question, as the prompt tells it to.
-  function answer(btn) {
-    if (!btn.hasAttribute("data-ask")) return;
-    var ai = document.querySelector(".msg-ai");
-    if (!ai) return;
-    ai.querySelector(".typing").hidden = true;
-    ai.querySelector(".reply").hidden = false;
-  }
-
   // Copy buttons: data-copy holds the text, or data-copy-from names an element.
   document.querySelectorAll("[data-copy], [data-copy-from]").forEach(function (btn) {
     btn.addEventListener("click", function () {
@@ -59,7 +49,7 @@
       }
       var label0 = btn.textContent;
       var done = function (label) { btn.textContent = label; setTimeout(function () { btn.textContent = label0; }, 1600); };
-      if (navigator.clipboard) navigator.clipboard.writeText(text.trim()).then(function () { done("Copied"); answer(btn); }, function () { done("Select it"); });
+      if (navigator.clipboard) navigator.clipboard.writeText(text.trim()).then(function () { done("Copied"); }, function () { done("Select it"); });
       else done("Select it");
     });
   });

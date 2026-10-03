@@ -13,9 +13,60 @@ from urllib.parse import quote  # noqa: E402
 FIT_PROMPT = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "fit_prompt.txt")).read().strip()
 
 
+# Answers are plain HTML; the same text, tags stripped, feeds the FAQPage
+# structured data, so search results and the page never disagree.
+FAQ = [
+    ("How is this different from running code in a container?",
+     "A container shares your host's kernel, so a kernel bug or a careless <code>mount</code> reaches your machine. bluebox runs each sandbox as a microVM under KVM with its own kernel, and refuses to run one whose kernel matches the host's, which would mean it quietly became a plain container."),
+    ("Do I need root?",
+     "Only once, to install podman and libkrun and create the <code>krun</code> symlink. After that everything runs as you, with rootless podman. Your user needs write access to <code>/dev/kvm</code> (usually the <code>kvm</code> group), and <code>isolation: strict</code> needs a range in <code>/etc/subuid</code>. <code>bluebox doctor</code> checks all of it and prints the fix."),
+    ("Does it work on macOS or Windows?",
+     "Linux with KVM is the main target. On macOS it runs through a podman machine, but <code>up</code>/<code>exec</code>, the warm pool, forks and the krun and firecracker backends are Linux-only. On Windows, use WSL2 with <code>/dev/kvm</code> available: the published benchmarks were measured that way."),
+    ("How fast is it?",
+     "A cold run takes about 1.3 s on podman, 0.75 s on krun and 0.3 s on firecracker. With <code>warm:</code> set, a fresh-VM run takes 20 to 45 ms, and <code>exec</code> into a running sandbox about 15 ms. <a href=\"benchmarks.html\">Method and numbers</a>."),
+    ("What is kept between runs?",
+     "Only <code>/data</code>, a directory on your host at <code>~/.bluebox/data/&lt;name&gt;/</code>. Every <code>run</code> is a new VM, so installed packages, files elsewhere and processes are gone. <code>up</code> keeps one VM alive when you want state to last across commands."),
+    ("Can a sandbox reach the internet or my machine?",
+     "With <code>network: bridge</code> it reaches the internet; with <code>network: none</code> it has no network at all. Either way it has its own network namespace and cannot reach services on your host's loopback. It sees only the host directories its Bluefile declares, read-only unless you say <code>rw</code>."),
+    ("Is it safe for code written by an AI agent?",
+     "That is what it is for. Use <code>isolation: strict</code>: the guest has its own kernel, and the VMM around it is confined and runs as a UID that is not yours. It is not built for hostile multi-tenant hosting, and strict sandboxes share one UID between them. <a href=\"security.html\">The threat model</a> covers what it does not protect."),
+    ("Which backend should I use?",
+     "Start with <code>podman</code>, the default: it supports everything. <code>krun</code> boots faster but supports <code>isolation: standard</code> only, for now. <code>firecracker</code> is fastest to start but is x86_64-only and has no network, host mounts or forks yet."),
+    ("How do I let an agent use it?",
+     "Add the MCP server: <code>claude mcp add bluebox -- bluebox mcp</code>. The agent can run, exec, read and write files, and fork, but cannot apply a fork to real data unless you start the server with <code>--allow-apply</code>. Creating and building sandboxes stays with you."),
+    ("Is it a hosted service? What does it cost?",
+     "Neither. bluebox runs on your laptop or your own server, MIT-licensed and free. Nothing is sent anywhere. It also has no GPU support, so GPU workloads need something else."),
+]
+
+
+def faq_section():
+    import json, re
+    items = "".join(
+        f'<details class="faq-item"><summary><span class="faq-n">{i:02d}</span>'
+        f'<span class="faq-q">{q}</span><span class="faq-x" aria-hidden="true"></span></summary>'
+        f'<div class="faq-a"><p>{a}</p></div></details>'
+        for i, (q, a) in enumerate(FAQ, 1))
+    ld = {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [
+        {"@type": "Question", "name": q,
+         "acceptedAnswer": {"@type": "Answer", "text": re.sub(r"<[^>]+>", "", a).replace("&lt;", "<").replace("&gt;", ">")}}
+        for q, a in FAQ]}
+    return f"""
+<section class="section" id="faq">
+  <div class="wrap faq">
+    <div class="faq-side">
+      <h2>Questions, answered.</h2>
+      <p class="lead">Still unsure? <a href="#ask">Ask your AI</a> with the prompt above.</p>
+    </div>
+    <div class="faq-list reveal">{items}</div>
+  </div>
+  <script type="application/ld+json">{json.dumps(ld)}</script>
+</section>
+"""
+
+
 def ask_section():
-    """A chat thread: the visitor's message is the prompt, the reply is still
-    typing. Copy it, or open it straight in Claude or ChatGPT."""
+    """The prompt as a message ready to send: copy it, or open it straight
+    in Claude or ChatGPT."""
     q = quote(FIT_PROMPT)
     kb = len(FIT_PROMPT.encode()) / 1024
     return f"""
@@ -32,13 +83,8 @@ def ask_section():
         <pre class="msg-body" id="fit-prompt">{esc(FIT_PROMPT)}</pre>
         <button class="msg-more" type="button" aria-expanded="false" aria-controls="fit-prompt">Show the whole prompt</button>
       </div>
-      <div class="msg msg-ai" aria-live="polite">
-        <div class="msg-head"><span>your AI</span></div>
-        <p class="typing" aria-hidden="true"><i></i><i></i><i></i></p>
-        <p class="reply" hidden>Got it. What are you building?</p>
-      </div>
       <div class="ask-actions">
-        <button class="btn btn-primary" type="button" data-copy-from="#fit-prompt" data-ask>Copy prompt</button>
+        <button class="btn btn-primary" type="button" data-copy-from="#fit-prompt">Copy prompt</button>
         <a class="btn btn-ghost" href="https://claude.ai/new?q={q}" target="_blank" rel="noopener">Ask Claude</a>
         <a class="btn btn-ghost" href="https://chatgpt.com/?q={q}" target="_blank" rel="noopener">Ask ChatGPT</a>
       </div>
@@ -284,6 +330,7 @@ overview = f"""
 </section>
 
 {ask_section()}
+{faq_section()}
 <section class="section" id="about">
   <div class="wrap split">
     <div class="prose">

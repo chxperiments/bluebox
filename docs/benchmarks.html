@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1300f9">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
@@ -39,16 +39,16 @@
   <div class="wrap">
     <figure class="figure">
       <div class="figure-body"><div class="bars" role="list"><div class="bar" role="listitem"><div class="label"><b>podman + krun</b><span>a microVM booted per command</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:100.0%"></div></div><div class="ms">1,618 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, podman backend</b><span>booted per command</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:87.2%"></div></div><div class="ms">1,411 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, krun backend</b><span>booted per command, no podman</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:71.0%"></div></div><div class="ms">1,148 ms</div></div><div class="bar" role="listitem"><div class="label"><b>podman + runc</b><span>plain container, shares your kernel</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:27.8%"></div></div><div class="ms">450 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, firecracker</b><span>a fresh VM from a snapshot, offline</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:19.3%"></div></div><div class="ms">312 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox run, warm pool</b><span>a fresh VM waiting in the pool</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:2.5%"></div></div><div class="ms">41 ms</div></div><div class="bar us" role="listitem"><div class="label"><b>bluebox exec</b><span>a command in a running VM</span></div><div class="track" aria-hidden="true"><div class="fill" style="--w:0.9%"></div></div><div class="ms">15 ms</div></div></div></div>
-      <figcaption><b>Figure 1.</b> Median latency of a no-op command. podman, runc, krun, warm pool and exec from <code>bench/bench.py</code>; the backend rows from the comparison below, on an offline sandbox.</figcaption>
     </figure>
   </div>
 </section>
 
 <section class="section invert wipe">
+  <div class="drips"><svg class="drips-svg" viewBox="0 0 1200 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0,0 L32.6,12.6 L58.7,10.3 L69.1,10.5 L70.6,15.5 A6.3,6.3 0 0 0 83.3,15.5 L84.9,7.5 L95.2,8.5 L122.1,12.5 L151.4,4.6 L192.1,5.4 L229.9,12.6 L253.8,11.9 L261.0,8.8 L263.1,18.6 A8.6,8.6 0 0 0 280.3,18.6 L282.4,12.0 L289.7,5.3 L330.4,12.3 L329.9,8.1 L331.8,16.9 A7.8,7.8 0 0 0 347.5,16.9 L349.4,11.8 L348.9,7.4 L388.6,6.2 L422.2,8.7 L429.2,9.6 L430.6,58.0 A5.6,5.6 0 0 0 441.8,58.0 L443.2,9.3 L450.2,9.0 L471.9,12.2 L476.4,7.6 L478.2,64.9 A7.1,7.1 0 0 0 492.4,64.9 L494.2,6.1 L498.8,10.8 L526.5,6.5 L562.3,6.8 L582.4,12.2 L600.9,10.2 L630.2,12.6 L640.2,6.9 L641.7,25.0 A5.8,5.8 0 0 0 653.3,25.0 L654.7,6.7 L664.8,5.9 L706.3,11.2 L750.1,4.4 L761.9,9.9 L763.9,57.2 A8.2,8.2 0 0 0 780.2,57.2 L782.3,8.4 L794.0,4.7 L814.4,6.2 L823.4,10.3 L824.9,23.2 A6.0,6.0 0 0 0 836.8,23.2 L838.3,8.9 L847.3,7.5 L878.9,8.6 L909.4,10.8 L913.8,6.2 L915.3,24.6 A6.3,6.3 0 0 0 927.9,24.6 L929.4,10.5 L933.8,9.1 L963.6,7.0 L997.8,9.0 L1005.6,7.8 L1007.6,69.9 A7.8,7.8 0 0 0 1023.2,69.9 L1025.2,8.1 L1033.0,9.3 L1065.5,5.7 L1099.6,10.9 L1106.3,8.8 L1108.0,42.2 A6.9,6.9 0 0 0 1121.9,42.2 L1123.6,6.1 L1130.2,6.4 L1175.9,8.2 L1186.8,10.2 L1188.5,29.0 A6.9,6.9 0 0 0 1202.3,29.0 L1204.0,6.2 L1200.0,8.2 L1200,0 Z"/></svg></div>
   <div class="wrap">
     <h2>Against the baselines</h2>
     <p class="lead">Median of 10 runs after one warm-up. The Python workload is <code>sum(i * i for i in range(100_000))</code>.</p>
-    <div class="table-wrap"><table>
+    <div class="table-wrap build"><table>
 <thead><tr><th>Path</th><th>Isolation</th><th class="num">No-op</th><th class="num">Python workload</th></tr></thead>
 <tbody><tr><td>host process</td><td>none</td><td class="num">0.8 ms</td><td class="num">19 ms</td></tr><tr><td>podman + runc</td><td>container</td><td class="num">450 ms</td><td class="num">514 ms</td></tr><tr><td>podman + krun</td><td>microVM</td><td class="num">1,618 ms</td><td class="num">1,821 ms</td></tr><tr class="us"><td>bluebox run, cold (podman)</td><td>microVM</td><td class="num">1,411 ms</td><td class="num">1,514 ms</td></tr><tr class="us"><td>bluebox run, warm pool</td><td>microVM, fresh per run</td><td class="num">41 ms</td><td class="num">149 ms</td></tr><tr class="us"><td>bluebox exec</td><td>microVM, persistent</td><td class="num">15 ms</td><td class="num">62 ms</td></tr><tr><td>pydantic-monty, new session</td><td>interpreter subprocess</td><td class="num">0.5 ms</td><td class="num">12 ms</td></tr></tbody></table></div>
     <p class="small muted" style="margin-top:1rem">Monty is Pydantic's sandboxed Python interpreter, listed for scale: it runs a subset of Python in microseconds, with no VM and no Linux programs. A warm-pool run is measured while the pool refills in the background; with the refill finished it measures 20 to 30 ms.</p>
@@ -59,7 +59,7 @@
   <div class="wrap">
     <h2>Backends, side by side</h2>
     <p class="lead">Same alpine image, 1 vCPU, 512 MiB, <code>network: none</code>, median of 7. podman and krun were measured with networking for <code>up</code>, which they need for their agent.</p>
-    <div class="table-wrap"><table>
+    <div class="table-wrap build"><table>
 <thead><tr><th>Backend</th><th class="num">Fresh-VM run</th><th class="num">up</th><th>VMM capabilities</th></tr></thead>
 <tbody><tr><td class="mono">podman</td><td class="num">1,282 ms</td><td class="num">1,612 ms</td><td>6 caps</td></tr><tr><td class="mono">krun</td><td class="num">756 ms</td><td class="num">1,032 ms</td><td>6 caps</td></tr><tr><td class="mono">firecracker</td><td class="num">312 ms</td><td class="num">312 ms</td><td>0 caps</td></tr></tbody></table></div>
   </div>
@@ -85,6 +85,7 @@ security/escape-test.sh ./bluebox strict firecracker</pre>
 
 </main>
 <footer class="footer invert wipe">
+  <div class="drips"><svg class="drips-svg" viewBox="0 0 1200 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0,0 L43.9,12.0 L64.2,7.8 L72.4,7.3 L74.1,24.8 A6.6,6.6 0 0 0 87.2,24.8 L88.9,8.7 L97.1,4.2 L117.5,7.8 L149.8,7.2 L169.4,9.3 L205.9,12.7 L234.0,7.3 L268.0,6.8 L288.4,10.5 L298.8,7.1 L300.2,50.0 A5.5,5.5 0 0 0 311.2,50.0 L312.6,7.9 L323.0,11.3 L328.5,7.7 L329.8,19.5 A5.0,5.0 0 0 0 339.7,19.5 L340.9,9.4 L346.5,11.4 L352.6,10.7 L354.1,30.2 A6.0,6.0 0 0 0 366.1,30.2 L367.6,9.3 L373.7,6.3 L394.7,10.4 L404.7,9.6 L406.8,44.5 A8.5,8.5 0 0 0 423.8,44.5 L425.9,11.7 L435.9,5.5 L452.5,10.9 L453.7,37.3 A4.9,4.9 0 0 0 463.5,37.3 L464.7,10.1 L481.2,12.8 L521.8,8.8 L567.4,7.1 L583.7,8.8 L585.0,24.8 A5.1,5.1 0 0 0 595.2,24.8 L596.4,7.2 L612.7,12.4 L626.4,7.0 L628.1,19.8 A6.9,6.9 0 0 0 641.9,19.8 L643.7,9.3 L657.3,11.3 L661.6,8.1 L663.3,64.4 A6.6,6.6 0 0 0 676.4,64.4 L678.1,11.4 L682.4,11.3 L725.5,7.7 L762.9,9.8 L765.4,9.3 L767.3,36.9 A7.9,7.9 0 0 0 783.1,36.9 L785.1,9.3 L787.6,11.4 L808.6,7.0 L842.3,6.2 L855.9,7.4 L857.6,45.5 A7.0,7.0 0 0 0 871.5,45.5 L873.3,9.4 L886.9,8.2 L917.5,4.0 L946.0,5.3 L960.3,8.7 L961.7,52.1 A5.5,5.5 0 0 0 972.7,52.1 L974.1,8.5 L988.3,4.7 L1025.9,10.2 L1059.0,8.7 L1085.4,4.8 L1127.9,8.5 L1167.7,9.4 L1173.2,11.8 L1174.7,33.6 A6.0,6.0 0 0 0 1186.7,33.6 L1188.2,8.0 L1193.8,7.5 L1200.0,8.3 L1200,0 Z"/></svg></div>
   <div class="wrap">
     <div class="footer-top">
       <div>
@@ -118,7 +119,7 @@ security/escape-test.sh ./bluebox strict firecracker</pre>
         <a href="https://github.com/chxperiments/bluebox/tree/main/examples">Examples</a>
       </nav>
     </div>
-    <div class="wordmark" aria-hidden="true"><svg viewBox="0 0 1000 245" preserveAspectRatio="xMinYMid meet"><text x="8" y="212" textLength="950" lengthAdjust="spacingAndGlyphs">bluebox</text></svg></div>
+    <div class="wordmark" aria-hidden="true"><svg viewBox="0 -80 1000 325" preserveAspectRatio="xMinYMid meet"><text x="8" y="212" textLength="950" lengthAdjust="spacingAndGlyphs">bluebox</text><g class="crown" transform="translate(842 -66) rotate(9 50 35) scale(1.25)"><path class="tag-stroke" pathLength="1" d="M8,62 L14,18 L34,44 L50,6 L66,44 L86,18 L92,62 Z"/><circle class="tag-dot" cx="14" cy="13" r="5"/><circle class="tag-dot" cx="50" cy="1" r="5"/><circle class="tag-dot" cx="86" cy="13" r="5"/></g></svg></div>
     <div class="footer-base">
       <span>MIT licensed. Isolated, disposable microVM sandboxes.</span>
       <a href="#top">Back to top</a>

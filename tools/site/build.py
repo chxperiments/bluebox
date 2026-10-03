@@ -161,13 +161,19 @@ def bluefile_explorer():
 overview = f"""
 <section class="hero hero-center dots dots-center">
   <div class="wrap">
-    <div class="hero-art hero-art-wide">{art.hero_labelled()}</div>
+    <div class="hero-stage">
+      <div class="hero-art hero-art-wide">{art.hero_labelled()}</div>
+      <div class="hero-badge">{art.badge()}</div>
+    </div>
     <div class="hero-art hero-art-narrow">{art.hero_minimal()}</div>
     <h1>Disposable microVMs for AI agents.</h1>
     <p class="lead">Every command in its own virtual machine, with its own kernel.</p>
-    <div class="install">
-      <code><span class="p">$ </span>curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh</code>
-      <button class="copy" type="button" data-copy="curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh">Copy</button>
+    <div class="install-wrap">
+      {art.arrow()}
+      <div class="install">
+        <code><span class="p">$ </span>curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh</code>
+        <button class="copy" type="button" data-copy="curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh">Copy</button>
+      </div>
     </div>
     <div class="cta-row">
       <a class="btn btn-primary" href="docs.html">Read the docs</a>
@@ -179,6 +185,7 @@ overview = f"""
 <section class="section dots dots-tr" id="speed">
   <div class="wrap">
     <h2>Measured, not claimed.</h2>
+    {art.scribble(4)}
     <p class="lead">Isolation used to cost a second per command. bluebox pays it before the command arrives.</p>
     <div class="numbers reveal">
       <div><b>15<small>ms</small></b><span>a command in a running VM</span></div>
@@ -188,18 +195,17 @@ overview = f"""
     </div>
     <figure class="figure reveal" style="margin-top:1.5rem">
       <div class="figure-body">{bars()}</div>
-      <figcaption><b>Figure 2.</b> Median wall-clock latency of a no-op command, measured from the host on one x86_64 Linux machine (KVM). Filled rows are bluebox. Sources and method on the <a href="benchmarks.html">benchmarks</a> page.</figcaption>
     </figure>
   </div>
 </section>
 
 <section class="section invert wipe dots dots-tr" id="engines">
+  <div class="drips">{art.drips(7)}</div>
   <div class="wrap">
     <h2>One interface, three engines.</h2>
     <p class="lead">Every call goes through bluebox. The Bluefile's <code>backend:</code> decides what boots the microVM, and each one gives the sandbox its own kernel.</p>
     <figure class="figure">
       <div class="figure-body">{art.workflow()}</div>
-      <figcaption><b>Figure 1.</b> From the call to the guest. Times are the median fresh-VM run on each engine, offline and without a warm pool; with <code>warm:</code>, podman and krun start in about 41 ms. <a href="architecture.html">How each one works</a></figcaption>
     </figure>
   </div>
 </section>
@@ -207,6 +213,7 @@ overview = f"""
 <section class="section" id="bluefile">
   <div class="wrap">
     <h2>The whole sandbox is one file.</h2>
+    {art.scribble(5)}
     <p class="lead">Declare it; bluebox builds it, proves it has its own kernel, and refuses it if not. Point at a line.</p>
     {bluefile_explorer()}
   </div>
@@ -221,6 +228,7 @@ overview = f"""
   <div class="wrap split">
     <div class="prose">
       <h2 style="margin-bottom:1rem">Branch, review, apply.</h2>
+    {art.scribble(3)}
       <p><b>Fork</b> a sandbox and its <code>/data</code> branches in milliseconds, so an agent can try several approaches side by side without touching the original.</p>
       <p><b>Diff</b> shows exactly what a trial changed. Its work reaches your data only when you <b>apply</b> it; the rest you <b>discard</b>. Agents on MCP can fork and diff, but applying stays with you.</p>
       <p><a href="docs.html#sdk-fork">Forks in the docs</a></p>
@@ -274,11 +282,17 @@ LAYER_ROWS = [
 ]
 
 
+_cell = 0
+
+
 def layer_row(label, kind, cells):
     span = ' style="grid-column: span 3"' if len(cells) == 1 else ""
+    global _cell
     out = f'<div class="layers-label">{label}</div>'
     for t, sub in cells:
-        out += f'<div class="layer {kind}"{span}><b>{t}</b><span>{sub}</span></div>'
+        _cell += 1
+        style = f' style="--n:{_cell}' + ('; grid-column: span 3"' if len(cells) == 1 else '"')
+        out += f'<div class="layer {kind}"{style}><b>{t}</b><span>{sub}</span></div>'
     return out
 
 
@@ -287,7 +301,7 @@ def cell(title, sub, extra=""):
 
 
 stack = f"""
-<div class="layers">
+<div class="layers build">
   <div class="layers-corner"></div>
   {''.join(f'<div class="layers-col"><b>{n}</b><span>{d}</span></div>' for n, d in [("podman", "the default"), ("krun", "libkrun, no podman"), ("firecracker", "a snapshot per run")])}
   {''.join(layer_row(*r) for r in LAYER_ROWS)}
@@ -307,16 +321,15 @@ architecture = f"""
   <div class="wrap">
     <figure class="figure" style="margin-bottom:2rem">
       <div class="figure-body">{art.architecture()}</div>
-      <figcaption><b>Figure 1.</b> A command's path on each backend, from the interface to the guest.</figcaption>
     </figure>
     <figure class="figure">
       <div class="figure-body">{stack}</div>
-      <figcaption><b>Figure 2.</b> The layers of a sandbox on each backend, from the interface you call to the guest that runs your command. Images are always built by podman.</figcaption>
     </figure>
   </div>
 </section>
 
 <section class="section invert wipe">
+  <div class="drips">{art.drips(11)}</div>
   <div class="wrap split">
     <div class="prose">
       <h2 style="margin-bottom:1rem">podman and krun: libkrun</h2>
@@ -361,7 +374,7 @@ architecture = f"""
     <h2>Data and forks</h2>
     <p class="lead">Everything in a sandbox resets per run except <code>/data</code>, so state is a filesystem problem, and filesystem problems are cheap.</p>
     <div class="art-frame" style="margin-bottom:2rem">{art.fork()}</div>
-    <div class="table-wrap">
+    <div class="table-wrap build">
       <table>
         <thead><tr><th>Operation</th><th>What happens</th><th>Cost</th></tr></thead>
         <tbody>
@@ -396,7 +409,7 @@ def conf_table():
     rows = []
     for name, a, b, c_ in CONF:
         rows.append(f"<tr><td>{name}</td><td>{a}</td><td>{b}</td><td>{c_}</td></tr>")
-    return f"""<div class="table-wrap"><table>
+    return f"""<div class="table-wrap build"><table>
 <thead><tr><th>Property</th><th>podman</th><th>krun</th><th>firecracker</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table></div>"""
 
@@ -446,6 +459,7 @@ security = f"""
 </section>
 
 <section class="section invert wipe">
+  <div class="drips">{art.drips(13)}</div>
   <div class="wrap">
     <h2>Confinement, per backend</h2>
     <p class="lead">Read off the running VMM by the escape suite, not from configuration.</p>
@@ -456,9 +470,10 @@ security = f"""
 <section class="section">
   <div class="wrap">
     <h2>The escape suite</h2>
+    {art.scribble(5)}
     <p class="lead">Every check below passes on podman (strict), krun (standard) and Firecracker (strict and standard). Run it yourself:</p>
     <pre class="code" style="margin-bottom:1.75rem">security/escape-test.sh "$(command -v bluebox)" strict firecracker</pre>
-    <div class="checks">{''.join(f'<div>{x}</div>' for x in CHECKS)}</div>
+    <div class="checks build">{''.join(f'<div style="--n:{i}">{x}</div>' for i, x in enumerate(CHECKS))}</div>
   </div>
 </section>
 
@@ -507,14 +522,14 @@ def bench_table():
     for r in BENCH:
         us = len(r) > 4
         rows.append(f'<tr{" class=\"us\"" if us else ""}><td>{r[0]}</td><td>{r[1]}</td><td class="num">{r[2]} ms</td><td class="num">{r[3]} ms</td></tr>')
-    return f"""<div class="table-wrap"><table>
+    return f"""<div class="table-wrap build"><table>
 <thead><tr><th>Path</th><th>Isolation</th><th class="num">No-op</th><th class="num">Python workload</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table></div>"""
 
 
 def backend_table():
     rows = "".join(f'<tr><td class="mono">{a}</td><td class="num">{b} ms</td><td class="num">{c_} ms</td><td>{d}</td></tr>' for a, b, c_, d in BACKENDS)
-    return f"""<div class="table-wrap"><table>
+    return f"""<div class="table-wrap build"><table>
 <thead><tr><th>Backend</th><th class="num">Fresh-VM run</th><th class="num">up</th><th>VMM capabilities</th></tr></thead>
 <tbody>{rows}</tbody></table></div>"""
 
@@ -531,12 +546,12 @@ benchmarks = f"""
   <div class="wrap">
     <figure class="figure">
       <div class="figure-body">{bars()}</div>
-      <figcaption><b>Figure 1.</b> Median latency of a no-op command. podman, runc, krun, warm pool and exec from <code>bench/bench.py</code>; the backend rows from the comparison below, on an offline sandbox.</figcaption>
     </figure>
   </div>
 </section>
 
 <section class="section invert wipe">
+  <div class="drips">{art.drips(17)}</div>
   <div class="wrap">
     <h2>Against the baselines</h2>
     <p class="lead">Median of 10 runs after one warm-up. The Python workload is <code>sum(i * i for i in range(100_000))</code>.</p>
@@ -638,6 +653,7 @@ def rows(items, fmt):
 
 docs = f"""
 <section class="page-head invert wipe">
+  <div class="drips">{art.drips(19)}</div>
   <div class="wrap">
     <h1>Documentation</h1>
     <p class="lead">Install, define a sandbox, and drive it from the CLI or from code.</p>
@@ -679,13 +695,13 @@ bluebox down agent</pre>
 
     <h2 id="bluefile">Bluefile</h2>
     <p>One YAML file per sandbox at <code>~/.bluebox/sandboxes/&lt;name&gt;/Bluefile</code>. Unknown keys are rejected, so a typo fails loudly.</p>
-    <div class="table-wrap"><table>
+    <div class="table-wrap build"><table>
       <thead><tr><th>Field</th><th>Values</th><th>Default</th><th>Meaning</th></tr></thead>
       <tbody>{rows(BLUEFILE_FIELDS, lambda f, v, d, m: f'<tr><td class="mono">{f}</td><td>{v}</td><td class="mono">{d}</td><td>{m}</td></tr>')}</tbody>
     </table></div>
 
     <h2 id="cli">CLI</h2>
-    <div class="table-wrap"><table>
+    <div class="table-wrap build"><table>
       <thead><tr><th>Command</th><th>What it does</th></tr></thead>
       <tbody>{rows(CLI, lambda a, b: f'<tr><td class="mono">bluebox {esc(a)}</td><td>{b}</td></tr>')}</tbody>
     </table></div>
@@ -742,7 +758,7 @@ bluebox down agent</pre>
     <p><code>bluebox mcp</code> serves bluebox over the Model Context Protocol on stdin and stdout, so an agent in Claude Code, Claude Desktop, Cursor or any MCP client can run code in your sandboxes. Every tool goes through the same handler as the local API, with the same checks. Sandboxes are still created and built by you, on the CLI.</p>
     <pre class="code">claude mcp add bluebox -- bluebox mcp</pre>
     <pre class="code">{{ "mcpServers": {{ "bluebox": {{ "command": "bluebox", "args": ["mcp"] }} }} }}</pre>
-    <div class="table-wrap"><table>
+    <div class="table-wrap build"><table>
       <thead><tr><th>Tool</th><th>What it does</th></tr></thead>
       <tbody>
         <tr><td class="mono">list_sandboxes</td><td>The sandboxes the agent may use</td></tr>
@@ -756,7 +772,7 @@ bluebox down agent</pre>
 
     <h2 id="api">Local API</h2>
     <p>HTTP with JSON bodies on <code>~/.bluebox/bluebox.sock</code>, owner-only. <code>stdout</code>, <code>stderr</code> and <code>stdin</code> are base64. The SDKs are thin clients of this.</p>
-    <div class="table-wrap"><table>
+    <div class="table-wrap build"><table>
       <thead><tr><th>Method</th><th>Path</th><th>Body or result</th></tr></thead>
       <tbody>{rows(API, lambda m, p, b: f'<tr><td class="mono">{m}</td><td class="mono">{esc(p)}</td><td>{b}</td></tr>')}</tbody>
     </table></div>

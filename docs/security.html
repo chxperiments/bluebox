@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#1300f9">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
@@ -57,10 +57,11 @@
 </section>
 
 <section class="section invert wipe">
+  <div class="drips"><svg class="drips-svg" viewBox="0 0 1200 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0,0 L25.3,10.2 L39.4,7.4 L40.8,26.9 A5.4,5.4 0 0 0 51.5,26.9 L52.9,10.4 L67.0,5.2 L75.3,11.0 L76.9,30.5 A6.5,6.5 0 0 0 90.0,30.5 L91.6,9.7 L99.9,4.1 L102.7,10.8 L104.7,62.8 A8.0,8.0 0 0 0 120.8,62.8 L122.8,11.0 L125.6,10.7 L170.2,6.3 L212.0,10.8 L220.8,7.9 L222.4,34.4 A6.5,6.5 0 0 0 235.4,34.4 L237.1,6.7 L245.8,11.4 L286.2,10.2 L319.7,5.2 L331.1,9.1 L332.5,23.9 A5.6,5.6 0 0 0 343.8,23.9 L345.2,7.5 L356.6,8.1 L365.7,7.4 L367.3,21.3 A6.8,6.8 0 0 0 380.9,21.3 L382.6,7.4 L391.6,5.8 L394.9,8.3 L397.1,50.5 A8.6,8.6 0 0 0 414.3,50.5 L416.5,10.3 L419.8,12.4 L419.3,9.8 L421.3,59.1 A8.2,8.2 0 0 0 437.6,59.1 L439.6,7.0 L439.1,7.7 L481.4,11.2 L505.1,7.4 L515.1,10.3 L516.9,68.4 A7.2,7.2 0 0 0 531.3,68.4 L533.1,7.3 L543.1,9.6 L577.4,7.2 L589.7,10.1 L591.1,30.5 A5.5,5.5 0 0 0 602.0,30.5 L603.4,6.7 L615.8,6.0 L635.7,9.0 L644.6,6.6 L646.1,38.6 A6.2,6.2 0 0 0 658.5,38.6 L660.0,6.0 L668.9,13.0 L670.6,6.5 L672.4,29.1 A7.2,7.2 0 0 0 686.8,29.1 L688.6,8.8 L690.3,7.3 L702.5,11.8 L704.2,32.7 A6.8,6.8 0 0 0 717.8,32.7 L719.5,9.1 L731.7,8.3 L741.5,11.5 L743.2,15.8 A6.8,6.8 0 0 0 756.8,15.8 L758.5,10.4 L768.4,6.3 L805.6,6.3 L815.4,7.2 L816.9,27.7 A5.9,5.9 0 0 0 828.8,27.7 L830.2,8.1 L840.0,4.3 L845.6,6.0 L847.4,56.5 A7.2,7.2 0 0 0 861.8,56.5 L863.6,10.6 L869.2,5.7 L900.6,7.0 L903.4,6.7 L905.4,21.7 A8.3,8.3 0 0 0 921.9,21.7 L924.0,10.9 L926.7,6.0 L933.3,8.2 L934.7,15.9 A5.3,5.3 0 0 0 945.3,15.9 L946.6,8.7 L953.2,11.9 L969.4,10.8 L970.8,44.0 A5.3,5.3 0 0 0 981.4,44.0 L982.7,7.9 L998.9,12.0 L1008.3,11.2 L1009.8,14.3 A5.8,5.8 0 0 0 1021.4,14.3 L1022.8,6.9 L1032.2,8.3 L1039.3,10.3 L1040.8,58.9 A5.7,5.7 0 0 0 1052.1,58.9 L1053.5,10.0 L1060.6,12.4 L1093.2,8.0 L1127.2,11.6 L1140.1,10.9 L1141.9,21.7 A6.9,6.9 0 0 0 1155.7,21.7 L1157.5,9.2 L1170.4,6.7 L1186.6,6.2 L1187.8,18.9 A5.0,5.0 0 0 0 1197.8,18.9 L1199.1,10.4 L1200.0,5.0 L1200,0 Z"/></svg></div>
   <div class="wrap">
     <h2>Confinement, per backend</h2>
     <p class="lead">Read off the running VMM by the escape suite, not from configuration.</p>
-    <div class="table-wrap"><table>
+    <div class="table-wrap build"><table>
 <thead><tr><th>Property</th><th>podman</th><th>krun</th><th>firecracker</th></tr></thead>
 <tbody><tr><td>Guest has its own kernel (KVM)</td><td>yes</td><td>yes</td><td>yes</td></tr><tr><td>VMM capabilities</td><td>6</td><td>6</td><td>0</td></tr><tr><td>no_new_privs</td><td>yes</td><td>yes</td><td>yes</td></tr><tr><td>seccomp on the VMM</td><td>podman default</td><td>podman default</td><td>podman default + Firecracker's own</td></tr><tr><td>VMM network namespace</td><td>own</td><td>own</td><td>own, empty</td></tr><tr><td>pids / memory limit</td><td>512 / RAM + 256 MiB</td><td>512 / RAM + 256 MiB</td><td>512 / RAM + 256 MiB</td></tr><tr><td>VMM host UID under isolation: strict</td><td>subordinate</td><td>strict refused</td><td>subordinate</td></tr><tr><td>Host directories shared into the guest</td><td>/data, declared mounts</td><td>/data, declared mounts</td><td>none (/data is a disk)</td></tr><tr><td>Agent channel</td><td>TCP 127.0.0.1 + token</td><td>TCP 127.0.0.1 + token</td><td>vsock, owner-only socket</td></tr></tbody></table></div>
   </div>
@@ -69,9 +70,10 @@
 <section class="section">
   <div class="wrap">
     <h2>The escape suite</h2>
+    <svg class="scribble on-view" viewBox="0 0 240 30" aria-hidden="true"><path class="s mark" pathLength="1" style="--i:0" d="M4,12.5 C60,5.0 140,17.2 236,9.8"/><path class="s mark" pathLength="1" style="--i:2" d="M18,23.0 C90,15.7 160,22.1 226,17.9"/></svg>
     <p class="lead">Every check below passes on podman (strict), krun (standard) and Firecracker (strict and standard). Run it yourself:</p>
     <pre class="code" style="margin-bottom:1.75rem">security/escape-test.sh "$(command -v bluebox)" strict firecracker</pre>
-    <div class="checks"><div>Guest runs its own kernel, not the host's</div><div>No service on host loopback is reachable (127.0.0.1, localhost, gateway, host.containers.internal)</div><div>Host paths outside declared mounts are invisible</div><div>Symlinks in shared directories resolve inside the guest</div><div>No ../ traversal out of a shared directory</div><div>Read-only mounts refuse writes, and cannot be remounted writable</div><div>The read-only root refuses writes</div><div>The agent's token is not visible inside the guest</div><div>The agent binary cannot be overwritten</div><div>The SDK server's socket is not exposed to the guest</div><div>No /dev/kvm in the guest</div><div>VMM has no_new_privs and a seccomp filter</div><div>VMM holds only the capabilities it needs (none on Firecracker)</div><div>VMM runs as a UID that is not yours, under strict</div><div>VMM is in its own network namespace</div><div>VMM has a pids limit and a memory limit</div><div>The host stays responsive during a guest fork bomb</div></div>
+    <div class="checks build"><div style="--n:0">Guest runs its own kernel, not the host's</div><div style="--n:1">No service on host loopback is reachable (127.0.0.1, localhost, gateway, host.containers.internal)</div><div style="--n:2">Host paths outside declared mounts are invisible</div><div style="--n:3">Symlinks in shared directories resolve inside the guest</div><div style="--n:4">No ../ traversal out of a shared directory</div><div style="--n:5">Read-only mounts refuse writes, and cannot be remounted writable</div><div style="--n:6">The read-only root refuses writes</div><div style="--n:7">The agent's token is not visible inside the guest</div><div style="--n:8">The agent binary cannot be overwritten</div><div style="--n:9">The SDK server's socket is not exposed to the guest</div><div style="--n:10">No /dev/kvm in the guest</div><div style="--n:11">VMM has no_new_privs and a seccomp filter</div><div style="--n:12">VMM holds only the capabilities it needs (none on Firecracker)</div><div style="--n:13">VMM runs as a UID that is not yours, under strict</div><div style="--n:14">VMM is in its own network namespace</div><div style="--n:15">VMM has a pids limit and a memory limit</div><div style="--n:16">The host stays responsive during a guest fork bomb</div></div>
   </div>
 </section>
 
@@ -97,6 +99,7 @@
 
 </main>
 <footer class="footer invert wipe">
+  <div class="drips"><svg class="drips-svg" viewBox="0 0 1200 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0,0 L43.9,12.0 L64.2,7.8 L72.4,7.3 L74.1,24.8 A6.6,6.6 0 0 0 87.2,24.8 L88.9,8.7 L97.1,4.2 L117.5,7.8 L149.8,7.2 L169.4,9.3 L205.9,12.7 L234.0,7.3 L268.0,6.8 L288.4,10.5 L298.8,7.1 L300.2,50.0 A5.5,5.5 0 0 0 311.2,50.0 L312.6,7.9 L323.0,11.3 L328.5,7.7 L329.8,19.5 A5.0,5.0 0 0 0 339.7,19.5 L340.9,9.4 L346.5,11.4 L352.6,10.7 L354.1,30.2 A6.0,6.0 0 0 0 366.1,30.2 L367.6,9.3 L373.7,6.3 L394.7,10.4 L404.7,9.6 L406.8,44.5 A8.5,8.5 0 0 0 423.8,44.5 L425.9,11.7 L435.9,5.5 L452.5,10.9 L453.7,37.3 A4.9,4.9 0 0 0 463.5,37.3 L464.7,10.1 L481.2,12.8 L521.8,8.8 L567.4,7.1 L583.7,8.8 L585.0,24.8 A5.1,5.1 0 0 0 595.2,24.8 L596.4,7.2 L612.7,12.4 L626.4,7.0 L628.1,19.8 A6.9,6.9 0 0 0 641.9,19.8 L643.7,9.3 L657.3,11.3 L661.6,8.1 L663.3,64.4 A6.6,6.6 0 0 0 676.4,64.4 L678.1,11.4 L682.4,11.3 L725.5,7.7 L762.9,9.8 L765.4,9.3 L767.3,36.9 A7.9,7.9 0 0 0 783.1,36.9 L785.1,9.3 L787.6,11.4 L808.6,7.0 L842.3,6.2 L855.9,7.4 L857.6,45.5 A7.0,7.0 0 0 0 871.5,45.5 L873.3,9.4 L886.9,8.2 L917.5,4.0 L946.0,5.3 L960.3,8.7 L961.7,52.1 A5.5,5.5 0 0 0 972.7,52.1 L974.1,8.5 L988.3,4.7 L1025.9,10.2 L1059.0,8.7 L1085.4,4.8 L1127.9,8.5 L1167.7,9.4 L1173.2,11.8 L1174.7,33.6 A6.0,6.0 0 0 0 1186.7,33.6 L1188.2,8.0 L1193.8,7.5 L1200.0,8.3 L1200,0 Z"/></svg></div>
   <div class="wrap">
     <div class="footer-top">
       <div>
@@ -130,7 +133,7 @@
         <a href="https://github.com/chxperiments/bluebox/tree/main/examples">Examples</a>
       </nav>
     </div>
-    <div class="wordmark" aria-hidden="true"><svg viewBox="0 0 1000 245" preserveAspectRatio="xMinYMid meet"><text x="8" y="212" textLength="950" lengthAdjust="spacingAndGlyphs">bluebox</text></svg></div>
+    <div class="wordmark" aria-hidden="true"><svg viewBox="0 -80 1000 325" preserveAspectRatio="xMinYMid meet"><text x="8" y="212" textLength="950" lengthAdjust="spacingAndGlyphs">bluebox</text><g class="crown" transform="translate(842 -66) rotate(9 50 35) scale(1.25)"><path class="tag-stroke" pathLength="1" d="M8,62 L14,18 L34,44 L50,6 L66,44 L86,18 L92,62 Z"/><circle class="tag-dot" cx="14" cy="13" r="5"/><circle class="tag-dot" cx="50" cy="1" r="5"/><circle class="tag-dot" cx="86" cy="13" r="5"/></g></svg></div>
     <div class="footer-base">
       <span>MIT licensed. Isolated, disposable microVM sandboxes.</span>
       <a href="#top">Back to top</a>

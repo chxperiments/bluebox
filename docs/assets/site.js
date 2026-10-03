@@ -23,6 +23,12 @@
     onView(el, function () { el.classList.add("in"); });
   });
 
+  // Marker strokes and piece-by-piece builds start when they come into view.
+  document.querySelectorAll(".on-view, .build").forEach(function (el) {
+    if (calm) { el.classList.add("go"); return; }
+    onView(el, function () { el.classList.add("go"); });
+  });
+
   // Latency bars grow once visible, so the comparison is read as it draws.
   document.querySelectorAll(".bars").forEach(function (el) {
     if (calm) return;

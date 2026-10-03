@@ -230,3 +230,63 @@ def workflow():
   <title id="wf-t">Calls from the CLI, the SDKs and MCP go to bluebox, which reads the Bluefile's backend and boots the sandbox with podman, krun or Firecracker, each a microVM with its own kernel.</title>
   {''.join(out)}
 </svg>"""
+
+
+# ---------------------------------------------------------------------------
+# Street marks: sticker, crown, drips, scribble, arrow. Two pigments only.
+
+def badge():
+    """A round sticker, its ring of text turning slowly around a small box."""
+    ring = "OWN KERNEL + FRESH EVERY RUN + NOTHING SHARED + "
+    return f"""<svg class="badge" viewBox="0 0 200 200" aria-hidden="true">
+  <defs><path id="badge-ring" d="M100,100 m-74,0 a74,74 0 1,1 148,0 a74,74 0 1,1 -148,0"/></defs>
+  <circle class="badge-fill" cx="100" cy="100" r="97"/>
+  <g class="spin"><text class="badge-text"><textPath href="#badge-ring">{ring}</textPath></text></g>
+  <path class="badge-mark" d="{iso_cube(100, 100, 30)}"/>
+</svg>"""
+
+
+def crown():
+    """A hand-drawn three-point crown, the street tag for a king."""
+    return ('<path class="tag-stroke" pathLength="1" d="M8,62 L14,18 L34,44 L50,6 L66,44 L86,18 L92,62 Z"/>'
+            '<circle class="tag-dot" cx="14" cy="13" r="5"/><circle class="tag-dot" cx="50" cy="1" r="5"/>'
+            '<circle class="tag-dot" cx="86" cy="13" r="5"/>')
+
+
+def drips(seed=7):
+    """Paint running down from the section above: a ragged edge with drops
+    of different lengths, as one path."""
+    import random
+    rnd = random.Random(seed)
+    x, pts = 0.0, ["M0,0"]
+    while x < 1200:
+        w = rnd.uniform(18, 46)
+        if rnd.random() < 0.45:
+            ln = rnd.uniform(14, 70)
+            d = rnd.uniform(6, 11)
+            mid = x + w / 2
+            pts.append(f"L{mid - d:.1f},{rnd.uniform(6, 12):.1f} L{mid - d * 0.8:.1f},{ln:.1f} "
+                       f"A{d * 0.8:.1f},{d * 0.8:.1f} 0 0 0 {mid + d * 0.8:.1f},{ln:.1f} L{mid + d:.1f},{rnd.uniform(6, 12):.1f}")
+        x += w
+        pts.append(f"L{min(x, 1200):.1f},{rnd.uniform(4, 13):.1f}")
+    pts.append("L1200,0 Z")
+    return (f'<svg class="drips-svg" viewBox="0 0 1200 90" preserveAspectRatio="none" aria-hidden="true">'
+            f'<path d="{" ".join(pts)}"/></svg>')
+
+
+def scribble(seed=3):
+    """A quick marker underline: two loose passes."""
+    import random
+    rnd = random.Random(seed)
+    a = f"M4,{12 + rnd.uniform(-2, 2):.1f} C60,{4 + rnd.uniform(-2, 2):.1f} 140,{16 + rnd.uniform(-2, 2):.1f} 236,{8 + rnd.uniform(-2, 2):.1f}"
+    b = f"M18,{22 + rnd.uniform(-2, 2):.1f} C90,{14 + rnd.uniform(-2, 2):.1f} 160,{24 + rnd.uniform(-2, 2):.1f} 226,{18 + rnd.uniform(-2, 2):.1f}"
+    return (f'<svg class="scribble on-view" viewBox="0 0 240 30" aria-hidden="true">'
+            f'<path class="s mark" pathLength="1" style="--i:0" d="{a}"/><path class="s mark" pathLength="1" style="--i:2" d="{b}"/></svg>')
+
+
+def arrow():
+    """A hand-drawn arrow with a marker note, curving into the install line."""
+    return ('<svg class="tryit on-view" viewBox="0 0 160 90" aria-hidden="true">'
+            '<path class="s mark" pathLength="1" style="--i:0" d="M14,26 C40,30 70,40 96,60 C108,69 118,74 132,76"/>'
+            '<path class="s mark" pathLength="1" style="--i:3" d="M118,62 L134,77 L114,86"/>'
+            '<text class="marker" x="6" y="16" transform="rotate(-8 6 16)">try it</text></svg>')

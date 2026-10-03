@@ -450,3 +450,70 @@ pre.code .k { color: var(--accent); }
   .wordmark svg { transform: translateY(105%); transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s; }
   .footer.in .wordmark svg { transform: none; }
 }
+
+/* ---- Street marks ------------------------------------------------------ */
+.marker, .art text.marker { font-family: "Permanent Marker", var(--display); }
+
+/* Hero sticker: a round badge beside the box, its ring turning. */
+.hero-stage { position: relative; width: 100%; display: flex; justify-content: center; }
+.hero-badge { position: absolute; width: clamp(5.5rem, 10vw, 8.5rem); right: max(4%, calc(50% - 25rem)); bottom: 8%; transform: rotate(-12deg); }
+.badge { display: block; width: 100%; height: auto; overflow: visible; }
+.badge-fill { fill: var(--ink); }
+.badge-text { fill: var(--bg); font: 700 15.5px var(--display); letter-spacing: 0.06em; }
+.badge-mark { fill: none; stroke: var(--bg); stroke-width: 3; stroke-linejoin: round; }
+.badge .spin { transform-origin: 100px 100px; }
+@media (prefers-reduced-motion: no-preference) { .badge .spin { animation: spin 22s linear infinite; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 640px) { .hero-badge { width: 4.6rem; right: 2%; bottom: 2%; } }
+
+/* "try it" arrow, drawn in marker beside the install line. */
+.install-wrap { position: relative; width: 100%; display: flex; justify-content: center; }
+.install-wrap .install { margin-bottom: 1rem; }
+.tryit { position: absolute; width: 8.5rem; left: calc(50% - 22rem - 7.6rem); top: -2.6rem; overflow: visible; }
+.tryit text.marker { fill: var(--ink); font-size: 22px; }
+@media (max-width: 1100px) { .tryit { display: none; } }
+
+/* Marker strokes drawn when they come into view. */
+.art .s.mark, .scribble .s, .tryit .s { fill: none; stroke: var(--ink); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.scribble { display: block; width: min(15rem, 60%); height: auto; margin: -0.35rem 0 1rem -0.2rem; overflow: visible; }
+@media (prefers-reduced-motion: no-preference) {
+  .on-view .s { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  .on-view.go .s { animation: draw 0.9s cubic-bezier(0.65, 0, 0.35, 1) forwards; animation-delay: calc(var(--i, 0) * 0.14s); }
+}
+
+/* Paint drips running down into a white section from the blue above. */
+.drips { position: absolute; left: 0; right: 0; top: -1px; height: clamp(3.5rem, 7vw, 5.5rem); pointer-events: none; z-index: 1; }
+.drips-svg { display: block; width: 100%; height: 100%; }
+.drips-svg path { fill: #1300f9; }
+.footer .drips, .page-head .drips { top: -1px; }
+@media (prefers-reduced-motion: no-preference) {
+  .wipe .drips-svg { transform: scaleY(0.15); transform-origin: top; transition: transform 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.9s; }
+  .wipe.in .drips-svg { transform: none; }
+}
+.invert:has(> .drips) > .wrap { position: relative; z-index: 2; }
+.page-head.invert { padding-top: clamp(4.5rem, 9vw, 7rem); }
+
+/* Crown on the wordmark, drawn after it rises. */
+.crown .tag-stroke { fill: none; stroke: var(--ink); stroke-width: 5.5; stroke-linejoin: round; stroke-linecap: round; }
+.crown .tag-dot { fill: var(--ink); }
+@media (prefers-reduced-motion: no-preference) {
+  .crown .tag-stroke { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  .crown .tag-dot { opacity: 0; transition: opacity 0.4s ease 2.2s; }
+  .footer.in .crown .tag-stroke { animation: draw 1s cubic-bezier(0.65, 0, 0.35, 1) 1.3s forwards; }
+  .footer.in .crown .tag-dot { opacity: 1; }
+}
+
+/* Things that build in piece by piece as they enter. */
+@media (prefers-reduced-motion: no-preference) {
+  .build .layer, .build > div, .build tbody tr { opacity: 0; transform: translateY(10px);
+    transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+  .build .layer { transition-delay: calc(var(--n, 0) * 55ms); }
+  .build.checks > div { transition-delay: calc(var(--n, 0) * 45ms); }
+  .build tbody tr:nth-child(1) { transition-delay: 0.05s; } .build tbody tr:nth-child(2) { transition-delay: 0.1s; }
+  .build tbody tr:nth-child(3) { transition-delay: 0.15s; } .build tbody tr:nth-child(4) { transition-delay: 0.2s; }
+  .build tbody tr:nth-child(5) { transition-delay: 0.25s; } .build tbody tr:nth-child(6) { transition-delay: 0.3s; }
+  .build tbody tr:nth-child(7) { transition-delay: 0.35s; } .build tbody tr:nth-child(8) { transition-delay: 0.4s; }
+  .build tbody tr:nth-child(n+9) { transition-delay: 0.45s; }
+  .build.go .layer, .build.go > div, .build.go tbody tr { opacity: 1; transform: none; }
+  .table-wrap.build > table { opacity: 1; transform: none; }
+}

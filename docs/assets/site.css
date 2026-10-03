@@ -636,3 +636,22 @@ h3 { font-weight: 400; }
   .faq-side { position: static; }
   .faq-a p { padding: 0 0 1.25rem 3.15rem; }
 }
+
+/* Containers are white, always: install line, code boxes, figures, tables,
+   number panels, notes, cards. Inside one the two colours swap, as in a
+   white section, and there are no tints: every fill is solid blue or
+   solid white. */
+.install, .figure, .numbers, .table-wrap, .codebox, .langswitch, .note, .next a, .art-frame {
+  --bg: #ffffff; --surface: #ffffff; --ink: var(--blue);
+  --muted: rgba(19, 0, 249, 0.74); --faint: rgba(19, 0, 249, 0.52);
+  --line: rgba(19, 0, 249, 0.26); --line-soft: rgba(19, 0, 249, 0.13);
+  --code: transparent; --accent: var(--blue); --accent-soft: transparent; --on-accent: #ffffff;
+  background: #ffffff; color: var(--ink); border: 1.5px solid var(--blue);
+}
+.note { border-left-width: 4px; }
+.next a:hover { background: var(--blue); color: #ffffff; }
+.next a:hover span { color: #ffffff; }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+.ln[data-note]:hover, .ln[data-note]:focus-visible, .ln.on { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+/* Inline code is a solid chip in the opposite colour, like a marker. */
+:not(pre) > code { background: var(--ink); color: var(--bg); }

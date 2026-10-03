@@ -28,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -46,6 +47,7 @@ type Spec struct {
 	TimeoutSeconds int               `yaml:"timeout_seconds"` // 0 = unlimited
 	Warm           int               `yaml:"warm"`            // VMs kept booted for run; 0 = boot per run
 	Isolation      string            `yaml:"isolation"`       // "standard" or "strict": VMM under its own host UID
+	Backend        string            `yaml:"backend"`         // what boots the VM: podman (default), krun, firecracker
 	Seccomp        string            `yaml:"seccomp"`         // profile path, filters the VMM
 	PkgMgr         string            `yaml:"pkgmgr"`          // apk/apt/dnf; empty = infer from base
 	Packages       []string          `yaml:"packages"`
@@ -100,7 +102,16 @@ var Default = Spec{
 	RAMMiB:    2048,
 	Network:   "bridge",
 	Isolation: "standard",
+	Backend:   "podman",
 }
+
+// Backends are the values `backend:` accepts. podman drives crun+libkrun
+// through podman; krun drives crun+libkrun directly, skipping podman's
+// per-boot cost; firecracker uses the Firecracker VMM.
+var Backends = []string{"podman", "krun", "firecracker"}
+
+// BackendNames lists the accepted backends for error messages.
+func BackendNames() string { return strings.Join(Backends, ", ") }
 
 // Template is written by `bluebox new`.
 const Template = `# Bluefile -- the whole sandbox in one place. bluebox generates the
@@ -114,6 +125,7 @@ network: bridge       # bridge = internet access, none = offline
 passt: false          # real NIC + default route in the guest (needed for k3s)
 readonly: false       # read-only guest root (/tmp and /data stay writable)
 isolation: standard   # strict: VMM runs as a UID that is not yours (use for agents)
+backend: podman       # podman (default) | krun (direct, faster boots) | firecracker
 timeout_seconds: 0    # per-run wall clock limit, 0 = unlimited
 warm: 0               # VMs kept booted so run starts in ms (each holds its RAM)
 
@@ -187,6 +199,9 @@ func (s Spec) validate() error {
 	}
 	if s.Network != "bridge" && s.Network != "none" {
 		return fmt.Errorf("network must be bridge or none, got %q", s.Network)
+	}
+	if !slices.Contains(Backends, s.Backend) {
+		return fmt.Errorf("backend must be one of %s, got %q", BackendNames(), s.Backend)
 	}
 	if s.Isolation != "standard" && s.Isolation != "strict" {
 		return fmt.Errorf("isolation must be standard or strict, got %q", s.Isolation)

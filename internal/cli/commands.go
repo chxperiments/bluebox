@@ -79,7 +79,7 @@ func buildCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := runtime.Preflight(); err != nil {
+			if err := runtime.PreflightFor(s); err != nil {
 				return err
 			}
 			// Waiting VMs were booted from the image being replaced.
@@ -113,7 +113,7 @@ func verifyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := runtime.Preflight(); err != nil {
+			if err := runtime.PreflightFor(s); err != nil {
 				return err
 			}
 			return verify(args[0], s)
@@ -177,7 +177,7 @@ func shellCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := runtime.Preflight(); err != nil {
+			if err := runtime.PreflightFor(s); err != nil {
 				return err
 			}
 			if fresh, err := runtime.EnsureIsolated(args[0], s); err != nil {

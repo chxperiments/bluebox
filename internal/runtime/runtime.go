@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	goruntime "runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -27,35 +26,6 @@ const ExitTimeout = 124
 
 // ErrTimeout is returned by Run when the wall-clock limit is hit.
 var ErrTimeout = errors.New("timed out")
-
-// Preflight fails loudly rather than letting podman silently fall back to a
-// plain container, which would look identical but share a kernel.
-func Preflight() error {
-	if _, err := exec.LookPath("podman"); err != nil {
-		return fmt.Errorf("podman not found on PATH")
-	}
-	if goruntime.GOOS == "darwin" {
-		// On macOS every container already runs inside the podman machine VM,
-		// so KVM and the krun runtime live in there, not out here. All we can
-		// check from this side is that the machine is up; whether it can
-		// actually nest a microVM is settled by Verify.
-		out, err := exec.Command("podman", "machine", "list", "--format", "{{.Running}}").Output()
-		if err != nil || !strings.Contains(string(out), "true") {
-			return fmt.Errorf("no podman machine is running:\n" +
-				"  podman machine init && podman machine start")
-		}
-		return nil
-	}
-	if _, err := os.Stat("/dev/kvm"); err != nil {
-		return fmt.Errorf("/dev/kvm not available -- microVMs need KVM on this host")
-	}
-	if _, err := exec.LookPath("krun"); err != nil {
-		return fmt.Errorf("no 'krun' on PATH. It is a symlink to crun:\n" +
-			"  sudo ln -sf $(command -v crun) /usr/local/bin/krun\n" +
-			"and libkrun must be installed (Fedora: sudo dnf install libkrun)")
-	}
-	return nil
-}
 
 // vmArgs builds the podman invocation. All isolation lives in these flags, so
 // they are constructed in exactly one place.
@@ -153,7 +123,11 @@ func UpChecked(name string, s bluefile.Spec, notice func(string)) (time.Duration
 // checked confirms the toolchain is present and the kernel boundary still
 // holds -- cheaply when the runtime is unchanged -- before untrusted code runs.
 func checked(name string, s bluefile.Spec, notice func(string)) error {
-	if err := Preflight(); err != nil {
+	b, err := backendFor(s)
+	if err != nil {
+		return err
+	}
+	if err := b.Preflight(); err != nil {
 		return err
 	}
 	fresh, err := EnsureIsolated(name, s)
@@ -267,22 +241,6 @@ func ownData(data string, s bluefile.Spec) error {
 	return nil
 }
 
-// podmanCmd is how every VM is launched. For a fork, podman runs inside
-// podman's own user namespace, after `bluebox __overlay` has mounted the
-// fork's overlay there: a fork's /data exists only in that namespace, and
-// a VM launched from outside it would see an empty directory.
-func podmanCmd(name string, args ...string) *exec.Cmd {
-	if !sandbox.IsFork(name) {
-		return exec.Command("podman", args...)
-	}
-	self, err := os.Executable()
-	if err != nil {
-		self = "bluebox"
-	}
-	wrapped := append([]string{"unshare", self, "__overlay", name, "--", "podman"}, args...)
-	return exec.Command("podman", wrapped...)
-}
-
 // Build renders the Containerfile from the spec, writes it, and builds the image.
 func Build(name string, s bluefile.Spec) error {
 	cfPath, err := sandbox.ContainerfilePath(name)
@@ -339,13 +297,15 @@ func Run(name string, s bluefile.Spec, argv []string, streams Streams) error {
 	if err := prepareData(name, s); err != nil {
 		return err
 	}
-	base, err := vmArgs(name, s, false, true)
+	b, err := backendFor(s)
 	if err != nil {
 		return err
 	}
 	runName := fmt.Sprintf("bluebox-%s-%d", name, os.Getpid())
-	args := append(base, "--name", runName, sandbox.ImageTag(name))
-	args = append(args, argv...)
+	cmd, err := b.Launch(name, s, Launch{VM: runName, Argv: argv})
+	if err != nil {
+		return err
+	}
 
 	ctx := context.Background()
 	if s.TimeoutSeconds > 0 {
@@ -361,8 +321,7 @@ func Run(name string, s bluefile.Spec, argv []string, streams Streams) error {
 			time.Now().UTC().Format(time.RFC3339), strings.Join(argv, " "))
 	}
 	started := time.Now()
-	cmd := podmanCmd(name, args...)
-	// Bound to ctx by hand: podmanCmd chooses the argv.
+	// Bound to ctx by hand: the backend chose the argv.
 	if ctx.Done() != nil {
 		stop := context.AfterFunc(ctx, func() {
 			if cmd.Process != nil {
@@ -381,7 +340,7 @@ func Run(name string, s bluefile.Spec, argv []string, streams Streams) error {
 	}
 
 	if ctx.Err() == context.DeadlineExceeded {
-		exec.Command("podman", "rm", "-f", runName).Run()
+		b.Remove(runName)
 		return ErrTimeout
 	}
 	return err
@@ -409,12 +368,14 @@ func Shell(name string, s bluefile.Spec) error {
 	if err := prepareData(name, s); err != nil {
 		return err
 	}
-	base, err := vmArgs(name, s, true, true)
+	b, err := backendFor(s)
 	if err != nil {
 		return err
 	}
-	args := append(base, sandbox.ImageTag(name), "/bin/sh", "-l")
-	cmd := podmanCmd(name, args...)
+	cmd, err := b.Launch(name, s, Launch{Interactive: true, Argv: []string{"/bin/sh", "-l"}})
+	if err != nil {
+		return err
+	}
 	cmd.Stdin = os.Stdin
 	return stream(cmd)
 }
@@ -437,12 +398,15 @@ func kernelOf(name string, s bluefile.Spec, useKrun bool) (string, error) {
 	if err := prepareData(name, s); err != nil {
 		return "", err
 	}
-	base, err := vmArgs(name, s, false, useKrun)
+	b, err := backendFor(s)
 	if err != nil {
 		return "", err
 	}
-	args := append(base, sandbox.ImageTag(name), "uname", "-r")
-	out, err := podmanCmd(name, args...).Output()
+	cmd, err := b.Launch(name, s, Launch{Argv: []string{"uname", "-r"}, Baseline: !useKrun})
+	if err != nil {
+		return "", err
+	}
+	out, err := cmd.Output()
 	return strings.TrimSpace(string(out)), err
 }
 

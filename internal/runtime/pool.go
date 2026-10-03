@@ -183,7 +183,7 @@ func alive(pid int) bool {
 }
 
 // sweep removes spent VMs and returns the paths of those still waiting.
-func sweep(dir, fp string, keep func(poolEntry) bool) []string {
+func sweep(b Backend, dir, fp string, keep func(poolEntry) bool) []string {
 	files, _ := os.ReadDir(dir)
 	var ready []string
 	for _, f := range files {
@@ -206,7 +206,7 @@ func sweep(dir, fp string, keep func(poolEntry) bool) []string {
 			continue
 		}
 		if e, err := readEntry(p); err == nil {
-			removeContainer(e.Container)
+			b.Remove(e.Container)
 		}
 		os.Remove(p)
 	}
@@ -226,12 +226,12 @@ func Tend(name string) error {
 
 	s, err := parseSpec(name)
 	if err != nil {
-		sweep(dir, "", func(poolEntry) bool { return false })
+		sweep(backendOf(name), dir, "", func(poolEntry) bool { return false })
 		return err
 	}
 	fp := fingerprint(name)
 	kept := 0
-	ready := sweep(dir, fp, func(poolEntry) bool {
+	ready := sweep(backendOf(name), dir, fp, func(poolEntry) bool {
 		kept++
 		return kept <= s.Warm // shrink to a lowered warm
 	})
@@ -251,25 +251,25 @@ func Tend(name string) error {
 		if err != nil {
 			return err
 		}
-		st, err := boot(name, s, ctr, "--label", poolLabel+"="+name)
+		st, err := boot(name, s, ctr, map[string]string{poolLabel: name})
 		if err != nil {
 			return err
 		}
 		warmUp(st, s)
 		b, err := json.Marshal(poolEntry{upState: st, Fingerprint: fp})
 		if err != nil {
-			removeContainer(ctr)
+			backendOf(name).Remove(ctr)
 			return err
 		}
 		p := filepath.Join(dir, strings.TrimPrefix(ctr, "bluebox-pool-"+name+"-"))
 		// Written aside and renamed in, so a claim never reads half a file.
 		if err := os.WriteFile(p+".partial", b, 0o600); err != nil {
-			removeContainer(ctr)
+			backendOf(name).Remove(ctr)
 			return err
 		}
 		if err := os.Rename(p+".partial", p+".json"); err != nil {
 			os.Remove(p + ".partial")
-			removeContainer(ctr)
+			backendOf(name).Remove(ctr)
 			return err
 		}
 	}
@@ -302,14 +302,10 @@ func Drain(name string) error {
 	if err != nil {
 		return err
 	}
-	sweep(dir, "", func(poolEntry) bool { return false })
+	b := backendOf(name)
+	sweep(b, dir, "", func(poolEntry) bool { return false })
 	// Catch VMs whose file is gone, e.g. a tender killed mid-boot.
-	if out, err := exec.Command("podman", "ps", "-aq",
-		"--filter", "label="+poolLabel+"="+name).Output(); err == nil {
-		for _, id := range strings.Fields(string(out)) {
-			removeContainer(id)
-		}
-	}
+	b.RemoveLabelled(poolLabel, name)
 	unlock()
 	return nil
 }

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
 	"strconv"
@@ -172,26 +171,26 @@ func Up(name string, s bluefile.Spec) (time.Duration, error) {
 		Down(name) // stale: the VM died or the host rebooted
 	}
 	started := time.Now()
-	st, err := boot(name, s, upContainer(name))
+	st, err := boot(name, s, upContainer(name), nil)
 	if err != nil {
 		return 0, err
 	}
 	if err := saveUp(name, st); err != nil {
-		removeContainer(st.Container)
+		backendOf(name).Remove(st.Container)
 		return 0, err
 	}
 	return time.Since(started), nil
-}
-
-func removeContainer(ctr string) {
-	exec.Command("podman", "rm", "-f", "-t", "0", ctr).Run()
 }
 
 // boot starts a VM named ctr with the agent as its main process and waits
 // until the agent answers from a kernel that is not the host's. A VM that
 // never answers, or answers from the host kernel, is torn down rather than
 // left running.
-func boot(name string, s bluefile.Spec, ctr string, extra ...string) (upState, error) {
+func boot(name string, s bluefile.Spec, ctr string, labels map[string]string) (upState, error) {
+	b, err := backendFor(s)
+	if err != nil {
+		return upState{}, err
+	}
 	agentDir, err := installAgent()
 	if err != nil {
 		return upState{}, err
@@ -204,41 +203,31 @@ func boot(name string, s bluefile.Spec, ctr string, extra ...string) (upState, e
 	if err != nil {
 		return upState{}, err
 	}
-	removeContainer(ctr)
+	b.Remove(ctr)
 	if err := prepareData(name, s); err != nil {
 		return upState{}, err
 	}
 
-	base, err := vmArgs(name, s, false, true)
+	started := time.Now()
+	cmd, err := b.Launch(name, s, Launch{
+		VM: ctr, Detach: true, Labels: labels,
+		Agent: true, AgentDir: agentDir, TokenEnv: agent.TokenEnv,
+	})
 	if err != nil {
 		return upState{}, err
 	}
-	args := append(base, extra...)
-	args = append(args,
-		"-d", "--name", ctr,
-		"-p", fmt.Sprintf("127.0.0.1::%d", agent.Port),
-		"-v", agentDir+":"+agentMount+":ro",
-		// Name only: podman copies the value from its own environment, so
-		// the token never appears in an argv that any host user can read
-		// from ps.
-		"-e", agent.TokenEnv,
-		"--entrypoint", agentMount+"/bluebox",
-		sandbox.ImageTag(name), "__agent",
-	)
-	started := time.Now()
-	cmd := podmanCmd(name, args...)
 	cmd.Env = append(os.Environ(), agent.TokenEnv+"="+token)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return upState{}, fmt.Errorf("podman: %s", strings.TrimSpace(string(out)))
+		return upState{}, fmt.Errorf("%s: %s", b.Name(), strings.TrimSpace(string(out)))
 	}
-	out, err := exec.Command("podman", "port", ctr, fmt.Sprintf("%d/tcp", agent.Port)).Output()
+	addr, err := b.AgentAddr(ctr)
 	if err != nil {
-		removeContainer(ctr)
-		return upState{}, fmt.Errorf("could not find the agent's port: %w", err)
+		b.Remove(ctr)
+		return upState{}, err
 	}
 	st := upState{
 		Container: ctr,
-		Addr:      strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0]),
+		Addr:      addr,
 		Token:     token,
 		Started:   started.UTC().Format(time.RFC3339),
 	}
@@ -251,14 +240,13 @@ func boot(name string, s bluefile.Spec, ctr string, extra ...string) (upState, e
 			return st, nil
 		}
 		if errors.Is(err, errNotIsolated) {
-			removeContainer(ctr)
+			b.Remove(ctr)
 			return upState{}, err
 		}
 		if time.Now().After(deadline) {
-			logs, _ := exec.Command("podman", "logs", ctr).CombinedOutput()
-			removeContainer(ctr)
-			return upState{}, fmt.Errorf("the agent did not answer within 30s: %v\n%s", err,
-				strings.TrimSpace(string(logs)))
+			logs := b.Logs(ctr)
+			b.Remove(ctr)
+			return upState{}, fmt.Errorf("the agent did not answer within 30s: %v\n%s", err, logs)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
@@ -336,7 +324,7 @@ func Down(name string) error {
 	if err != nil {
 		return err
 	}
-	removeContainer(upContainer(name))
+	backendOf(name).Remove(upContainer(name))
 	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
 		return err
 	}

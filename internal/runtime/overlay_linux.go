@@ -12,7 +12,7 @@ import (
 
 // MountOverlay mounts a fork's overlay if it is not mounted yet. It must run
 // inside podman's user namespace (podman unshare), whose root may mount an
-// unprivileged overlayfs; podmanCmd arranges that. The namespace is kept by
+// unprivileged overlayfs; the podman backend arranges that. The namespace is kept by
 // podman's pause process, so the mount outlives this process and later
 // launches find it already there.
 func MountOverlay(name string) error {

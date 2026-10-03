@@ -28,7 +28,7 @@
 </header>
 <main id="top">
 
-<section class="page-head">
+<section class="page-head dots dots-tr">
   <div class="wrap">
     <h1>Architecture</h1>
     <p class="lead">One interface, three ways to boot a microVM. Everything above the launcher is shared; everything below it is chosen per sandbox with <code>backend:</code> in the Bluefile.</p>
@@ -46,47 +46,10 @@
     </figure>
     <figure class="figure">
       <div class="figure-body">
-<div class="stack">
-  <div></div>
-  <div class="head">podman<span>default</span></div>
-  <div class="head">krun<span>direct libkrun</span></div>
-  <div class="head">firecracker<span>snapshot per run</span></div>
-
-  <div class="rowlabel">Interface</div>
-  <div class="cell span3"><b>bluebox CLI, SDKs and local API</b><span>Bluefile, warm pool, up / exec, forks, data import / export, isolation checks</span></div>
-
-  <div class="rowlabel">Launcher</div>
-  <div class="cell "><b>podman</b><span>builds images, runs crun</span></div>
-  <div class="cell "><b>crun</b><span>OCI spec written by bluebox</span></div>
-  <div class="cell "><b>crun</b><span>a jail container for the VMM</span></div>
-
-  <div class="rowlabel">VMM</div>
-  <div class="cell "><b>libkrun</b><span>inside crun's process</span></div>
-  <div class="cell "><b>libkrun</b><span>inside crun's process</span></div>
-  <div class="cell "><b>Firecracker v1.17</b><span>minimal device model</span></div>
-
-  <div class="rowlabel">Host confinement</div>
-  <div class="cell boundary"><b>6 caps, seccomp, no_new_privs</b><span>own netns, pids and memory limits</span></div>
-  <div class="cell boundary"><b>6 caps, seccomp, no_new_privs</b><span>own netns, pids and memory limits</span></div>
-  <div class="cell boundary"><b>0 caps, seccomp, no_new_privs</b><span>read-only jail root, own netns, limits</span></div>
-
-  <div class="rowlabel">Hypervisor</div>
-  <div class="cell span3 boundary"><b>KVM</b><span>hardware virtualization: the guest has its own kernel</span></div>
-
-  <div class="rowlabel">Guest</div>
-  <div class="cell guest"><b>kernel 6.12 (libkrunfw)</b><span>init.krun, image as rootfs</span></div>
-  <div class="cell guest"><b>kernel 6.12 (libkrunfw)</b><span>init.krun, image as rootfs</span></div>
-  <div class="cell guest"><b>kernel 6.1</b><span>bluebox as PID 1, RAM overlay on root</span></div>
-
-  <div class="rowlabel">Agent channel</div>
-  <div class="cell "><b>TCP on 127.0.0.1</b><span>token-authenticated</span></div>
-  <div class="cell "><b>TCP via pasta, 127.0.0.1</b><span>token-authenticated</span></div>
-  <div class="cell "><b>vsock</b><span>Unix socket, owner-only, token rotated per copy</span></div>
-
-  <div class="rowlabel">/data</div>
-  <div class="cell "><b>host directory</b><span>shared by virtiofs</span></div>
-  <div class="cell "><b>host directory</b><span>shared by virtiofs</span></div>
-  <div class="cell "><b>ext4 disk</b><span>one VM mounts it at a time</span></div>
+<div class="layers">
+  <div class="layers-corner"></div>
+  <div class="layers-col"><b>podman</b><span>the default</span></div><div class="layers-col"><b>krun</b><span>libkrun, no podman</span></div><div class="layers-col"><b>firecracker</b><span>a snapshot per run</span></div>
+  <div class="layers-label">interface</div><div class="layer " style="grid-column: span 3"><b>bluebox CLI, SDKs, MCP and local API</b><span>Bluefile, warm pool, up / exec, forks, data import / export, isolation checks</span></div><div class="layers-label">launcher</div><div class="layer "><b>podman</b><span>builds images, runs crun</span></div><div class="layer "><b>crun</b><span>an OCI spec bluebox writes</span></div><div class="layer "><b>crun</b><span>a jail container for the VMM</span></div><div class="layers-label">VMM</div><div class="layer "><b>libkrun</b><span>inside crun's process</span></div><div class="layer "><b>libkrun</b><span>inside crun's process</span></div><div class="layer "><b>Firecracker 1.17</b><span>block, vsock, little else</span></div><div class="layers-label">confinement</div><div class="layer boundary"><b>6 capabilities</b><span>seccomp, no_new_privs, own netns, limits</span></div><div class="layer boundary"><b>6 capabilities</b><span>seccomp, no_new_privs, own netns, limits</span></div><div class="layer boundary"><b>0 capabilities</b><span>seccomp, no_new_privs, read-only jail root</span></div><div class="layers-label">hypervisor</div><div class="layer boundary" style="grid-column: span 3"><b>KVM</b><span>hardware virtualization: every guest runs its own kernel</span></div><div class="layers-label">guest</div><div class="layer guest"><b>kernel 6.12</b><span>libkrunfw, init.krun</span></div><div class="layer guest"><b>kernel 6.12</b><span>libkrunfw, init.krun</span></div><div class="layer guest"><b>kernel 6.1</b><span>bluebox as PID 1, RAM overlay</span></div><div class="layers-label">agent channel</div><div class="layer "><b>TCP on 127.0.0.1</b><span>token-authenticated</span></div><div class="layer "><b>TCP via pasta</b><span>127.0.0.1, token-authenticated</span></div><div class="layer "><b>vsock</b><span>owner-only socket, token rotated per copy</span></div><div class="layers-label">/data</div><div class="layer "><b>host directory</b><span>shared by virtiofs</span></div><div class="layer "><b>host directory</b><span>shared by virtiofs</span></div><div class="layer "><b>ext4 disk</b><span>one VM mounts it at a time</span></div>
 </div>
 <div class="legend"><span><i class="b"></i>security boundary</span><span><i class="g"></i>inside the guest</span><span><i></i>host side</span></div>
 </div>

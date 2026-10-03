@@ -159,21 +159,19 @@ def bluefile_explorer():
 
 
 overview = f"""
-<section class="hero">
+<section class="hero hero-center dots dots-center">
   <div class="wrap">
-    <div>
-      <h1>Disposable microVMs for AI agents.</h1>
-      <p class="lead">Every command runs in its own virtual machine with its own kernel, defined in one file, started in milliseconds.</p>
-      <div class="install">
-        <code><span class="p">$ </span>curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh</code>
-        <button class="copy" type="button" data-copy="curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh">Copy</button>
-      </div>
-      <div class="cta-row">
-        <a class="btn btn-primary" href="docs.html">Read the docs</a>
-        <a class="btn btn-ghost" href="architecture.html">How it works</a>
-      </div>
+    <div class="hero-art">{art.hero_minimal()}</div>
+    <h1>Disposable microVMs for AI agents.</h1>
+    <p class="lead">Every command in its own virtual machine, with its own kernel.</p>
+    <div class="install">
+      <code><span class="p">$ </span>curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh</code>
+      <button class="copy" type="button" data-copy="curl -fsSL https://chxperiments.github.io/bluebox/install.sh | sh">Copy</button>
     </div>
-    <div class="hero-art">{art.hero()}</div>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="docs.html">Read the docs</a>
+      <a class="btn btn-ghost" href="architecture.html">How it works</a>
+    </div>
   </div>
 </section>
 
@@ -183,7 +181,7 @@ overview = f"""
   </div>
 </section>
 
-<section class="section" id="speed">
+<section class="section dots dots-tr" id="speed">
   <div class="wrap">
     <h2>Measured, not claimed.</h2>
     <p class="lead">Isolation used to cost a second per command. bluebox pays it before the command arrives.</p>
@@ -244,7 +242,7 @@ overview = f"""
   <div class="opart-text"><div class="wrap"><p>Every run, a new machine.</p></div></div>
 </section>
 
-<section class="section" id="sdk">
+<section class="section dots dots-bl" id="sdk">
   <div class="wrap split">
     <div class="prose">
       <h2 style="margin-bottom:1rem">Sandboxes as a function call.</h2>
@@ -279,58 +277,41 @@ overview = f"""
 # Architecture
 
 
+LAYER_ROWS = [
+    ("interface", "", [("bluebox CLI, SDKs, MCP and local API", "Bluefile, warm pool, up / exec, forks, data import / export, isolation checks")]),
+    ("launcher", "", [("podman", "builds images, runs crun"), ("crun", "an OCI spec bluebox writes"), ("crun", "a jail container for the VMM")]),
+    ("VMM", "", [("libkrun", "inside crun's process"), ("libkrun", "inside crun's process"), ("Firecracker 1.17", "block, vsock, little else")]),
+    ("confinement", "boundary", [("6 capabilities", "seccomp, no_new_privs, own netns, limits"), ("6 capabilities", "seccomp, no_new_privs, own netns, limits"), ("0 capabilities", "seccomp, no_new_privs, read-only jail root")]),
+    ("hypervisor", "boundary", [("KVM", "hardware virtualization: every guest runs its own kernel")]),
+    ("guest", "guest", [("kernel 6.12", "libkrunfw, init.krun"), ("kernel 6.12", "libkrunfw, init.krun"), ("kernel 6.1", "bluebox as PID 1, RAM overlay")]),
+    ("agent channel", "", [("TCP on 127.0.0.1", "token-authenticated"), ("TCP via pasta", "127.0.0.1, token-authenticated"), ("vsock", "owner-only socket, token rotated per copy")]),
+    ("/data", "", [("host directory", "shared by virtiofs"), ("host directory", "shared by virtiofs"), ("ext4 disk", "one VM mounts it at a time")]),
+]
+
+
+def layer_row(label, kind, cells):
+    span = ' style="grid-column: span 3"' if len(cells) == 1 else ""
+    out = f'<div class="layers-label">{label}</div>'
+    for t, sub in cells:
+        out += f'<div class="layer {kind}"{span}><b>{t}</b><span>{sub}</span></div>'
+    return out
+
+
 def cell(title, sub, extra=""):
     return f'<div class="cell {extra}"><b>{title}</b><span>{sub}</span></div>'
 
 
 stack = f"""
-<div class="stack">
-  <div></div>
-  <div class="head">podman<span>default</span></div>
-  <div class="head">krun<span>direct libkrun</span></div>
-  <div class="head">firecracker<span>snapshot per run</span></div>
-
-  <div class="rowlabel">Interface</div>
-  <div class="cell span3"><b>bluebox CLI, SDKs and local API</b><span>Bluefile, warm pool, up / exec, forks, data import / export, isolation checks</span></div>
-
-  <div class="rowlabel">Launcher</div>
-  {cell("podman", "builds images, runs crun")}
-  {cell("crun", "OCI spec written by bluebox")}
-  {cell("crun", "a jail container for the VMM")}
-
-  <div class="rowlabel">VMM</div>
-  {cell("libkrun", "inside crun's process")}
-  {cell("libkrun", "inside crun's process")}
-  {cell("Firecracker v1.17", "minimal device model")}
-
-  <div class="rowlabel">Host confinement</div>
-  {cell("6 caps, seccomp, no_new_privs", "own netns, pids and memory limits", "boundary")}
-  {cell("6 caps, seccomp, no_new_privs", "own netns, pids and memory limits", "boundary")}
-  {cell("0 caps, seccomp, no_new_privs", "read-only jail root, own netns, limits", "boundary")}
-
-  <div class="rowlabel">Hypervisor</div>
-  <div class="cell span3 boundary"><b>KVM</b><span>hardware virtualization: the guest has its own kernel</span></div>
-
-  <div class="rowlabel">Guest</div>
-  {cell("kernel 6.12 (libkrunfw)", "init.krun, image as rootfs", "guest")}
-  {cell("kernel 6.12 (libkrunfw)", "init.krun, image as rootfs", "guest")}
-  {cell("kernel 6.1", "bluebox as PID 1, RAM overlay on root", "guest")}
-
-  <div class="rowlabel">Agent channel</div>
-  {cell("TCP on 127.0.0.1", "token-authenticated")}
-  {cell("TCP via pasta, 127.0.0.1", "token-authenticated")}
-  {cell("vsock", "Unix socket, owner-only, token rotated per copy")}
-
-  <div class="rowlabel">/data</div>
-  {cell("host directory", "shared by virtiofs")}
-  {cell("host directory", "shared by virtiofs")}
-  {cell("ext4 disk", "one VM mounts it at a time")}
+<div class="layers">
+  <div class="layers-corner"></div>
+  {''.join(f'<div class="layers-col"><b>{n}</b><span>{d}</span></div>' for n, d in [("podman", "the default"), ("krun", "libkrun, no podman"), ("firecracker", "a snapshot per run")])}
+  {''.join(layer_row(*r) for r in LAYER_ROWS)}
 </div>
 <div class="legend"><span><i class="b"></i>security boundary</span><span><i class="g"></i>inside the guest</span><span><i></i>host side</span></div>
 """
 
 architecture = f"""
-<section class="page-head">
+<section class="page-head dots dots-tr">
   <div class="wrap">
     <h1>Architecture</h1>
     <p class="lead">One interface, three ways to boot a microVM. Everything above the launcher is shared; everything below it is chosen per sandbox with <code>backend:</code> in the Bluefile.</p>
@@ -456,7 +437,7 @@ CHECKS = [
 ]
 
 security = f"""
-<section class="page-head">
+<section class="page-head dots dots-tr">
   <div class="wrap">
     <h1>Security</h1>
     <p class="lead">The workload is assumed hostile: careless, malicious, or an agent turned by prompt injection. This page says what stands between it and your machine, and what does not.</p>
@@ -554,7 +535,7 @@ def backend_table():
 
 
 benchmarks = f"""
-<section class="page-head">
+<section class="page-head dots dots-tr">
   <div class="wrap">
     <h1>Benchmarks</h1>
     <p class="lead">Every number on this site, where it came from, and how to reproduce it. Medians of repeated runs, wall clock from the host, one machine.</p>

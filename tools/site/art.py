@@ -51,6 +51,28 @@ def hero():
 </svg>"""
 
 
+def hero_minimal():
+    """The nested boxes alone, centred: the first thing on the site."""
+    cx, cy = 300, 300
+    paths = [
+        f'<path class="s{" dash" if i == 0 else ""}" pathLength="1" style="--i:{i}" d="{iso_cube(cx, cy, s)}"/>'
+        for i, s in enumerate((250, 190, 130, 70))
+    ]
+    route = f"M40,60 C150,60 190,160 {cx},{cy}"
+    return f"""<svg class="art draw" viewBox="30 30 540 540" role="img" aria-labelledby="hero-art-t">
+  <title id="hero-art-t">Nested boxes: your machine, the confined VMM, KVM and the guest kernel. A command travels inward and runs in the guest.</title>
+  <g class="float">
+    {''.join(paths)}
+    <path class="s thin" d="{route}" stroke-dasharray="2 6"/>
+    <rect class="f" x="-5" y="-5" width="10" height="10" opacity="0">
+      <animateMotion dur="3.6s" repeatCount="indefinite" path="{route}" keyPoints="0;1;1" keyTimes="0;0.55;1" calcMode="spline" keySplines="0.65 0 0.35 1;0 0 1 1"/>
+      <animate attributeName="opacity" values="0;1;1;0;0" keyTimes="0;0.08;0.55;0.62;1" dur="3.6s" repeatCount="indefinite"/>
+    </rect>
+    <path class="f pulse" d="{iso_cube(cx, cy, 22).split(' M')[0]}"/>
+  </g>
+</svg>"""
+
+
 def architecture():
     cols = [("podman", 300), ("krun", 600), ("firecracker", 900)]
     rows = [

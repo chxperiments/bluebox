@@ -424,3 +424,48 @@ pre.code .k { color: var(--accent); }
   .lane { grid-template-columns: 1fr auto; }
   .lane-track { grid-column: 1 / -1; grid-row: 2; }
 }
+
+/* Fading dot fields, in whichever pigment is the ink: white on blue, blue on
+   white. Placed per section with dots-tr, dots-bl or dots-center. */
+.dots { position: relative; isolation: isolate; }
+.dots::before { content: ""; position: absolute; z-index: -1; pointer-events: none; opacity: 0.32;
+  background: radial-gradient(circle, var(--ink) 1.3px, transparent 1.8px) 0 0 / 15px 15px; }
+.dots-tr::before { top: 0; right: 0; width: min(42rem, 60%); height: 85%;
+  -webkit-mask-image: radial-gradient(ellipse at 100% 0%, #000, transparent 68%); mask-image: radial-gradient(ellipse at 100% 0%, #000, transparent 68%); }
+.dots-bl::before { left: 0; bottom: 0; width: min(42rem, 60%); height: 85%;
+  -webkit-mask-image: radial-gradient(ellipse at 0% 100%, #000, transparent 68%); mask-image: radial-gradient(ellipse at 0% 100%, #000, transparent 68%); }
+.dots-center::before { inset: 0;
+  -webkit-mask-image: radial-gradient(circle at 50% 38%, transparent 14%, #000 26%, transparent 62%); mask-image: radial-gradient(circle at 50% 38%, transparent 14%, #000 26%, transparent 62%); }
+@media (prefers-reduced-motion: no-preference) {
+  .dots-center::before { animation: dotsbreath 9s ease-in-out infinite; }
+}
+@keyframes dotsbreath { 0%, 100% { opacity: 0.22; } 50% { opacity: 0.42; } }
+
+/* The first section: centred, quiet, the box and one line. */
+.hero-center { min-height: calc(100dvh - 3.75rem); display: grid; align-items: center; padding: clamp(1.5rem, 4vw, 3rem) 0 clamp(2.5rem, 6vw, 4rem); }
+.hero-center { grid-template-columns: minmax(0, 1fr); }
+.hero-center .wrap { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0; width: 100%; min-width: 0; }
+.hero-center .wrap > * { max-width: 100%; }
+.hero-center .hero-art { max-width: min(18rem, 56vw, 34dvh); justify-self: auto; margin-bottom: clamp(0.75rem, 2.5vw, 1.75rem); }
+.hero-center h1 { max-width: 19ch; margin: 0 auto 0.9rem; font-size: clamp(2.2rem, 4.8vw, 3.9rem); }
+.hero-center .lead { margin: 0 auto 1.75rem; max-width: 38ch; }
+.hero-center .install { margin: 0 auto 1rem; width: 100%; max-width: min(36rem, 100%); }
+.hero-center .install code { text-align: left; }
+.hero-center .cta-row { justify-content: center; }
+
+/* Figure 2: the layer stack, one column per backend. Boundaries are set in
+   the inverse pigment so they read as walls; the guest row is dashed. */
+.layers { display: grid; grid-template-columns: 8.5rem repeat(3, minmax(12rem, 1fr)); gap: 0.6rem 0.75rem; min-width: 52rem; }
+.layers-corner { }
+.layers-col { padding: 0 0.25rem 0.6rem; border-bottom: 2px solid var(--ink); }
+.layers-col b { display: block; font: 700 1.5rem/1.1 var(--display); letter-spacing: -0.02em; }
+.layers-col span { font-size: 0.8rem; color: var(--muted); }
+.layers-label { font: 500 0.72rem var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); align-self: center; text-align: right; padding-right: 0.25rem; }
+.layer { position: relative; padding: 0.75rem 0.9rem; border: 1.5px solid var(--line); border-radius: var(--radius); min-height: 4.1rem; }
+.layer b { display: block; font-weight: 600; font-size: 0.95rem; }
+.layer span { display: block; font-size: 0.78rem; color: var(--muted); margin-top: 0.15rem; }
+.layer::before { content: ""; position: absolute; left: 50%; top: calc(-0.6rem - 1px); height: 0.6rem; border-left: 1.5px dashed var(--line); }
+.layer.boundary { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.layer.boundary span { color: var(--bg); opacity: 0.78; }
+.layer.guest { border-style: dashed; border-color: var(--ink); }
+.legend i.b { background: var(--ink); border-color: var(--ink); }

@@ -31,6 +31,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -69,7 +70,19 @@ type Request struct {
 	Env            []string `json:"env,omitempty"`
 	Dir            string   `json:"dir,omitempty"`
 	TimeoutSeconds int      `json:"timeout_seconds,omitempty"`
+	// NewToken, from an authenticated client, replaces the token for every
+	// later connection. A VM restored from a snapshot starts with the token
+	// baked into that snapshot, shared by every copy; the first thing the
+	// host does is rotate it to one this copy alone knows.
+	NewToken string `json:"new_token,omitempty"`
 }
+
+// tokenBox holds the current token; rotation swaps it.
+type tokenBox struct{ v atomic.Value }
+
+func newTokenBox(t string) *tokenBox { b := &tokenBox{}; b.v.Store(t); return b }
+func (b *tokenBox) get() string      { return b.v.Load().(string) }
+func (b *tokenBox) set(t string)     { b.v.Store(t) }
 
 type ready struct {
 	Kernel string `json:"kernel"`
@@ -161,12 +174,12 @@ func Serve() error {
 		return err
 	}
 	kernel, _ := KernelRelease()
-	return serveOn(ln, token, kernel)
+	return serveOn(ln, newTokenBox(token), kernel)
 }
 
 // serveOn is Serve on a given listener, so tests can drive the protocol
 // without a VM.
-func serveOn(ln net.Listener, token, kernel string) error {
+func serveOn(ln net.Listener, token *tokenBox, kernel string) error {
 	// Anyone on the host can reach the published port, so connections that
 	// have not yet shown the token are capped: a local process flooding the
 	// agent is turned away at the door instead of starving the owner.
@@ -197,7 +210,7 @@ const (
 	helloTimeout       = 3 * time.Second
 )
 
-func handle(c *conn, token, kernel string, authed func()) {
+func handle(c *conn, token *tokenBox, kernel string, authed func()) {
 	defer c.c.Close()
 	var once sync.Once
 	release := func() { once.Do(authed) }
@@ -214,8 +227,11 @@ func handle(c *conn, token, kernel string, authed func()) {
 		return
 	}
 	// Answer a wrong token with silence, not an error to probe against.
-	if subtle.ConstantTimeCompare([]byte(req.Token), []byte(token)) != 1 {
+	if subtle.ConstantTimeCompare([]byte(req.Token), []byte(token.get())) != 1 {
 		return
+	}
+	if req.NewToken != "" {
+		token.set(req.NewToken)
 	}
 	release()
 	if c.writeJSON(fReady, ready{Kernel: kernel}) != nil {
@@ -323,7 +339,7 @@ func exitStatus(cmd *exec.Cmd, err error) int {
 // `podman run` without -i.
 func Exec(addr string, req Request, check func(kernel string) error,
 	stdin io.Reader, stdout, stderr io.Writer) (Result, error) {
-	nc, err := net.DialTimeout("tcp", addr, 2*time.Second)
+	nc, err := dial(addr)
 	if err != nil {
 		return Result{}, err
 	}

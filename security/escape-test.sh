@@ -2,7 +2,10 @@
 # Escape tests: run the things a hostile agent would try from inside a
 # sandbox, and check that each one fails.
 #
-#   security/escape-test.sh [path/to/bluebox] [standard|strict] [podman|krun]
+#   security/escape-test.sh [path/to/bluebox] [standard|strict] [podman|krun|firecracker]
+#
+# firecracker sandboxes have no network and no host mounts, so the checks
+# that need those report what they can and skip the rest.
 #
 # The second argument picks the Bluefile's isolation (default strict). Under
 # standard the VMM runs as your own UID by design, which is reported but not
@@ -54,6 +57,17 @@ python3 -m http.server "$PORT" --bind 127.0.0.1 --directory "$WORK/www" >/dev/nu
 PROBE_PID=$!
 
 "$BB" new "$NAME" >/dev/null
+if [ "$BACKEND" = firecracker ]; then
+cat > "$BLUEBOX_HOME/sandboxes/$NAME/Bluefile" <<EOF
+base: docker.io/library/alpine:latest
+cpus: 1
+ram_mib: 512
+network: none
+readonly: true
+isolation: $ISOLATION
+backend: firecracker
+EOF
+else
 cat > "$BLUEBOX_HOME/sandboxes/$NAME/Bluefile" <<EOF
 base: docker.io/library/alpine:latest
 cpus: 1
@@ -72,6 +86,7 @@ EOF
     guest: /rw
     mode: rw
 EOF
+fi
 
 echo "building the test sandbox..."
 "$BB" build "$NAME" >/dev/null 2>&1 || { echo "build failed" >&2; exit 2; }
@@ -114,13 +129,13 @@ fi
 
 echo
 echo "read-only boundaries"
-guest 'echo x > /ro/new' >/dev/null && [ -e "$WORK/ro/new" ] && fail "wrote through a read-only mount" || pass "read-only mount refuses writes"
-guest 'mount -o remount,rw /ro 2>/dev/null; echo x > /ro/new2' >/dev/null; [ -e "$WORK/ro/new2" ] && fail "remounted a read-only mount writable" || pass "remounting a read-only mount rw does not reach the host"
+[ "$BACKEND" != firecracker ] && { guest 'echo x > /ro/new' >/dev/null && [ -e "$WORK/ro/new" ] && fail "wrote through a read-only mount" || pass "read-only mount refuses writes"; }
+[ "$BACKEND" != firecracker ] && { guest 'mount -o remount,rw /ro 2>/dev/null; echo x > /ro/new2' >/dev/null; [ -e "$WORK/ro/new2" ] && fail "remounted a read-only mount writable" || pass "remounting a read-only mount rw does not reach the host"; }
 guest 'echo x > /etc/pwned' >/dev/null && fail "wrote to the read-only root" || pass "read-only root refuses writes"
-if [ "$ISOLATION" = standard ]; then
+if [ "$ISOLATION" = standard ] && [ "$BACKEND" != firecracker ]; then
   echo x > "$WORK/rw/probe"; [ "$(guest 'cat /rw/probe')" = "x" ] && pass "rw mount works (sanity)" || fail "rw mount unusable"
 fi
-[ "$(guest 'cat /ro/file')" = "read-only" ] && pass "ro mount readable (sanity)" || fail "ro mount unreadable"
+[ "$BACKEND" != firecracker ] && { [ "$(guest 'cat /ro/file')" = "read-only" ] && pass "ro mount readable (sanity)" || fail "ro mount unreadable"; }
 [ "$(guest 'echo ok > /data/w && cat /data/w')" = "ok" ] && pass "/data writable (sanity)" || fail "/data unusable"
 
 echo
@@ -135,7 +150,9 @@ got=$(guest "ls -la / /run /tmp 2>/dev/null | grep -c bluebox.sock")
 echo
 echo "devices and privileges"
 guest '[ -e /dev/kvm ]' >/dev/null && fail "/dev/kvm is exposed to the guest (nested VMs)" || pass "no /dev/kvm in the guest"
-if [ "$BACKEND" = krun ]; then
+if [ "$BACKEND" = firecracker ]; then
+  vmm=$(cat "$BLUEBOX_HOME/vms/bluebox-up-$NAME/pid" 2>/dev/null)
+elif [ "$BACKEND" = krun ]; then
   vmm=$(krun --root "${XDG_RUNTIME_DIR:-/tmp}/bluebox/krun" state "bluebox-up-$NAME" 2>/dev/null | sed -n 's/.*"pid": *\([0-9]*\).*/\1/p')
 else
   vmm=$(podman inspect "bluebox-up-$NAME" --format '{{.State.Pid}}' 2>/dev/null)
@@ -149,8 +166,10 @@ if [ -n "$vmm" ] && [ -r "/proc/$vmm/status" ]; then
   [ "$sec" = "2" ] && pass "VMM runs under a seccomp filter" || fail "VMM has no seccomp filter"
   # CHOWN DAC_OVERRIDE FOWNER SETGID SETUID NET_BIND_SERVICE: what virtiofs
   # and low ports need, and nothing else.
-  [ "$cap" = "00000000000004cb" ] && pass "VMM holds only the 6 capabilities it needs" \
-    || fail "VMM holds unexpected capabilities ($cap, want 00000000000004cb)"
+  want=00000000000004cb; what="only the 6 capabilities it needs"
+  [ "$BACKEND" = firecracker ] && want=0000000000000000 && what="no capabilities at all"
+  [ "$cap" = "$want" ] && pass "VMM holds $what" \
+    || fail "VMM holds unexpected capabilities ($cap, want $want)"
   if [ "$uid" != "$(id -u)" ]; then
     pass "VMM runs as host UID $uid, not yours"
   elif [ "$ISOLATION" = strict ]; then
@@ -166,7 +185,7 @@ fi
 
 echo
 echo "resource limits"
-if [ "$BACKEND" = krun ] && [ -n "$vmm" ]; then
+if [ "$BACKEND" != podman ] && [ -n "$vmm" ]; then
   cg=/sys/fs/cgroup$(sed -n 's/^0:://p' "/proc/$vmm/cgroup")
   pids=$(cat "$cg/pids.max" 2>/dev/null); mem=$(cat "$cg/memory.max" 2>/dev/null)
   [ "$pids" = max ] && pids=0; [ "$mem" = max ] && mem=0

@@ -518,6 +518,7 @@ func destroyCmd() *cobra.Command {
 			}
 			runtime.Down(name)
 			runtime.RemovePool(name)
+			runtime.RemoveFirecracker(name, withData)
 			runtime.RemoveImage(name)
 			if sandbox.IsFork(name) {
 				if err := sandbox.RemoveFork(name); err != nil {

@@ -310,10 +310,11 @@ func Run(name string, s bluefile.Spec, argv []string, streams Streams) error {
 		return err
 	}
 	runName := fmt.Sprintf("bluebox-%s-%d", name, os.Getpid())
-	cmd, err := b.Launch(name, s, Launch{VM: runName, Argv: argv})
+	cmd, err := b.Launch(name, s, Launch{VM: runName, Argv: argv, Interactive: streams.Stdin != nil})
 	if err != nil {
 		return err
 	}
+	cmd.Stdin = streams.Stdin
 
 	ctx := context.Background()
 	if s.TimeoutSeconds > 0 {

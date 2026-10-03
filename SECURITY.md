@@ -58,8 +58,19 @@ agents and any untrusted code.
 
 The confinement above is the same on the `podman` and `krun` backends: the
 krun backend writes it into the OCI spec directly instead of asking podman
-for it, and the escape suite runs against both. The krun backend refuses
-`isolation: strict` for now rather than run the VMM as you.
+for it. The krun backend refuses `isolation: strict` for now rather than run
+the VMM as you.
+
+The `firecracker` backend is the strongest. Firecracker is built for hostile
+multi-tenant code, has a minimal device model (block, vsock) and no
+host-side proxy for the guest's sockets (it has no network yet at all). Its
+VMM runs with **no** capabilities, besides the confinement above, and has no
+host directory shared into the guest: `/data` is a disk. Every run restores
+a snapshot, and each restored copy rotates the agent token baked into the
+snapshot, reseeds its randomness and resets its clock before anything runs.
+`bluebox data export` treats what it copies out as hostile.
+
+The escape suite runs against every backend and both isolation modes.
 
 ## The agent channel (`up`, `exec`, the SDK)
 

@@ -158,9 +158,10 @@ func kernelGate(host string) func(string) error {
 // process, so later commands cost a connection rather than a boot. It returns
 // how long the VM took to answer.
 func Up(name string, s bluefile.Spec) (time.Duration, error) {
-	if s.Network == "none" {
+	if s.Network == "none" && s.Backend != "firecracker" {
 		// The agent is reached through a published port, and podman will not
-		// publish one on a sandbox with no network.
+		// publish one on a sandbox with no network. Firecracker's agent is on
+		// vsock and needs none.
 		return 0, fmt.Errorf("bluebox up needs a network to reach its agent; %s has network: none.\n"+
 			"Use bluebox run for offline sandboxes", name)
 	}

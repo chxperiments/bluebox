@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"bluebox/internal/agent"
+	"bluebox/internal/guest"
 	"bluebox/internal/runtime"
 	"bluebox/internal/sandbox"
 	"bluebox/internal/server"
@@ -113,11 +114,40 @@ func downCmd() *cobra.Command {
 // agentCmd is the guest side of up/exec. It is hidden: it only makes sense as
 // the main process of a microVM that bluebox up started.
 func agentCmd() *cobra.Command {
-	return &cobra.Command{
+	var vsock bool
+	c := &cobra.Command{
 		Use: "__agent", Hidden: true,
 		Args: cobra.NoArgs,
-		RunE: func(*cobra.Command, []string) error { return agent.Serve() },
+		RunE: func(*cobra.Command, []string) error {
+			if vsock {
+				token := os.Getenv(agent.TokenEnv)
+				os.Unsetenv(agent.TokenEnv)
+				return agent.ServeVsock(token)
+			}
+			return agent.Serve()
+		},
 	}
+	c.Flags().BoolVar(&vsock, "vsock", false, "listen on vsock (Firecracker guest)")
+	return c
+}
+
+// prepareCmd is run by the host as the first command in a restored
+// Firecracker VM; see guest.Prepare.
+func prepareCmd() *cobra.Command {
+	var data bool
+	c := &cobra.Command{
+		Use: "__prepare <seed-hex> <unix-nanos>", Hidden: true,
+		Args: cobra.ExactArgs(2), ValidArgsFunction: completeNothing,
+		RunE: func(_ *cobra.Command, args []string) error {
+			ns, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return err
+			}
+			return guest.Prepare(args[0], ns, data)
+		},
+	}
+	c.Flags().BoolVar(&data, "data", false, "mount the /data disk")
+	return c
 }
 
 func doctorCmd() *cobra.Command {
@@ -222,6 +252,14 @@ func krunCmd() *cobra.Command {
 	c.Flags().BoolVar(&baseline, "baseline", false, "run with crun, not krun")
 	c.Flags().BoolVar(&interactive, "interactive", false, "a terminal is attached")
 	return c
+}
+
+func fcCmd() *cobra.Command {
+	return &cobra.Command{
+		Use: "__fc <vm-dir>", Hidden: true,
+		Args: cobra.ExactArgs(1), ValidArgsFunction: completeNothing,
+		RunE: func(_ *cobra.Command, args []string) error { return runtime.RunFirecracker(args[0]) },
+	}
 }
 
 func exportCmd() *cobra.Command {

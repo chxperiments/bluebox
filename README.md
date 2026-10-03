@@ -262,6 +262,7 @@ construction, so nothing a sandbox does with its name can reach outside
 | `bluebox diff <fork>` | list what a fork changed in `/data` |
 | `bluebox apply <fork>` | merge a fork's changes into its parent |
 | `bluebox discard <fork>` | drop a fork's changes |
+| `bluebox data import\|export <name> <dir>` | copy files into or out of `/data` |
 | `bluebox rename <old> <new>` | rename, keeping data, logs, snapshots and the built image |
 | `bluebox destroy <name> [--data]` | remove a sandbox; `--data` also deletes `/data` |
 | `bluebox nuke [--no-data]` | remove every sandbox; `--no-data` keeps data |
@@ -429,11 +430,55 @@ What boots a sandbox's VM is a per-sandbox choice, `backend:` in the Bluefile
 podman; the warm pool, `up`/`exec`, forks, the isolation check and the VMM's
 confinement are the same on every backend.
 
-| `backend:` | How it boots | Cold `run` (bridge / none) | `up` | Status |
+| `backend:` | How it boots | Fresh-VM `run` (bridge / none) | `up` | Status |
 |---|---|---|---|---|
-| `podman` (default) | `podman run --runtime krun` | ~1.5 s / ~1.2 s | ~1.6 s | all features |
-| `krun` | crun's libkrun handler driven directly, no podman in the path | ~1.1 s / ~0.7 s | ~1.0 s | `isolation: standard` only, for now |
-| `firecracker` | Firecracker VMM | | | planned; refused until it lands |
+| `podman` (default) | `podman run --runtime krun` (libkrun) | ~1.5 s / ~1.3 s | ~1.6 s | all features |
+| `krun` | crun's libkrun handler driven directly, no podman in the path | ~1.1 s / ~0.75 s | ~1.0 s | `isolation: standard` only, for now |
+| `firecracker` | Firecracker, restoring a snapshot per run | — / **~0.3 s** | ~0.3 s | `network: none`, no host mounts, no forks yet |
+
+With `warm:`, a podman or krun run takes ~20–45 ms from the pool; Firecracker
+needs no pool, because restoring a snapshot is itself the fast path.
+
+### The firecracker backend
+
+Each image is booted once, at its first use, and snapshotted with its agent
+ready; every run restores that snapshot instead of booting a kernel. A
+restored copy is made distinct before anything runs in it: the agent token
+baked into the snapshot is rotated, the guest mixes in fresh randomness
+(Firecracker also exposes a VM generation ID) and takes the host's clock,
+and only then is `/data` mounted.
+
+- **Confinement.** The VMM is the only process of a crun container with
+  **no capabilities at all**, `no_new_privs`, podman's default seccomp filter
+  (under which Firecracker installs its own per-thread filters), its own pid,
+  mount, network and IPC namespaces, pids and memory limits, and a read-only
+  root holding nothing but its binary, kernel, image, VM directory, `/data`
+  disk and `/dev/kvm`. Under `isolation: strict` it runs as your subordinate
+  UID. This is what Firecracker's jailer provides, without the root it needs.
+- **No network needed for the agent.** `up`/`exec` talk to it over vsock,
+  whose host side is a Unix socket in the VM's owner-only directory.
+- **`/data` is a disk** per sandbox (`~/.bluebox/disks/<name>.ext4`, sparse,
+  8 GiB ceiling), mounted by one VM at a time. Move files with
+  `bluebox data import` / `bluebox data export`.
+- **Pinned and verified.** Firecracker v1.17.0 and its 6.1 guest kernel are
+  downloaded on first use and checked against fixed SHA-256 hashes before
+  they run.
+- **Costs.** Each image keeps a memory snapshot the size of its `ram_mib`
+  on disk. x86_64 Linux only.
+- **Not yet:** networking (`network: bridge`), host `mounts:`, forks, and a
+  TTY for `bluebox shell` (it gets a plain stdin/stdout session).
+
+### Moving data: `bluebox data`
+
+```sh
+bluebox data import devbox ./inputs     # copy a directory's contents into /data
+bluebox data export devbox ./results    # copy /data out to a new, empty directory
+```
+
+Works on every backend. Exported files were written by the guest, so they
+are treated as hostile: symlinks are kept as symlinks and never followed,
+nothing can land outside the target directory, devices and fifos are
+skipped, and setuid bits are dropped.
 
 The `krun` backend exports the image once to `~/.bluebox/rootfs/`, overlays
 it per VM, and writes the OCI spec itself with the same confinement the
@@ -554,6 +599,7 @@ CGO_ENABLED=0 go build -o bluebox ./cmd/bluebox   # static, so `up` can use it
 go test ./...                 # unit tests; no VM needed
 security/escape-test.sh ./bluebox strict   # escape attempts, needs KVM
 security/escape-test.sh ./bluebox standard krun   # the same, krun backend
+security/escape-test.sh ./bluebox strict firecracker   # and firecracker
 test/fork-e2e.sh ./bluebox strict          # fork lifecycle, needs KVM
 ```
 

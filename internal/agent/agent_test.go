@@ -19,7 +19,7 @@ func startAgent(t *testing.T, kernel string) string {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { ln.Close() })
-	go serveOn(ln, testToken, kernel)
+	go serveOn(ln, newTokenBox(testToken), kernel)
 	return ln.Addr().String()
 }
 
@@ -143,5 +143,18 @@ func TestSilentPeersCannotStarveTheOwner(t *testing.T) {
 			t.Fatalf("owner still locked out: %v", err)
 		}
 		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func TestTokenRotation(t *testing.T) {
+	addr := startAgent(t, "k")
+	if _, _, _, err := call(t, addr, Request{NewToken: "rotated"}, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := call(t, addr, Request{Argv: []string{"true"}}, ""); err == nil {
+		t.Fatal("the old token still works after rotation")
+	}
+	if res, _, _, err := call(t, addr, Request{Token: "rotated", Argv: []string{"true"}}, ""); err != nil || res.Code != 0 {
+		t.Fatalf("the new token does not work: %+v %v", res, err)
 	}
 }

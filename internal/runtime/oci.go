@@ -1,6 +1,8 @@
 package runtime
 
 import (
+	crand "crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -122,6 +124,15 @@ type imageConfig struct {
 	Cmd        []string `json:"cmd"`
 	WorkingDir string   `json:"workdir"`
 	User       string   `json:"user"`
+}
+
+// cgroupsPath names the VM's systemd scope. A suffix unique to this boot
+// keeps a scope left behind by a crashed VM of the same name from blocking
+// the next one.
+func cgroupsPath(vm string) string {
+	b := make([]byte, 4)
+	crand.Read(b)
+	return "user.slice:bluebox:" + vm + "-" + hex.EncodeToString(b)
 }
 
 // vmmCapList is vmmCaps as the OCI spec wants it.
@@ -250,7 +261,7 @@ func krunSpec(name string, s bluefile.Spec, in specInput) ([]byte, error) {
 				Pids:   &ociPids{Limit: vmmPidsLimit},
 				Memory: &ociMemory{Limit: int64(s.RAMMiB+vmmOverheadMiB) << 20},
 			},
-			CgroupsPath: "user.slice:bluebox:" + in.Launch.VM,
+			CgroupsPath: cgroupsPath(in.Launch.VM),
 			Namespaces: []ociNamespace{
 				{Type: "pid"}, {Type: "ipc"}, {Type: "uts"}, {Type: "mount"}, {Type: "cgroup"}, {Type: "network"},
 			},
@@ -358,6 +369,11 @@ type seccompFilter struct {
 // or the Bluefile's own -- into the OCI form, for the VMM's six capabilities
 // and this architecture. The result is the same filter podman would install.
 func seccompProfile(s bluefile.Spec) (json.RawMessage, error) {
+	return seccompProfileFor(s, vmmCapList)
+}
+
+// seccompProfileFor resolves the profile for a process holding caps.
+func seccompProfileFor(s bluefile.Spec, caps []string) (json.RawMessage, error) {
 	var path string
 	if s.Seccomp != "" {
 		path = s.Seccomp
@@ -391,7 +407,7 @@ func seccompProfile(s bluefile.Spec) (json.RawMessage, error) {
 	if arch == "" {
 		return nil, fmt.Errorf("no seccomp architecture mapping for %s", goruntime.GOARCH)
 	}
-	have := func(c string) bool { return slices.Contains(vmmCapList, c) }
+	have := func(c string) bool { return slices.Contains(caps, c) }
 
 	type rule struct {
 		Names    []string        `json:"names"`

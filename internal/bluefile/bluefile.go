@@ -125,7 +125,7 @@ network: bridge       # bridge = internet access, none = offline
 passt: false          # real NIC + default route in the guest (needed for k3s)
 readonly: false       # read-only guest root (/tmp and /data stay writable)
 isolation: standard   # strict: VMM runs as a UID that is not yours (use for agents)
-backend: podman       # podman (default) | krun (direct, faster boots) | firecracker
+backend: podman       # podman (default) | krun (direct, faster boots) | firecracker (snapshot per run, no network yet)
 timeout_seconds: 0    # per-run wall clock limit, 0 = unlimited
 warm: 0               # VMs kept booted so run starts in ms (each holds its RAM)
 
@@ -202,6 +202,20 @@ func (s Spec) validate() error {
 	}
 	if !slices.Contains(Backends, s.Backend) {
 		return fmt.Errorf("backend must be one of %s, got %q", BackendNames(), s.Backend)
+	}
+	if s.Backend == "firecracker" {
+		// /data is a disk there, not a shared directory, and a restore from
+		// a snapshot already starts in tens of milliseconds.
+		switch {
+		case len(s.Mounts) > 0:
+			return errors.New("backend: firecracker has no host mounts; move files with `bluebox data import`")
+		case s.Warm > 0:
+			return errors.New("backend: firecracker restores a snapshot per run; drop warm")
+		case s.Network != "none":
+			return errors.New("backend: firecracker supports network: none for now")
+		case s.Passt:
+			return errors.New("backend: firecracker does not use passt")
+		}
 	}
 	if s.Isolation != "standard" && s.Isolation != "strict" {
 		return fmt.Errorf("isolation must be standard or strict, got %q", s.Isolation)

@@ -1,58 +1,49 @@
 # Roadmap
 
-Near-term direction for bluebox. Each release is a [milestone][ms]; the themes
-below come from real gaps found while building and testing the tool, not a wish
-list. Dates are targets, not promises.
+Where bluebox is going. The full plan, with a checklist and a definition of
+done for each milestone, is [#16]. Milestones ship in order, because each one
+depends on the one before. There are no dates.
 
-[ms]: https://github.com/chxperiments/bluebox/milestones
+## Shipped
 
-## v0.2.1 — Input hardening
+- **v0.2:** Bluefile validation, declarative `mounts:`, `restore`, named
+  snapshots, isolation re-checked on every run.
+- **v0.3:** VMM confinement and `isolation: strict`, the escape suite,
+  `up`/`exec`, the warm pool, forks, three backends (podman, krun,
+  firecracker), `bluebox data`, SDKs for Python, TypeScript, Go and Rust, and
+  the MCP server.
 
-Everything that turns a crafted Bluefile or sandbox name into something it
-should not be. Host-side only; the microVM boundary is unchanged.
+## Next
 
-- Merge name and grammar validation ([#1]) — sandbox names stay inside the
-  bluebox root; data fields can no longer restructure the generated Containerfile.
-- Validate `write_files[].path`, which still reaches a `RUN chmod` line and can
-  inject a build-time command.
-- Validate sandbox names in `SnapshotsDir` too, so every path builder checks.
-- Re-verify isolation per run, not only at build — a degraded runtime should be
-  caught before a command runs, via a cached token keyed on the runtime's identity.
+- **v0.4, sandboxes isolated from each other:** a UID per sandbox, image builds
+  inside a VM, strict mode on krun, a `/data` size limit ([#10]), safer
+  restore ([#15]), cross-sandbox escape tests.
+- **v0.5, network policy:** egress allowlists through a forced proxy ([#7]),
+  no route to the host, the LAN or other sandboxes, a connection log ([#8]),
+  networking for Firecracker.
+- **v0.6, secrets and supply chain:** credential brokering, pinned base
+  images, signed releases with an SBOM and provenance, vulnerability scanning.
+- **v0.7, robustness:** fuzzing, fault and soak tests, cleanup after crashes,
+  upgrade tests.
+- **v0.8, interfaces and platforms:**
+  - **gRPC API** next to the local HTTP API: typed, with streamed `exec`
+    output and generated SDK clients, and the transport for server mode.
+  - **Lima backend:** each sandbox as a [Lima](https://lima-vm.io/) VM. On
+    macOS it uses Apple's Virtualization framework directly, so every feature
+    works there without a podman machine; on Linux it adds QEMU as a fourth
+    engine.
+  - Logs and metrics, a systemd unit, a versioned Bluefile and API with a
+    compatibility promise, published SDKs, deb/rpm/Homebrew packages.
+- **v0.9, multi-tenant server mode:** tenants, quotas, Firecracker only, an
+  audit log.
+- **v1.0:** an external security review and a disclosure process.
 
-## v0.2.3 — Data & lifecycle
+Also planned: a fuller guest kernel so Kubernetes in the `k8s` example gets
+overlay networking and Services ([#9]).
 
-Make the persistence model explicit rather than implicit, and reversible.
-
-- Declarative `mounts:` in the Bluefile — name the host paths a sandbox sees,
-  instead of `/data` being the one magic directory.
-- `bluebox restore <name> <snapshot>` — a first-class inverse of `snapshot`,
-  rather than a documented `tar -xzf` one-liner.
-
-## v0.2.5 — Network policy
-
-Egress today is all-or-nothing (`bridge` or `none`). Move to per-sandbox policy.
-
-- Hostname allow-listing via a forced egress proxy — filter on the requested
-  host (CONNECT / TLS SNI), so CDN IP rotation can't defeat it and there is no
-  route around it. An IP-pinned allow-list was prototyped and rejected: it fails
-  open when a CDN rotates.
-- An audit trail of what a sandbox reached for — useful for AI-agent use.
-
-## v0.2.7 — Full cluster networking & limits
-
-Close the guest-kernel gaps found running Kubernetes.
-
-- A fuller guest kernel (via libkrun's external-kernel support) with VXLAN and
-  `nf_conntrack`, so overlay CNI and Services work and the `k8s` example's clusters are
-  fully networked rather than host-gw + `hostNetwork` pods.
-- Resource limits the VM knob does not cover: pid limits (in-guest) and a disk
-  quota for `/data` (host-side).
-
-## Beyond
-
-- A pluggable hypervisor backend (Firecracker / Cloud Hypervisor) behind the
-  same CLI — only worth building when a second backend actually lands.
-- Confirmed macOS runtime testing on Apple Silicon (M3+, macOS 15+), where
-  nesting a microVM needs nested virtualization.
-
-[#1]: https://github.com/chxperiments/bluebox/pull/1
+[#7]: https://github.com/chxperiments/bluebox/issues/7
+[#8]: https://github.com/chxperiments/bluebox/issues/8
+[#9]: https://github.com/chxperiments/bluebox/issues/9
+[#10]: https://github.com/chxperiments/bluebox/issues/10
+[#15]: https://github.com/chxperiments/bluebox/issues/15
+[#16]: https://github.com/chxperiments/bluebox/issues/16

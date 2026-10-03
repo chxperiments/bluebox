@@ -61,7 +61,14 @@ body { padding-left: var(--rail); }
 .nav-mid { grid-row: 2; display: flex; flex-direction: row; align-items: center; gap: 0.45rem; padding: 1rem 0; }
 .nav-left { grid-row: 3; align-self: end; }
 .nav-links a { writing-mode: vertical-rl; transform: rotate(180deg); text-decoration: none; font-size: 0.86rem; letter-spacing: 0.02em; color: var(--muted); }
-.nav-links a:hover, .nav-links a[aria-current="page"] { color: var(--ink); text-decoration: underline 1.5px; text-underline-offset: 5px; }
+/* Links are marked like a highlighter: a blue stroke sweeps in under the
+   word on hover, fills it on press, and stays on the current page. The
+   uneven clip gives the stroke a marker's ragged ends. */
+.nav-links a { padding: 0.55rem 0.3rem; background: linear-gradient(var(--ink), var(--ink)) no-repeat 0 100% / 100% 0%;
+  clip-path: polygon(6% 1%, 96% 0, 100% 99%, 0 100%); transition: background-size 0.3s cubic-bezier(0.3, 0, 0.2, 1), color 0.2s; }
+.nav-links a:hover { color: var(--ink); background-size: 100% 18%; }
+.nav-links a:active, .nav-links a[aria-current="page"] { color: var(--bg); background-size: 100% 100%; }
+.nav-links a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .brand { display: block; color: var(--ink); }
 .brand .logo { display: block; fill: currentColor; overflow: visible; }
 .brand .logo-v { width: 1.55rem; height: auto; }
@@ -79,8 +86,9 @@ body { padding-left: var(--rail); }
   .nav-gh svg { transform: none; }
   .nav-gh:hover svg { transform: rotate(-12deg) scale(1.12); }
   .nav-right { grid-column: 3; justify-self: end; align-items: flex-end; }
-  .nav-links { gap: 0.2rem; }
-  .nav-links a { writing-mode: horizontal-tb; transform: none; font-size: 0.88rem; white-space: nowrap; }
+  .nav-links { gap: 0.15rem; }
+  .nav-links a { writing-mode: horizontal-tb; transform: none; font-size: 0.88rem; white-space: nowrap; padding: 0.1rem 0.4rem; clip-path: polygon(1% 8%, 100% 0, 99% 94%, 0 100%); }
+  .nav-right a { text-align: right; }
   .brand .logo-v { display: none; }
   .brand .logo-h { display: block; }
   .nav-gh svg { width: 1.1rem; height: 1.1rem; }

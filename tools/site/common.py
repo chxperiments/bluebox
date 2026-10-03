@@ -12,7 +12,7 @@ GH = "https://github.com/chxperiments/bluebox"
 
 def page(filename, title, description, body):
     import art
-    DRIPS, WDRIPS = art.drips(23), art.word_drips()
+    DRIPS = art.drips(23)
     nav = "\n".join(
         f'        <a href="{f}"{" aria-current=\"page\"" if f == filename else ""}>{t}</a>'
         for f, t in PAGES if f != "index.html"
@@ -81,7 +81,7 @@ def page(filename, title, description, body):
         <a href="{GH}/tree/main/examples">Examples</a>
       </nav>
     </div>
-    <div class="wordmark" aria-hidden="true"><svg viewBox="0 0 1000 300" preserveAspectRatio="xMinYMid meet"><text x="8" y="212" textLength="950" lengthAdjust="spacingAndGlyphs">bluebox</text><g class="wdrips">{WDRIPS}</g></svg></div>
+    <div class="wordmark" aria-hidden="true"><svg viewBox="0 0 1000 245" preserveAspectRatio="xMinYMid meet"><text x="8" y="212" textLength="950" lengthAdjust="spacingAndGlyphs">bluebox</text></svg></div>
     <div class="footer-base">
       <span>MIT licensed. Isolated, disposable microVM sandboxes.</span>
       <a href="#top">Back to top</a>

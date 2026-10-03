@@ -31,7 +31,7 @@
 <section class="page-head dots dots-tr">
   <div class="wrap">
     <h1>Architecture</h1>
-    <p class="lead">One interface, three ways to boot a microVM. Everything above the launcher is shared; everything below it is chosen per sandbox with <code>backend:</code> in the Bluefile.</p>
+    <p class="lead">One interface, three ways to boot a microVM. Everything above the launcher is the same on all three; what is below it depends on <code>backend:</code> in the Bluefile.</p>
   </div>
 </section>
 
@@ -61,13 +61,13 @@
   <div class="wrap split">
     <div class="prose">
       <h2 style="margin-bottom:1rem">podman and krun: libkrun</h2>
-      <p>libkrun is a library that turns a process into a microVM. crun's libkrun handler uses it to boot an OCI image with its own kernel; bluebox verifies that at build by comparing the guest's kernel with the one a plain container sees, and again before every command.</p>
+      <p>libkrun is a library that runs a process as a microVM. crun's libkrun handler uses it to boot an OCI image with its own kernel; bluebox verifies that at build by comparing the guest's kernel with the one a plain container sees, and again before every command.</p>
       <p>libkrun's own documentation says the guest and its VMM share one security context: the VMM does the guest's file I/O and opens its network connections. So bluebox treats the VMM's confinement as the boundary behind a libkrun escape, and keeps only the six capabilities virtiofs and low ports need.</p>
       <p>The <code>krun</code> backend writes the OCI spec itself and drives crun directly, removing podman's share of a cold boot (about 0.85 s of 1.4 s), with the same confinement.</p>
     </div>
     <div class="prose">
       <h2 style="margin-bottom:1rem">firecracker: a snapshot per run</h2>
-      <p>Firecracker is the VMM built for running other people's code at scale. It has no host-side proxy for guest sockets and a device model of block, vsock and little else.</p>
+      <p>Firecracker is the VMM AWS built to run other people's code in Lambda and Fargate. It emulates a block device, vsock and very little else, and it does not open the guest's network connections on the host.</p>
       <p>bluebox boots each image once, waits for its agent, and snapshots the VM. Every run restores that snapshot instead of booting a kernel. Before anything runs, the copy is made distinct: the agent token baked into the snapshot is rotated, the guest mixes in fresh randomness and takes the host clock, and only then is <code>/data</code> mounted.</p>
       <p>The VMM runs in a crun container with no capabilities at all and a read-only root holding only its binary, kernel, image, VM directory, disk and <code>/dev/kvm</code>: what Firecracker's jailer provides, without the root it needs.</p>
     </div>
@@ -100,7 +100,7 @@
 <section class="section">
   <div class="wrap">
     <h2>Data and forks</h2>
-    <p class="lead">Everything in a sandbox resets per run except <code>/data</code>, so state is a filesystem problem, and filesystem problems are cheap.</p>
+    <p class="lead">Everything except <code>/data</code> resets after each run, so a fork only has to branch one directory. That is why it is fast.</p>
     <div class="art-frame" style="margin-bottom:2rem"><svg class="art fork-loop sans" viewBox="0 0 720 240" role="img" aria-labelledby="fork-art-t">
   <title id="fork-art-t">A sandbox forks into three trials. Two are discarded; one is applied back.</title>
   <path class="s" d="M20,120 H190"/>
@@ -166,7 +166,7 @@
         <a href="https://github.com/chxperiments/bluebox/tree/main/examples">Examples</a>
       </nav>
     </div>
-    <div class="wordmark" aria-hidden="true"><svg viewBox="0 0 1000 300" preserveAspectRatio="xMinYMid meet"><text x="8" y="212" textLength="950" lengthAdjust="spacingAndGlyphs">bluebox</text><g class="wdrips"><path class="wdrip" style="--n:0" d="M28.2,206 C28.2,214 33.2,218 33.2,237.5 A6.2,6.2 0 0 0 45.6,237.5 C45.6,218 50.6,214 50.6,206 Z"/><path class="wdrip" style="--n:1" d="M108.8,206 C108.8,214 112.9,218 112.9,257.2 A5.0,5.0 0 0 0 122.8,257.2 C122.8,218 126.9,214 126.9,206 Z"/><path class="wdrip" style="--n:2" d="M234.9,206 C234.9,214 239.2,218 239.2,259.9 A5.2,5.2 0 0 0 249.6,259.9 C249.6,218 253.9,214 253.9,206 Z"/><path class="wdrip" style="--n:3" d="M387.6,206 C387.6,214 391.8,218 391.8,250.5 A5.1,5.1 0 0 0 402.0,250.5 C402.0,218 406.1,214 406.1,206 Z"/><path class="wdrip" style="--n:4" d="M461.5,206 C461.5,214 466.8,218 466.8,269.2 A6.4,6.4 0 0 0 479.7,269.2 C479.7,218 485.0,214 485.0,206 Z"/><path class="wdrip" style="--n:5" d="M544.1,206 C544.1,214 548.8,218 548.8,236.0 A5.7,5.7 0 0 0 560.2,236.0 C560.2,218 564.9,214 564.9,206 Z"/><path class="wdrip" style="--n:6" d="M675.6,206 C675.6,214 682.1,218 682.1,261.9 A8.0,8.0 0 0 0 698.1,261.9 C698.1,218 704.6,214 704.6,206 Z"/><path class="wdrip" style="--n:7" d="M783.1,206 C783.1,214 788.2,218 788.2,270.3 A6.2,6.2 0 0 0 800.6,270.3 C800.6,218 805.7,214 805.7,206 Z"/><path class="wdrip" style="--n:8" d="M887.9,206 C887.9,214 892.7,218 892.7,266.4 A5.9,5.9 0 0 0 904.5,266.4 C904.5,218 909.4,214 909.4,206 Z"/><path class="wdrip" style="--n:9" d="M942.1,206 C942.1,214 947.3,218 947.3,234.7 A6.3,6.3 0 0 0 960.0,234.7 C960.0,218 965.1,214 965.1,206 Z"/></g></svg></div>
+    <div class="wordmark" aria-hidden="true"><svg viewBox="0 0 1000 245" preserveAspectRatio="xMinYMid meet"><text x="8" y="212" textLength="950" lengthAdjust="spacingAndGlyphs">bluebox</text></svg></div>
     <div class="footer-base">
       <span>MIT licensed. Isolated, disposable microVM sandboxes.</span>
       <a href="#top">Back to top</a>

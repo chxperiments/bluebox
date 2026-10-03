@@ -181,14 +181,14 @@ overview = f"""
 
 <section class="section dots dots-tr" id="speed">
   <div class="wrap">
-    <h2>Measured, not claimed.</h2>
+    <h2>Startup times, measured.</h2>
     {art.scribble(4)}
-    <p class="lead">Isolation used to cost a second per command. bluebox pays it before the command arrives.</p>
+    <p class="lead">Booting a microVM takes over a second. bluebox boots it before the command arrives, so the command waits milliseconds.</p>
     <div class="numbers reveal">
       <div><b>15<small>ms</small></b><span>a command in a running VM</span></div>
       <div><b>41<small>ms</small></b><span>a fresh VM from the warm pool</span></div>
       <div><b>0.3<small>s</small></b><span>a fresh VM restored from a snapshot</span></div>
-      <div><b>0</b><span>escapes in the escape suite, on every backend</span></div>
+      <div><b>0</b><span>escapes found by the escape suite, on any backend</span></div>
     </div>
     <figure class="figure reveal" style="margin-top:1.5rem">
       <div class="figure-body">{bars()}</div>
@@ -200,7 +200,7 @@ overview = f"""
   <div class="drips">{art.drips(7)}</div>
   <div class="wrap">
     <h2>One interface, three engines.</h2>
-    <p class="lead">Every call goes through bluebox. The Bluefile's <code>backend:</code> decides what boots the microVM, and each one gives the sandbox its own kernel.</p>
+    <p class="lead">Every call goes through bluebox. The Bluefile's <code>backend:</code> picks what boots the microVM; all three give the sandbox its own kernel.</p>
     <figure class="figure">
       <div class="figure-body">{art.workflow()}</div>
     </figure>
@@ -211,7 +211,7 @@ overview = f"""
   <div class="wrap">
     <h2>The whole sandbox is one file.</h2>
     {art.scribble(5)}
-    <p class="lead">Declare it; bluebox builds it, proves it has its own kernel, and refuses it if not. Point at a line.</p>
+    <p class="lead">bluebox builds the image, checks that the sandbox really has its own kernel, and refuses to run it if not. Hover over a line to see what it does.</p>
     {bluefile_explorer()}
   </div>
 </section>
@@ -226,8 +226,8 @@ overview = f"""
     <div class="prose">
       <h2 style="margin-bottom:1rem">Branch, review, apply.</h2>
     {art.scribble(3)}
-      <p><b>Fork</b> a sandbox and its <code>/data</code> branches in milliseconds, so an agent can try several approaches side by side without touching the original.</p>
-      <p><b>Diff</b> shows exactly what a trial changed. Its work reaches your data only when you <b>apply</b> it; the rest you <b>discard</b>. Agents on MCP can fork and diff, but applying stays with you.</p>
+      <p><b>Fork</b> a sandbox and its <code>/data</code> branches in about a quarter of a second. An agent can try several approaches side by side, and the original stays untouched.</p>
+      <p><b>Diff</b> lists what a trial changed. Nothing reaches your data until you <b>apply</b> it, and you <b>discard</b> the rest. Agents on MCP can fork and diff, but only you can apply.</p>
       <p><a href="docs.html#sdk-fork">Forks in the docs</a></p>
     </div>
     <div class="art-frame">{art.fork()}</div>
@@ -248,9 +248,9 @@ overview = f"""
 <section class="section" id="about">
   <div class="wrap split">
     <div class="prose">
-      <h2 style="margin-bottom:1rem">Built to be checked.</h2>
-      <p>An escape suite runs what a hostile agent would try from inside a sandbox: reaching services on your loopback, reading host files, symlink and path traversal, writing through read-only mounts, reading the agent's token, a fork bomb. It then inspects the VMM from outside: capabilities, privileges, seccomp, namespaces, limits.</p>
-      <p>It passes on every backend and both isolation modes, and it ships in the repository so anyone can run it.</p>
+      <h2 style="margin-bottom:1rem">An escape suite, in the repo.</h2>
+      <p>It runs what a hostile agent would try from inside a sandbox: reaching services on your loopback, reading host files, escaping through symlinks and <code>../</code> paths, writing through read-only mounts, reading the agent's token, a fork bomb. Then it inspects the VMM from outside: capabilities, privileges, seccomp, namespaces, limits.</p>
+      <p>It passes on every backend in both isolation modes. Run it yourself before you trust it.</p>
       <p><a href="security.html">Read the threat model</a></p>
     </div>
     <div class="next">
@@ -310,7 +310,7 @@ architecture = f"""
 <section class="page-head dots dots-tr">
   <div class="wrap">
     <h1>Architecture</h1>
-    <p class="lead">One interface, three ways to boot a microVM. Everything above the launcher is shared; everything below it is chosen per sandbox with <code>backend:</code> in the Bluefile.</p>
+    <p class="lead">One interface, three ways to boot a microVM. Everything above the launcher is the same on all three; what is below it depends on <code>backend:</code> in the Bluefile.</p>
   </div>
 </section>
 
@@ -330,13 +330,13 @@ architecture = f"""
   <div class="wrap split">
     <div class="prose">
       <h2 style="margin-bottom:1rem">podman and krun: libkrun</h2>
-      <p>libkrun is a library that turns a process into a microVM. crun's libkrun handler uses it to boot an OCI image with its own kernel; bluebox verifies that at build by comparing the guest's kernel with the one a plain container sees, and again before every command.</p>
+      <p>libkrun is a library that runs a process as a microVM. crun's libkrun handler uses it to boot an OCI image with its own kernel; bluebox verifies that at build by comparing the guest's kernel with the one a plain container sees, and again before every command.</p>
       <p>libkrun's own documentation says the guest and its VMM share one security context: the VMM does the guest's file I/O and opens its network connections. So bluebox treats the VMM's confinement as the boundary behind a libkrun escape, and keeps only the six capabilities virtiofs and low ports need.</p>
       <p>The <code>krun</code> backend writes the OCI spec itself and drives crun directly, removing podman's share of a cold boot (about 0.85 s of 1.4 s), with the same confinement.</p>
     </div>
     <div class="prose">
       <h2 style="margin-bottom:1rem">firecracker: a snapshot per run</h2>
-      <p>Firecracker is the VMM built for running other people's code at scale. It has no host-side proxy for guest sockets and a device model of block, vsock and little else.</p>
+      <p>Firecracker is the VMM AWS built to run other people's code in Lambda and Fargate. It emulates a block device, vsock and very little else, and it does not open the guest's network connections on the host.</p>
       <p>bluebox boots each image once, waits for its agent, and snapshots the VM. Every run restores that snapshot instead of booting a kernel. Before anything runs, the copy is made distinct: the agent token baked into the snapshot is rotated, the guest mixes in fresh randomness and takes the host clock, and only then is <code>/data</code> mounted.</p>
       <p>The VMM runs in a crun container with no capabilities at all and a read-only root holding only its binary, kernel, image, VM directory, disk and <code>/dev/kvm</code>: what Firecracker's jailer provides, without the root it needs.</p>
     </div>
@@ -369,7 +369,7 @@ architecture = f"""
 <section class="section">
   <div class="wrap">
     <h2>Data and forks</h2>
-    <p class="lead">Everything in a sandbox resets per run except <code>/data</code>, so state is a filesystem problem, and filesystem problems are cheap.</p>
+    <p class="lead">Everything except <code>/data</code> resets after each run, so a fork only has to branch one directory. That is why it is fast.</p>
     <div class="art-frame" style="margin-bottom:2rem">{art.fork()}</div>
     <div class="table-wrap build">
       <table>
@@ -439,7 +439,7 @@ security = f"""
 <section class="page-head dots dots-tr">
   <div class="wrap">
     <h1>Security</h1>
-    <p class="lead">The workload is assumed hostile: careless, malicious, or an agent turned by prompt injection. This page says what stands between it and your machine, and what does not.</p>
+    <p class="lead">bluebox assumes the code it runs is hostile: careless, malicious, or an agent hijacked by prompt injection. This page lists what stands between that code and your machine, and what does not.</p>
   </div>
 </section>
 
@@ -539,7 +539,7 @@ benchmarks = f"""
 <section class="page-head dots dots-tr">
   <div class="wrap">
     <h1>Benchmarks</h1>
-    <p class="lead">Every number on this site, where it came from, and how to reproduce it. Medians of repeated runs, wall clock from the host, one machine.</p>
+    <p class="lead">Where every number on this site comes from, and how to reproduce it. All are medians of repeated runs, timed from the host, on one machine.</p>
   </div>
 </section>
 

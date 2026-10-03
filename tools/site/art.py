@@ -40,7 +40,6 @@ def hero():
   <title id="hero-art-t">Nested boxes: your machine, the confined VMM, KVM and the guest kernel. A command travels inward and runs in the guest.</title>
   <g class="float">
     {''.join(paths)}
-    {cube_drips()}
     <path class="s thin" d="{route}" stroke-dasharray="2 6"/>
     <rect class="f" x="-5" y="-5" width="10" height="10" opacity="0">
       <animateMotion dur="3.6s" repeatCount="indefinite" path="{route}" keyPoints="0;1;1" keyTimes="0;0.55;1" calcMode="spline" keySplines="0.65 0 0.35 1;0 0 1 1"/>
@@ -64,7 +63,6 @@ def hero_minimal():
   <title id="hero-art-t">Nested boxes: your machine, the confined VMM, KVM and the guest kernel. A command travels inward and runs in the guest.</title>
   <g class="float">
     {''.join(paths)}
-    {cube_drips()}
     <path class="s thin" d="{route}" stroke-dasharray="2 6"/>
     <rect class="f" x="-5" y="-5" width="10" height="10" opacity="0">
       <animateMotion dur="3.6s" repeatCount="indefinite" path="{route}" keyPoints="0;1;1" keyTimes="0;0.55;1" calcMode="spline" keySplines="0.65 0 0.35 1;0 0 1 1"/>
@@ -97,7 +95,6 @@ def hero_labelled():
   <title id="hero-art-l">Nested boxes: your machine, the confined VMM, KVM and the guest kernel. A command travels inward and runs in the guest.</title>
   <g class="float">
     {''.join(paths)}
-    {cube_drips()}
     <path class="s thin" d="{route}" stroke-dasharray="2 6"/>
     <rect class="f" x="-5" y="-5" width="10" height="10" opacity="0">
       <animateMotion dur="3.6s" repeatCount="indefinite" path="{route}" keyPoints="0;1;1" keyTimes="0;0.55;1" calcMode="spline" keySplines="0.65 0 0.35 1;0 0 1 1"/>

@@ -197,7 +197,6 @@ overview = f"""
 </section>
 
 <section class="section invert wipe dots dots-tr" id="engines">
-  <div class="drips">{art.drips(7)}</div>
   <div class="wrap">
     <h2>One interface, three engines.</h2>
     <p class="lead">Every call goes through bluebox. The Bluefile's <code>backend:</code> picks what boots the microVM; all three give the sandbox its own kernel.</p>
@@ -326,7 +325,6 @@ architecture = f"""
 </section>
 
 <section class="section invert wipe">
-  <div class="drips">{art.drips(11)}</div>
   <div class="wrap split">
     <div class="prose">
       <h2 style="margin-bottom:1rem">podman and krun: libkrun</h2>
@@ -460,7 +458,6 @@ security = f"""
 </section>
 
 <section class="section invert wipe">
-  <div class="drips">{art.drips(13)}</div>
   <div class="wrap">
     <h2>Confinement, per backend</h2>
     <p class="lead">Read off the running VMM by the escape suite, not from configuration.</p>
@@ -552,7 +549,6 @@ benchmarks = f"""
 </section>
 
 <section class="section invert wipe">
-  <div class="drips">{art.drips(17)}</div>
   <div class="wrap">
     <h2>Against the baselines</h2>
     <p class="lead">Median of 10 runs after one warm-up. The Python workload is <code>sum(i * i for i in range(100_000))</code>.</p>
@@ -654,7 +650,6 @@ def rows(items, fmt):
 
 docs = f"""
 <section class="page-head invert wipe">
-  <div class="drips">{art.drips(19)}</div>
   <div class="wrap">
     <h1>Documentation</h1>
     <p class="lead">Install, define a sandbox, and drive it from the CLI or from code.</p>

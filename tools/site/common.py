@@ -11,25 +11,28 @@ GH = "https://github.com/chxperiments/bluebox"
 
 
 def logo():
-    """The bluebox wordmark, set in Archivo Expanded ExtraBold and stored as
-    outlines (docs/assets/bluebox-wordmark.svg), so it needs no font load.
-    Solid for the nav, hollow for the footer."""
+    """The bluebox wordmark, set in Geist SemiBold and stored as outlines
+    (docs/assets/bluebox-wordmark.svg), one path per letter so each can
+    move on its own. Solid for the nav rail, hollow and drawn in for the footer."""
     import re
     from pathlib import Path
     svg = (Path(__file__).resolve().parents[2] / "docs/assets/bluebox-wordmark.svg").read_text()
     vb = re.search(r'viewBox="([^"]+)"', svg).group(1)
-    d = re.search(r' d="([^"]+)"', svg).group(1)
+    letters = re.findall(r' d="([^"]+)"', svg)
     x, y, w, h = (float(v) for v in vb.split())
-    nav = f'<svg class="logo" viewBox="{vb}" aria-hidden="true"><path d="{d}"/></svg>'
-    pad = 40
-    foot = (f'<svg viewBox="{x - pad:.0f} {y - pad:.0f} {w + 2 * pad:.0f} {h + 2 * pad:.0f}">'
-            f'<path d="{d}"/></svg>')
-    return nav, foot
+    nav = "".join(f'<path style="--i:{i}" d="{d}"/>' for i, d in enumerate(letters))
+    foot = "".join(f'<path pathLength="1" style="--i:{i}" d="{d}"/>' for i, d in enumerate(letters))
+    pad = 30
+    # The rail shows the word reading upward: the same letters turned a
+    # quarter, with the viewBox turned to match. The top bar on small
+    # screens shows it level.
+    vert = f'{y:.0f} {-(x + w):.0f} {h:.0f} {w:.0f}'
+    return (f'<svg class="logo logo-v" viewBox="{vert}" aria-hidden="true"><g transform="rotate(-90)">{nav}</g></svg>'
+            f'<svg class="logo logo-h" viewBox="{vb}" aria-hidden="true">{nav}</svg>',
+            f'<svg viewBox="{x - pad:.0f} {y - pad:.0f} {w + 2 * pad:.0f} {h + 2 * pad:.0f}">{foot}</svg>')
 
 
 def page(filename, title, description, body):
-    import art
-    DRIPS = art.drips(23)
     LOGO, WORDMARK = logo()
     nav = "\n".join(
         f'        <a href="{f}"{" aria-current=\"page\"" if f == filename else ""}>{t}</a>'
@@ -48,24 +51,21 @@ def page(filename, title, description, body):
 <meta name="theme-color" content="#1300f9">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,700;125,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@200..500&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<header class="nav">
-  <div class="wrap">
-    <a class="brand" href="index.html" aria-label="bluebox, home">{LOGO}</a>
-    <nav class="nav-links" aria-label="Site">
+<header class="nav invert">
+  <nav class="nav-links" aria-label="Site">
 {nav}
-    </nav>
-    <a class="nav-gh" href="{GH}">GitHub</a>
-  </div>
+  </nav>
+  <a class="brand" href="index.html" aria-label="bluebox, home">{LOGO}</a>
+  <a class="nav-gh" href="{GH}">GitHub</a>
 </header>
 <main id="top">
 {body}
 </main>
 <footer class="footer invert wipe">
-  <div class="drips">{DRIPS}</div>
   <div class="wrap">
     <div class="footer-top">
       <div>

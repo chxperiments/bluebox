@@ -115,14 +115,14 @@ def architecture():
         ("guest", 464, ["kernel 6.12", "kernel 6.12", "kernel 6.1"]),
     ]
     out = []
-    out.append('<rect class="s" pathLength="1" style="--i:0" x="170" y="40" width="860" height="54" rx="4"/>')
+    out.append('<rect class="s" pathLength="1" style="--i:0" x="170" y="40" width="860" height="54"/>')
     out.append('<text class="big lbl" x="194" y="74" style="--i:0">bluebox: CLI, SDKs, local API</text>')
     for r, (name, y, cells) in enumerate(rows, start=1):
         out.append(f'<text class="dim lbl" x="20" y="{y + 28}" style="--i:{r}">{name}</text>')
         for (col, x), label in zip(cols, cells):
-            out.append(f'<rect class="s" pathLength="1" style="--i:{r}" x="{x - 130}" y="{y}" width="260" height="46" rx="4"/>')
+            out.append(f'<rect class="s" pathLength="1" style="--i:{r}" x="{x - 130}" y="{y}" width="260" height="46"/>')
             out.append(f'<text class="lbl" x="{x - 114}" y="{y + 28}" style="--i:{r}">{label}</text>')
-    out.append('<rect class="s" pathLength="1" style="--i:4" x="170" y="388" width="860" height="46" rx="4"/>')
+    out.append('<rect class="s" pathLength="1" style="--i:4" x="170" y="388" width="860" height="46"/>')
     out.append('<text class="lbl" x="194" y="416" style="--i:4">KVM: own kernel per sandbox</text>')
     out.append('<text class="dim lbl" x="20" y="416" style="--i:4">hypervisor</text>')
     for i, (col, x) in enumerate(cols):
@@ -173,7 +173,7 @@ def security():
     out = []
     for i, (inset, label) in enumerate(layers):
         w, h = 760 - 2 * inset, 420 - 2 * inset
-        out.append(f'<rect class="s{" dash" if i == 0 else ""}" pathLength="1" style="--i:{i}" x="{inset}" y="{inset}" width="{w}" height="{h}" rx="4"/>')
+        out.append(f'<rect class="s{" dash" if i == 0 else ""}" pathLength="1" style="--i:{i}" x="{inset}" y="{inset}" width="{w}" height="{h}"/>')
         out.append(f'<text class="lbl{" dim" if i == 0 else ""}" style="--i:{i}" x="{inset + 14}" y="{inset + 24}">{label}</text>')
     checks = ["loopback", "host files", "symlinks", "mounts", "token", "fork bomb"]
     ticks = "".join(
@@ -235,7 +235,7 @@ def workflow():
 
     def node(x, y, w, h, title, sub="", i=0, strong=False):
         cls = "s node-strong" if strong else "s"
-        g = [f'<rect class="{cls}" pathLength="1" style="--i:{i}" x="{x}" y="{y}" width="{w}" height="{h}" rx="6"/>']
+        g = [f'<rect class="{cls}" pathLength="1" style="--i:{i}" x="{x}" y="{y}" width="{w}" height="{h}"/>']
         ty = y + (h / 2 + 6 if not sub else h / 2 - 3)
         g.append(f'<text class="big lbl{" on-strong" if strong else ""}" style="--i:{i}" x="{x + 18}" y="{ty:.0f}">{title}</text>')
         if sub:
@@ -259,7 +259,7 @@ def workflow():
     for k, (t, sub, ms, y) in enumerate(engines):
         out.append(flow(f"M528,262 C620,262 640,{y + 32} 720,{y + 32}", 3, 2.0, 1.1 + k * 0.45))
         out.append(node(720, y, 200, 64, t, sub, i=4))
-        out.append(f'<g class="lbl" style="--i:5"><rect class="f" x="{928}" y="{y + 20}" width="62" height="24" rx="4"/>'
+        out.append(f'<g class="lbl" style="--i:5"><rect class="f" x="{928}" y="{y + 20}" width="62" height="24"/>'
                    f'<text class="on-strong" x="{959}" y="{y + 37}" text-anchor="middle">{ms}</text></g>')
         # Each engine boots its own microVM: a small box with a kernel inside.
         cx, cy = 1062, y + 32
@@ -274,46 +274,7 @@ def workflow():
 
 
 # ---------------------------------------------------------------------------
-# Street marks: sticker, crown, drips, scribble, arrow. Two pigments only.
-
-def badge():
-    """A round sticker, its ring of text turning slowly around a small box."""
-    ring = "OWN KERNEL + FRESH EVERY RUN + NOTHING SHARED + "
-    return f"""<svg class="badge" viewBox="0 0 200 200" aria-hidden="true">
-  <defs><path id="badge-ring" d="M100,100 m-74,0 a74,74 0 1,1 148,0 a74,74 0 1,1 -148,0"/></defs>
-  <circle class="badge-fill" cx="100" cy="100" r="97"/>
-  <g class="spin"><text class="badge-text"><textPath href="#badge-ring">{ring}</textPath></text></g>
-  <path class="badge-mark" d="{iso_cube(100, 100, 30)}"/>
-</svg>"""
-
-
-def crown():
-    """A hand-drawn three-point crown, the street tag for a king."""
-    return ('<path class="tag-stroke" pathLength="1" d="M8,62 L14,18 L34,44 L50,6 L66,44 L86,18 L92,62 Z"/>'
-            '<circle class="tag-dot" cx="14" cy="13" r="5"/><circle class="tag-dot" cx="50" cy="1" r="5"/>'
-            '<circle class="tag-dot" cx="86" cy="13" r="5"/>')
-
-
-def drips(seed=7):
-    """Paint running down from the section above: a ragged edge with drops
-    of different lengths, as one path."""
-    import random
-    rnd = random.Random(seed)
-    x, pts = 0.0, ["M0,0"]
-    while x < 1200:
-        w = rnd.uniform(18, 46)
-        if rnd.random() < 0.45:
-            ln = rnd.uniform(14, 70)
-            d = rnd.uniform(6, 11)
-            mid = x + w / 2
-            pts.append(f"L{mid - d:.1f},{rnd.uniform(6, 12):.1f} L{mid - d * 0.8:.1f},{ln:.1f} "
-                       f"A{d * 0.8:.1f},{d * 0.8:.1f} 0 0 0 {mid + d * 0.8:.1f},{ln:.1f} L{mid + d:.1f},{rnd.uniform(6, 12):.1f}")
-        x += w
-        pts.append(f"L{min(x, 1200):.1f},{rnd.uniform(4, 13):.1f}")
-    pts.append("L1200,0 Z")
-    return (f'<svg class="drips-svg" viewBox="0 0 1200 90" preserveAspectRatio="none" aria-hidden="true">'
-            f'<path d="{" ".join(pts)}"/></svg>')
-
+# Street mark: a marker underline.
 
 def scribble(seed=3):
     """A quick marker underline: two loose passes."""
@@ -323,47 +284,3 @@ def scribble(seed=3):
     b = f"M18,{22 + rnd.uniform(-2, 2):.1f} C90,{14 + rnd.uniform(-2, 2):.1f} 160,{24 + rnd.uniform(-2, 2):.1f} 226,{18 + rnd.uniform(-2, 2):.1f}"
     return (f'<svg class="scribble on-view" viewBox="0 0 240 30" aria-hidden="true">'
             f'<path class="s mark" pathLength="1" style="--i:0" d="{a}"/><path class="s mark" pathLength="1" style="--i:2" d="{b}"/></svg>')
-
-
-def arrow():
-    """A hand-drawn arrow with a marker note, curving into the install line."""
-    return ('<svg class="tryit on-view" viewBox="0 0 160 90" aria-hidden="true">'
-            '<path class="s mark" pathLength="1" style="--i:0" d="M14,26 C40,30 70,40 96,60 C108,69 118,74 132,76"/>'
-            '<path class="s mark" pathLength="1" style="--i:3" d="M118,62 L134,77 L114,86"/>'
-            '<text class="marker" x="6" y="16" transform="rotate(-8 6 16)">try it</text></svg>')
-
-
-
-def cube_drips(cx=300, cy=300, s=250, seed=5):
-    """White paint running off the outer box's two lower edges."""
-    import random
-    rnd = random.Random(seed)
-    k = 0.866 * s
-    out = []
-    for i, t in enumerate([0.12, 0.3, 0.55, 0.78, 0.9]):
-        # along the lower-left edge (ll -> bottom), then the lower-right (bottom -> lr)
-        if i % 2 == 0:
-            x = cx - k + t * k
-            y = cy + s / 2 + t * s / 2
-        else:
-            x = cx + t * k
-            y = cy + s - t * s / 2
-        ln = rnd.uniform(26, 90)
-        out.append(f'<path class="s drip" pathLength="1" style="--i:{4 + i}" d="M{x:.1f},{y:.1f} V{y + ln:.1f}"/>'
-                   f'<circle class="f drop" style="--i:{4 + i}" cx="{x:.1f}" cy="{y + ln + 4:.1f}" r="4.2"/>')
-    return "".join(out)
-
-
-def word_drips(seed=9):
-    """Blue paint running off the wordmark's baseline."""
-    import random
-    rnd = random.Random(seed)
-    out = []
-    for i, x in enumerate([40, 112, 238, 395, 470, 560, 690, 790, 905, 950]):
-        x += rnd.uniform(-8, 8)
-        w = rnd.uniform(9, 15)
-        ln = rnd.uniform(24, 78)
-        out.append(f'<path class="wdrip" style="--n:{i}" d="M{x - w:.1f},206 C{x - w:.1f},214 {x - w * 0.55:.1f},218 '
-                   f'{x - w * 0.55:.1f},{206 + ln:.1f} A{w * 0.55:.1f},{w * 0.55:.1f} 0 0 0 {x + w * 0.55:.1f},{206 + ln:.1f} '
-                   f'C{x + w * 0.55:.1f},218 {x + w:.1f},214 {x + w:.1f},206 Z"/>')
-    return "".join(out)

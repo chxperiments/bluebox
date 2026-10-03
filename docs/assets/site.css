@@ -56,7 +56,9 @@ code, pre, kbd { font-family: var(--mono); font-size: 0.88em; }
 body { padding-left: var(--rail); }
 .nav-links { display: flex; flex-direction: column; gap: 1.4rem; }
 .nav-right { grid-row: 1; align-self: start; }
-.nav-mid { grid-row: 2; display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 1rem 0; }
+/* The word reads upward, so its underside faces right: the GitHub mark sits
+   there, centred on the word and turned with it. */
+.nav-mid { grid-row: 2; display: flex; flex-direction: row; align-items: center; gap: 0.45rem; padding: 1rem 0; }
 .nav-left { grid-row: 3; align-self: end; }
 .nav-links a { writing-mode: vertical-rl; transform: rotate(180deg); text-decoration: none; font-size: 0.86rem; letter-spacing: 0.02em; color: var(--muted); }
 .nav-links a:hover, .nav-links a[aria-current="page"] { color: var(--ink); text-decoration: underline 1.5px; text-underline-offset: 5px; }
@@ -65,15 +67,17 @@ body { padding-left: var(--rail); }
 .brand .logo-v { width: 1.55rem; height: auto; }
 .brand .logo-h { display: none; height: 1.25rem; width: auto; }
 .nav-gh { display: block; color: var(--ink); line-height: 0; }
-.nav-gh svg { width: 1.35rem; height: 1.35rem; fill: currentColor; transition: transform 0.25s; }
-.nav-gh:hover svg { transform: rotate(-12deg) scale(1.12); }
+.nav-gh svg { width: 1.15rem; height: 1.15rem; fill: currentColor; transform: rotate(-90deg); transition: transform 0.25s; }
+.nav-gh:hover svg { transform: rotate(-102deg) scale(1.12); }
 @media (max-width: 900px) {
   body { padding-left: 0; }
   .nav.invert { position: sticky; bottom: auto; width: auto; border-right: 0; border-bottom: 1px solid var(--line);
     grid-template-rows: auto; grid-template-columns: 1fr auto 1fr; align-items: center; column-gap: 1rem; padding: 0.6rem clamp(1rem, 4vw, 2rem); }
   .nav-right, .nav-mid, .nav-left { grid-row: 1; align-self: center; }
   .nav-left { grid-column: 1; justify-self: start; }
-  .nav-mid { grid-column: 2; gap: 0.35rem; padding: 0; }
+  .nav-mid { grid-column: 2; flex-direction: column; gap: 0.35rem; padding: 0; }
+  .nav-gh svg { transform: none; }
+  .nav-gh:hover svg { transform: rotate(-12deg) scale(1.12); }
   .nav-right { grid-column: 3; justify-self: end; align-items: flex-end; }
   .nav-links { gap: 0.2rem; }
   .nav-links a { writing-mode: horizontal-tb; transform: none; font-size: 0.88rem; white-space: nowrap; }

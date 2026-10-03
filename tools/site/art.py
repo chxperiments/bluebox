@@ -141,25 +141,28 @@ def architecture():
 
 
 def fork():
-    trunk = "M20,120 H190"
-    b1 = "M190,120 C260,120 270,40 340,40 H430"
-    b2 = "M190,120 H430"
-    b3 = "M190,120 C260,120 270,200 340,200 H430"
-    merge = "M430,120 C500,120 520,120 580,120 H700"
-    return f"""<svg class="art fork-loop sans" viewBox="0 0 720 240" role="img" aria-labelledby="fork-art-t">
+    """Fork, try, apply: an agent branches its sandbox into three trials,
+    two are thrown away and one is merged back. Loops on CSS timing."""
+    ys = {"a": 50, "b": 120, "c": 190}
+    out = ['<path class="s trunk" pathLength="1" d="M40,120 H200"/>',
+           '<circle class="f" cx="40" cy="120" r="6"/>',
+           '<text x="40" y="96" text-anchor="middle">agent</text>',
+           '<text x="200" y="104" text-anchor="middle" class="dim">fork</text>']
+    for k, y in ys.items():
+        out.append(f'<g class="trial t-{k}">'
+                   f'<path class="s branch" pathLength="1" d="M200,120 C270,120 290,{y} 360,{y}"/>'
+                   f'<rect class="s box" x="360" y="{y - 14}" width="28" height="28"/>'
+                   f'<rect class="f run" x="367" y="{y - 7}" width="14" height="14"/>'
+                   f'<text x="400" y="{y + 5}">trial-{k}</text>'
+                   + ('' if k == "b" else f'<text class="dim tag" x="470" y="{y + 5}">discarded</text>')
+                   + '</g>')
+    out.append('<path class="s merge" pathLength="1" d="M470,120 C540,120 560,120 640,120"/>'
+               '<text class="tag apply-t" x="555" y="104" text-anchor="middle">apply</text>'
+               '<circle class="f merge-dot" cx="650" cy="120" r="6"/>'
+               '<text class="tag apply-t" x="650" y="150" text-anchor="middle">/data</text>')
+    return f"""<svg class="art fork-loop sans" viewBox="0 0 700 240" role="img" aria-labelledby="fork-art-t">
   <title id="fork-art-t">A sandbox forks into three trials. Two are discarded; one is applied back.</title>
-  <path class="s" d="{trunk}"/>
-  <circle class="f" cx="20" cy="120" r="5"/>
-  <text x="20" y="100">agent</text>
-  <text x="196" y="100" class="dim">fork</text>
-  <g class="drop"><path class="s branch" pathLength="1" d="{b1}"/><text x="440" y="44">trial-a</text></g>
-  <path class="s branch b2" pathLength="1" d="{b2}"/><text x="440" y="110" class="dim">trial-b</text>
-  <g class="drop"><path class="s branch b3" pathLength="1" d="{b3}"/><text x="440" y="204">trial-c</text></g>
-  <path class="s merge" pathLength="1" d="{merge}"/>
-  <text x="560" y="100">apply</text>
-  <text x="440" y="70" class="dim">discard</text>
-  <text x="440" y="234" class="dim">discard</text>
-  <circle class="f" cx="700" cy="120" r="5"/>
+  {''.join(out)}
 </svg>"""
 
 

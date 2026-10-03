@@ -45,34 +45,42 @@ code, pre, kbd { font-family: var(--mono); font-size: 0.88em; }
 
 .wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2rem); }
 
-/* Navigation: a white rail down the left edge. Page links run up the top,
-   the wordmark sits in the middle reading upward, GitHub at the foot. On
-   small screens it folds into a white bar across the top. */
+/* Navigation: a white rail down the left edge. The wordmark sits in the
+   middle reading upward, the GitHub mark under it. Architecture and Docs
+   run above it (the word's right), Security and Benchmarks below (its
+   left). On small screens it folds into a white bar: the same three parts
+   side by side. */
 :root { --rail: 4.75rem; }
 .nav.invert { position: fixed; z-index: 20; left: 0; top: 0; bottom: 0; width: var(--rail);
   display: grid; grid-template-rows: 1fr auto 1fr; justify-items: center; padding: 1.5rem 0; border-right: 1px solid var(--line); }
 body { padding-left: var(--rail); }
-.nav-links { align-self: start; display: flex; flex-direction: column; gap: 1.4rem; }
-.nav-links a, .nav-gh { writing-mode: vertical-rl; transform: rotate(180deg); text-decoration: none; font-size: 0.86rem; letter-spacing: 0.02em; }
-.nav-links a { color: var(--muted); }
+.nav-links { display: flex; flex-direction: column; gap: 1.4rem; }
+.nav-right { grid-row: 1; align-self: start; }
+.nav-mid { grid-row: 2; display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 1rem 0; }
+.nav-left { grid-row: 3; align-self: end; }
+.nav-links a { writing-mode: vertical-rl; transform: rotate(180deg); text-decoration: none; font-size: 0.86rem; letter-spacing: 0.02em; color: var(--muted); }
 .nav-links a:hover, .nav-links a[aria-current="page"] { color: var(--ink); text-decoration: underline 1.5px; text-underline-offset: 5px; }
-.brand { display: block; color: var(--ink); padding: 1rem 0; }
+.brand { display: block; color: var(--ink); }
 .brand .logo { display: block; fill: currentColor; overflow: visible; }
 .brand .logo-v { width: 1.55rem; height: auto; }
 .brand .logo-h { display: none; height: 1.25rem; width: auto; }
-.nav-gh { align-self: end; color: var(--ink); border: 1.5px solid var(--ink); padding: 0.7rem 0.35rem; }
-.nav-gh:hover { background: var(--ink); color: var(--bg); }
+.nav-gh { display: block; color: var(--ink); line-height: 0; }
+.nav-gh svg { width: 1.35rem; height: 1.35rem; fill: currentColor; transition: transform 0.25s; }
+.nav-gh:hover svg { transform: rotate(-12deg) scale(1.12); }
 @media (max-width: 900px) {
   body { padding-left: 0; }
-  .nav.invert { position: sticky; bottom: auto; width: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 0.75rem clamp(1rem, 4vw, 2rem) 0.6rem;
-    grid-template-rows: auto auto; grid-template-columns: 1fr auto; gap: 0.6rem 0.9rem; align-items: center; }
-  .brand { grid-column: 1 / -1; grid-row: 1; padding: 0.15rem 0; }
+  .nav.invert { position: sticky; bottom: auto; width: auto; border-right: 0; border-bottom: 1px solid var(--line);
+    grid-template-rows: auto; grid-template-columns: 1fr auto 1fr; align-items: center; column-gap: 1rem; padding: 0.6rem clamp(1rem, 4vw, 2rem); }
+  .nav-right, .nav-mid, .nav-left { grid-row: 1; align-self: center; }
+  .nav-left { grid-column: 1; justify-self: start; }
+  .nav-mid { grid-column: 2; gap: 0.35rem; padding: 0; }
+  .nav-right { grid-column: 3; justify-self: end; align-items: flex-end; }
+  .nav-links { gap: 0.2rem; }
+  .nav-links a { writing-mode: horizontal-tb; transform: none; font-size: 0.88rem; white-space: nowrap; }
   .brand .logo-v { display: none; }
   .brand .logo-h { display: block; }
-  .nav-links { grid-row: 2; grid-column: 1 / -1; justify-self: center; max-width: 100%; flex-direction: row; gap: 1rem; overflow-x: auto; scrollbar-width: none; }
-  .nav-links a, .nav-gh { writing-mode: horizontal-tb; transform: none; font-size: 0.9rem; white-space: nowrap; }
-  .nav-gh { grid-row: 1; grid-column: 2; justify-self: end; align-self: center; padding: 0.2rem 0.55rem; }
-  .doc h2, .doc h3 { scroll-margin-top: 7rem; }
+  .nav-gh svg { width: 1.1rem; height: 1.1rem; }
+  .doc h2, .doc h3 { scroll-margin-top: 6rem; }
 }
 
 /* Type */
@@ -180,7 +188,7 @@ figcaption b { color: var(--ink); font-weight: 600; }
 .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 0; background: var(--surface); }
 table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
 th, td { text-align: left; padding: 0.7rem 1rem; vertical-align: top; }
-thead th { font-weight: 600; color: var(--muted); font-size: 0.8rem; border-bottom: 1px solid var(--line); background: var(--line-soft); }
+thead th { font-weight: 600; color: #fff; font-size: 0.8rem; border-bottom: 0; background: #1300f9; }
 tbody tr + tr td { border-top: 1px solid var(--line-soft); }
 thead th { white-space: nowrap; }
 td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -294,10 +302,6 @@ pre.code .k { color: var(--accent); }
   .draw .lbl { opacity: 0; animation: fadein 0.8s ease forwards; animation-delay: calc(1.2s + var(--i, 0) * 0.22s); }
   .pulse { animation: pulse 2.8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
   .float { animation: float 7s ease-in-out infinite; }
-  .fork-loop .branch { stroke-dasharray: 1; stroke-dashoffset: 1; animation: branch 7s ease-in-out infinite; }
-  .fork-loop .b2 { animation-delay: 0.35s; } .fork-loop .b3 { animation-delay: 0.7s; }
-  .fork-loop .drop { animation: drop 7s ease-in-out infinite; }
-  .fork-loop .merge { stroke-dasharray: 1; stroke-dashoffset: 1; animation: merge 7s ease-in-out infinite; }
   .scan { animation: scan 4.5s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
   .tick { opacity: 0; animation: tick 4.5s ease infinite; animation-delay: calc(var(--i, 0) * 0.45s); }
 }
@@ -306,7 +310,6 @@ pre.code .k { color: var(--accent); }
 @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.55; transform: scale(0.92); } }
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 @keyframes branch { 0% { stroke-dashoffset: 1; } 30%, 85% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
-@keyframes drop { 0%, 45% { opacity: 1; } 60%, 85% { opacity: 0.15; } 100% { opacity: 0; } }
 @keyframes merge { 0%, 45% { stroke-dashoffset: 1; } 65%, 85% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
 @keyframes scan { 0% { transform: translateY(0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(var(--scan, 300px)); opacity: 0; } }
 @keyframes tick { 0%, 20% { opacity: 0; } 30%, 85% { opacity: 1; } 100% { opacity: 0; } }
@@ -450,9 +453,7 @@ pre.code .k { color: var(--accent); }
 .art.sans text.big { font-family: var(--display); font-size: 21px; font-weight: 700; letter-spacing: -0.02em; }
 .art.sans text.dim { font-weight: 400; }
 
-/* The footer wordmark: the logo's outlines, stroked and hollow. Each letter
-   draws itself in, then a fill runs through the word, letter by letter, on
-   a slow loop. Pointing at a letter fills it. */
+/* The footer wordmark: the logo's outlines, stroked and hollow. */
 .wordmark { display: block; -webkit-text-stroke: 0; color: inherit; overflow: hidden; }
 .wordmark svg { display: block; width: 100%; height: auto; overflow: visible; }
 .wordmark path { stroke: var(--ink); stroke-width: 9; stroke-linejoin: round; }
@@ -535,24 +536,41 @@ h3 { font-weight: 400; }
 /* Nav logo: the letters drop in one after another, and lift in a wave on hover. */
 .brand .logo path { transform-box: fill-box; transform-origin: 50% 100%; }
 @media (prefers-reduced-motion: no-preference) {
-  .brand .logo path { animation: drop 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) backwards; animation-delay: calc(0.1s + var(--i) * 0.06s); }
+  .brand .logo path { animation: letter-in 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) backwards; animation-delay: calc(0.1s + var(--i) * 0.06s); }
   .brand .logo path { transition: transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1); transition-delay: calc(var(--i) * 0.04s); }
   .brand:hover .logo path, .brand:focus-visible .logo path { transform: translateY(-18%); }
 }
-@keyframes drop { from { transform: translateY(-120%) scaleY(1.2); opacity: 0; } }
+@keyframes letter-in { from { transform: translateY(-120%) scaleY(1.2); opacity: 0; } }
 
-/* Footer wordmark. */
-.wordmark path { fill: var(--ink); fill-opacity: 0; transition: fill-opacity 0.25s; }
-.wordmark path:hover { fill-opacity: 1 !important; transition-duration: 0s; }
+/* Footer wordmark: hollow letters, drawn in once. */
+.wordmark path { fill: none; }
 @media (prefers-reduced-motion: no-preference) {
   .wordmark path { stroke-dasharray: 1; stroke-dashoffset: 1; }
-  .footer.in .wordmark path {
-    animation: draw 1.6s cubic-bezier(0.65, 0, 0.35, 1) forwards, ink 7s ease-in-out infinite;
-    animation-delay: calc(0.3s + var(--i) * 0.14s), calc(2.6s + var(--i) * 0.22s);
-  }
+  .footer.in .wordmark path { animation: draw 1.6s cubic-bezier(0.65, 0, 0.35, 1) forwards; animation-delay: calc(0.3s + var(--i) * 0.12s); }
 }
-@keyframes ink { 0%, 30%, 100% { fill-opacity: 0; } 10%, 18% { fill-opacity: 1; } }
 
 /* The router in the workflow: a solid box turning, edges in the ground colour. */
 .art .cube-edge { fill: none; stroke: var(--bg); stroke-width: 2; stroke-linejoin: round; }
 .opart-text p { font-size: clamp(1.9rem, 5vw, 4.2rem); }
+
+/* Fork loop, 8 s: branches grow, each trial runs, a and c are thrown away,
+   b merges back into /data, then the picture clears and starts again. */
+.fork-loop .s { vector-effect: none; stroke-width: 1.5; }
+@media (prefers-reduced-motion: no-preference) {
+  .fork-loop .branch, .fork-loop .merge { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  .fork-loop .branch { animation: fk-branch 8s ease-in-out infinite; }
+  .fork-loop .t-b .branch { animation-delay: 0.15s; } .fork-loop .t-c .branch { animation-delay: 0.3s; }
+  .fork-loop .box, .fork-loop .trial text:not(.tag) { animation: fk-show 8s ease infinite; }
+  .fork-loop .run { transform-box: fill-box; transform-origin: center; animation: fk-run 8s ease-in-out infinite; }
+  .fork-loop .t-a, .fork-loop .t-c { animation: fk-discard 8s ease infinite; }
+  .fork-loop .trial .tag { animation: fk-tag 8s ease infinite; }
+  .fork-loop .merge { animation: fk-merge 8s ease-in-out infinite; }
+  .fork-loop .apply-t, .fork-loop .merge-dot { animation: fk-apply 8s ease infinite; }
+}
+@keyframes fk-branch { 0% { stroke-dashoffset: 1; } 12%, 90% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes fk-show { 0%, 10% { opacity: 0; } 16%, 90% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes fk-run { 0%, 16% { opacity: 0; transform: scale(0.3); } 22%, 34% { opacity: 1; transform: scale(1); } 28% { transform: scale(0.6); } 90% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes fk-discard { 0%, 40% { opacity: 1; } 48%, 90% { opacity: 0.25; } 100% { opacity: 0; } }
+@keyframes fk-tag { 0%, 42% { opacity: 0; } 50%, 90% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes fk-merge { 0%, 50% { stroke-dashoffset: 1; } 64%, 90% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes fk-apply { 0%, 60% { opacity: 0; } 68%, 90% { opacity: 1; } 100% { opacity: 0; } }
